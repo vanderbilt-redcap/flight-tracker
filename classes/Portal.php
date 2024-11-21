@@ -19,6 +19,7 @@ class Portal
     const CURRENT_MESH_TERMS = "current_mesh_terms";
     const SUPPLEMENTAL_MESH_TERMS = "supplemental_mesh_terms";
     const MESH_SEPARATOR = "\n";
+    const NUM_SEARCH_MESH_TERMS = 5;
 
     public function __construct($currPid, $recordId, $name, $projectTitle, $allPids) {
         $this->pid = $currPid;
@@ -512,116 +513,121 @@ class Portal
         return NameMatcher::formatName($requestedFirst, "", $requestedLast);
     }
 
-    public function searchForCollaborators(array $topics, array $pids, array $priorNames, array $alternativeTopics): array {
-        $fieldsToMatchOn = ["citation_mesh_terms" => "MeSH Terms"];
+    public function searchForCollaborators(array $topics, string $field, array $pids, array $priorNames, array $alternativeTopics): array {
+        $fieldsToMatchOn = [
+            "citation_mesh_terms",
+            "citation_pubmed_keywords",
+        ];
         if ($this->usesAI) {
-            $fieldsToMatchOn["citation_ai_keywords"] = "AI Keywords";
+            $fieldsToMatchOn[] = "citation_ai_keywords";
         }
         for ($i = 0; $i < count($topics); $i++) {
             $topics[$i] = strtolower($topics[$i]);
         }
-
         $matches = [];
-        foreach ($pids as $pid) {
-            $includeValues = Download::oneFieldWithInstancesByPid($pid, "citation_include");
-            foreach ($fieldsToMatchOn as $field => $fieldLabel) {
-                $termsByRecord = Download::oneFieldWithInstancesByPid($pid, $field);
-                foreach ($termsByRecord as $recordId => $citationData) {
-                    if (($this->pid != $pid) && ($recordId != $this->recordId)) {
-                        $recordCitationPMIDs = [];
-                        $name = "";
-                        $email = "";
-                        $score = 0;
-                        foreach ($citationData as $instance => $termsString) {
-                            if (($includeValues[$recordId][$instance] ?? "") == "1") {
-                                # note: some MeSH terms have commas in them, so semicolon-delimited list
-                                $terms = preg_split("/\s*;\s*/", strtolower(trim($termsString)), -1, PREG_SPLIT_NO_EMPTY);
-                                $matchedTerms = [];
-                                foreach ($topics as $topic) {
-                                    if (in_array($topic, $terms)) {
-                                        $matchedTerms[] = $topic;
-                                        # exact match
-                                        $score += 10;
-                                    } else {
-                                        foreach ($terms as $term) {
-                                            if (
-                                                (
-                                                    (strpos($term, $topic) !== FALSE)
-                                                    || (strpos($topic, $term) !== FALSE)
-                                                )
-                                                && !in_array($topic, $matchedTerms)
-                                            ) {
-                                                # partial match
-                                                $matchedTerms[] = $term;
-                                                $score += 4;
-                                            }
-                                        }
-                                    }
-                                }
-                                foreach ($alternativeTopics as $topic) {
-                                    # AI suggested match
-                                    if (in_array($topic, $terms)) {
-                                        # complete
-                                        $matchedTerms[] = $topic;
-                                        $score += 2;
-                                    } else {
-                                        # partial
-                                        foreach ($terms as $term) {
-                                            if (
-                                                (
-                                                    (strpos($term, $topic) !== FALSE)
-                                                    || (strpos($topic, $term) !== FALSE)
-                                                )
-                                                && !in_array($topic, $matchedTerms)
-                                            ) {
-                                                # partial match
-                                                $matchedTerms[] = $term;
-                                                $score += 1;
-                                            }
-                                        }
-                                    }
-                                }
-                                if (!empty($matchedTerms)) {
-                                    if (empty($recordCitationPMIDs)) {
-                                        $recordCitationPMIDs = Download::oneFieldForRecordByPid($pid, "citation_pmid", $recordId);
-                                    }
-                                    if (!is_array($recordCitationPMIDs)) {
-                                        if ($recordCitationPMIDs === "") {
-                                            $recordCitationPMIDs = [];
+        if (in_array($field, $fieldsToMatchOn)) {
+            foreach ($pids as $pid) {
+                $includeValues = Download::oneFieldWithInstancesByPid($pid, "citation_include");
+                $metadataFields = Download::metadataFieldsByPid($pid);
+                if (in_array($field, $metadataFields)) {
+                    $termsByRecord = Download::oneFieldWithInstancesByPid($pid, $field);
+                    foreach ($termsByRecord as $recordId => $citationData) {
+                        if (($this->pid != $pid) && ($recordId != $this->recordId)) {
+                            $recordCitationPMIDs = [];
+                            $name = "";
+                            $email = "";
+                            $score = 0;
+                            foreach ($citationData as $instance => $termsString) {
+                                if (($includeValues[$recordId][$instance] ?? "") == "1") {
+                                    # note: some MeSH terms have commas in them, so semicolon-delimited list
+                                    $terms = preg_split("/\s*;\s*/", strtolower(trim($termsString)), -1, PREG_SPLIT_NO_EMPTY);
+                                    $matchedTerms = [];
+                                    foreach ($topics as $topic) {
+                                        if (in_array($topic, $terms)) {
+                                            $matchedTerms[] = $topic;
+                                            # exact match
+                                            $score += 10;
                                         } else {
-                                            $recordCitationPMIDs[$instance] = $recordCitationPMIDs;
+                                            foreach ($terms as $term) {
+                                                if (
+                                                    (
+                                                        (strpos($term, $topic) !== FALSE)
+                                                        || (strpos($topic, $term) !== FALSE)
+                                                    )
+                                                    && !in_array($topic, $matchedTerms)
+                                                ) {
+                                                    # partial match
+                                                    $matchedTerms[] = $term;
+                                                    $score += 4;
+                                                }
+                                            }
                                         }
                                     }
-                                    if ($name == "") {
-                                        $name = self::getNameFromListIfPossible(Download::fullNameByPid($pid, $recordId), $priorNames);
-                                        $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
-                                        if (is_array($email) && !empty($email)) {
-                                            $firstKey = array_keys($email)[0];
-                                            $email = $email[$firstKey];
-                                        } else if (is_array($email)) {
-                                            $email = "";
+                                    foreach ($alternativeTopics as $topic) {
+                                        # AI suggested match
+                                        if (in_array($topic, $terms)) {
+                                            # complete
+                                            $matchedTerms[] = $topic;
+                                            $score += 2;
+                                        } else {
+                                            # partial
+                                            foreach ($terms as $term) {
+                                                if (
+                                                    (
+                                                        (strpos($term, $topic) !== FALSE)
+                                                        || (strpos($topic, $term) !== FALSE)
+                                                    )
+                                                    && !in_array($topic, $matchedTerms)
+                                                ) {
+                                                    # partial match
+                                                    $matchedTerms[] = $term;
+                                                    $score += 1;
+                                                }
+                                            }
                                         }
                                     }
-                                    $pmid = $recordCitationPMIDs[$instance];
-                                    $licensePlate = "$pid:$recordId";
-                                    if (!isset($matches[$licensePlate])) {
-                                        $matches[$licensePlate] = [];
-                                    }
-                                    if (isset($matches[$licensePlate][$pmid])) {
-                                        $matches[$licensePlate][$pmid]["matched_terms"] = array_unique(array_merge($matches[$licensePlate][$pmid]["matched_terms"], $matchedTerms));
-                                        $matches[$licensePlate][$pmid]["score"] += $score;
-                                    } else {
-                                        $matches[$licensePlate][$pmid] = [
-                                            "pid" => $pid,
-                                            "record" => $recordId,
-                                            "instance" => $instance,
-                                            "project_title" => Download::shortProjectTitle($pid),
-                                            "matched_terms" => $matchedTerms,
-                                            "pmid" => $pmid,
-                                            "name" => $name,
-                                            "email" => $email,
-                                            "score" => $score,
-                                        ];
+                                    if (!empty($matchedTerms)) {
+                                        if (empty($recordCitationPMIDs)) {
+                                            $recordCitationPMIDs = Download::oneFieldForRecordByPid($pid, "citation_pmid", $recordId);
+                                        }
+                                        if (!is_array($recordCitationPMIDs)) {
+                                            if ($recordCitationPMIDs === "") {
+                                                $recordCitationPMIDs = [];
+                                            } else {
+                                                $recordCitationPMIDs[$instance] = $recordCitationPMIDs;
+                                            }
+                                        }
+                                        if ($name == "") {
+                                            $name = self::getNameFromListIfPossible(Download::fullNameByPid($pid, $recordId), $priorNames);
+                                            $email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
+                                            if (is_array($email) && !empty($email)) {
+                                                $firstKey = array_keys($email)[0];
+                                                $email = $email[$firstKey];
+                                            } else if (is_array($email)) {
+                                                $email = "";
+                                            }
+                                        }
+                                        $pmid = $recordCitationPMIDs[$instance];
+                                        $licensePlate = "$pid:$recordId";
+                                        if (!isset($matches[$licensePlate])) {
+                                            $matches[$licensePlate] = [];
+                                        }
+                                        if (isset($matches[$licensePlate][$pmid])) {
+                                            $matches[$licensePlate][$pmid]["matched_terms"] = array_unique(array_merge($matches[$licensePlate][$pmid]["matched_terms"], $matchedTerms));
+                                            $matches[$licensePlate][$pmid]["score"] += $score;
+                                        } else {
+                                            $matches[$licensePlate][$pmid] = [
+                                                "pid" => $pid,
+                                                "record" => $recordId,
+                                                "instance" => $instance,
+                                                "project_title" => Download::shortProjectTitle($pid),
+                                                "matched_terms" => $matchedTerms,
+                                                "pmid" => $pmid,
+                                                "name" => $name,
+                                                "email" => $email,
+                                                "score" => $score,
+                                            ];
+                                        }
                                     }
                                 }
                             }
@@ -630,6 +636,7 @@ class Portal
                 }
             }
         }
+
         $combinedMatches = [];
         foreach ($matches as $licensePlate => $matchesByPMID) {
             $combinedMatches = array_merge($combinedMatches, array_values($matchesByPMID));
@@ -639,7 +646,7 @@ class Portal
 
     public function findCollaboratorPage() {
         if (Application::isVanderbilt()) {
-            $aiMessage = " and using analysis by Artificial Intelligence";
+            $aiMessage = " It will also use analysis by Artificial Intelligence.";
             $aiHeader = " Using Artificial Intelligence";
         } else {
             $aiMessage = "";
@@ -648,16 +655,23 @@ class Portal
         $numFlightTrackers = count(Application::getActivePids());
         $meshLink = "https://www.nlm.nih.gov/mesh/";
         $html = "<h3>Find a Collaborator$aiHeader</h3>";
-        $html .= "<p class='centered max-width'>What topic(s) do you want to search for? Doing so will search all $numFlightTrackers Flight Trackers on this server and may take some time. It will search everyone's publications using <a href='$meshLink' target='_new'>MeSH Terms</a>$aiMessage.</p>";
+        $html .= "<p class='centered max-width'>What topic(s) do you want to search for? Doing so will search all $numFlightTrackers Flight Trackers on this server and may take some time. It will search everyone's publications using <a href='$meshLink' target='_new'>MeSH Terms</a> and PubMed Keywords.$aiMessage</p>";
         if (Application::isVanderbilt()) {
-            $html .= "<p class='centered max-width'><label for='topics'>AI-Generated Topics to Search for (separated by semicolons):</label><br/><input type='text' id='topics' value='' /> <button onclick='portal.searchForTopics(\"{$this->driverURL}\", $(\"#topics\").val()); return false;'>Go!</button></p>";
+            $html .= "<p class='centered max-width'><label for='topics'>AI-Generated Topics to Search for (separated by semicolons):</label><br/><input type='text' id='topics' class='searchTerms' value='' /> <button onclick='portal.searchForTopics(\"{$this->driverURL}\", $(\"#topics\").val(), \"citation_ai_keywords\"); return false;'>Go!</button></p>";
         }
+        $html .= "<p class='centered max-width'><label for='pubmed_keywords'>PubMed Keywords to Search for (separated by semicolons):</label><br/><input type='text' id='pubmed_keywords' class='searchTerms' value='' /> <button onclick='portal.searchForTopics(\"{$this->driverURL}\", $(\"#pubmed_keywords\").val(), \"citation_pubmed_keywords\"); return false;'>Go!</button></p>";
         $meshOptions = $this->getMeSHOptions();
-        $html .= "<p class='centered max-width'><label for='mesh_term' title='MeSH Terms are updated weekly with supplemental material.' style='border-bottom: 1px dotted #888;'>MeSH Term</label>: <select id='mesh_term' class='combobox'><option value='' selected></option>".implode("", $meshOptions)."</select> <button onclick='portal.searchForTopics(\"{$this->driverURL}\", $(\"#mesh_term option:selected\").val()); return false;' style='margin-left: 30px;'>Go!</button></p>";
+        $html .= "<table class='centered max-width' id='mesh_table'><tbody>";
+        for ($i = 1; $i <= self::NUM_SEARCH_MESH_TERMS; $i++) {
+            $optional = ($i > 1) ? " (Optional)" : "";
+            $html .= "<tr><td class='alignright small_padding'><div class='portalOverlay'></div><label for='mesh_term_$i' title='MeSH Terms are updated weekly with supplemental material.' style='border-bottom: 1px dotted #888;'>MeSH Term #$i$optional</label>:</td><td class='left-align'><select id='mesh_term_$i' class='combobox'><option value='' selected></option>".implode("", $meshOptions)."</select></td></tr>";
+        }
+        $html .= "<tr><td colspan='2' class='centered'><div class='portalOverlay'></div><button onclick='portal.searchForTopics(\"{$this->driverURL}\", portal.compileMeSHTerms(".self::NUM_SEARCH_MESH_TERMS."), \"citation_mesh_terms\"); return false;'>Search MeSH Terms!</button></td></tr>";
+        $html .= "</tbody></table>";
         $html .= "<p class='centered max-width' id='searchingDiv'></p>";
         $html .= "<p class='centered max-width' id='results'></p>";
 
-        $autocompleteJSUrl = Application::link("portal/js/autocomplete.js", $this->pid);
+        $autocompleteJSUrl = Application::link("portal/js/mesh_autocomplete.js", $this->pid);
         $html .= "<script src='$autocompleteJSUrl'></script>";
         return $html;
     }

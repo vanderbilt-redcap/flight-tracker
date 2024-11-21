@@ -19,7 +19,7 @@ class ClassicalREDCapRetriever {
         $this->module = $module;
         $this->pid = $pid;
         $this->pk = $this->getPrimaryKey();
-        $this->redcapDataTable = \REDCap::getDataTable($this->pid);
+        $this->redcapDataTable = method_exists("\REDCap", "getDataTable") ? \REDCap::getDataTable($this->pid) : "redcap_data";
     }
 
     private function getPidForSQL() {

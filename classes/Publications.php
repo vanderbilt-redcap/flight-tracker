@@ -14,6 +14,7 @@ class Publications {
     const API_KEY_PUBMED_THROTTLE = 0.10;   // rate limit: 10 per minute
     const WAIT_SECS_UPON_FAILURE = 60;
     const NUM_PMIDS_PER_PULL = 10;
+    const LIST_SEPARATOR = ";";
 
 	public function __construct($token, $server, $metadata = "download") {
 		$this->token = $token;
@@ -791,7 +792,7 @@ class Publications {
         return preg_match("/<PubmedArticleSet><\/PubmedArticleSet>/", $output);
     }
 
-	public static function downloadPMIDs($pmids, $pid = NULL) {
+	public static function downloadPMIDs(array $pmids, $pid = NULL): array {
 	    $limit = self::NUM_PMIDS_PER_PULL;
 	    $pmidsInGroups = [];
 	    for ($i = 0; $i < count($pmids); $i += $limit) {
@@ -1309,6 +1310,13 @@ class Publications {
                 }
             }
 
+            $pubmedKeywords = [];
+            if ($medlineCitation->MedlineCitation->KeywordList) {
+                foreach ($medlineCitation->MedlineCitation->KeywordList->Keyword as $keywordNode) {
+                    $pubmedKeywords[] = strval($keywordNode);
+                }
+            }
+
             $matchedPreprint = FALSE;
             foreach ($preprintVersions as $preprintPMID) {
                 if (in_array($preprintPMID, $confirmedPMIDs)) {
@@ -1358,8 +1366,8 @@ class Publications {
                 "citation_source" => $src,
                 "citation_authors" => NameMatcher::getRidOfAccentMarks(implode(", ", $authors)),
                 "citation_title" => $title,
-                "citation_pub_types" => implode("; ", $pubTypes),
-                "citation_mesh_terms" => implode("; ", $meshTerms),
+                "citation_pub_types" => implode(self::LIST_SEPARATOR." ", $pubTypes),
+                "citation_mesh_terms" => implode(self::LIST_SEPARATOR." ", $meshTerms),
                 "citation_journal" => $journal,
                 "citation_issue" => $iss,
                 "citation_volume" => $vol,
@@ -1369,7 +1377,7 @@ class Publications {
                 "citation_date" => $date,
                 "citation_affiliations" => json_encode($affiliations),
                 "citation_pages" => $pages,
-                "citation_grants" => implode("; ", $assocGrants),
+                "citation_grants" => implode(self::LIST_SEPARATOR." ", $assocGrants),
                 "citation_complete" => self::getPublicationCompleteStatusFromInclude($newPMIDIncludeStatus),
             ];
             $token = Application::getSetting("token", $pid);
@@ -1390,6 +1398,9 @@ class Publications {
             }
             if (in_array("citation_flagged", $metadataFields)) {
                 $row["citation_flagged"] = "";
+            }
+            if (in_array("citation_pubmed_keywords", $metadataFields)) {
+                $row["citation_pubmed_keywords"] = implode(self::LIST_SEPARATOR." ", $pubmedKeywords);
             }
             if ($hasAbstract) {
                 $row['citation_abstract'] = $abstract;
@@ -3210,209 +3221,3 @@ $(document).ready(() => {
     private $wranglerType;
 }
 
-class PubmedMatch {
-	public function __construct($pmid) {
-		$this->pmid = $pmid;
-	}
-
-	public function formDisplay() {
-		$str = "";
-
-		$str .= "<div>\n";
-		if ($this->isEmpty()) {
-			$str .= "<p>PMID {$this->pmid} not found.</p>\n";
-		} else {
-			foreach ($this->toArray() as $var => $val) {
-				if ($var == "Category") {
-					if ($val) {
-						$cats = Citation::getCategories();
-						$val = $cats[$val]; 
-					} else {
-						$val = "[UNDETERMINABLE]";
-					}
-				}
-				if ($var == "Score") {
-					if (is_numeric($val) && ($val < 100)) {
-						$val = "<span class='red'>$val</span>";
-					}
-				}
-				if (is_array($val)) {
-					$str .= "<p><b>$var</b>: ".implode("; ", $val)."</p>\n";
-				} else {
-					$str .= "<p><b>$var</b>: $val</p>\n";
-				}
-			}
-		}
-		$str .= "</div>\n";
-
-		return $str;
-	}
-
-	public function fillInCategoryAndScore() {
-		list($cat, $score) = $this->autoSuggestCategoryAndScore();
-		$this->setVariable("Category", $cat);
-		$this->setVariable("Score", $score);
-	}
-
-	private function isEmpty() {
-		$ary = array();
-		$skip = array("PMID", "Category", "Score");
-		foreach ($this->toArray() as $var => $val) {
-			if (!in_array($var, $skip)) {
-				$ary[$var] = $val;
-			}
-		}
-		return empty($ary);
-	}
-
-	private function toArray() {
-		$ary = array();
-
-		# put important variables at front
-		$ary['PMID'] = $this->pmid;
-		if (isset($this->ary['Category'])) {
-			$ary['Category'] = $this->ary['Category'];
-		}
-		if (isset($this->ary['Score'])) {
-			$ary['Score'] = $this->ary['Score'];
-		}
-
-		foreach ($this->ary as $var => $val) {
-			if (!isset($ary[$var])) {
-				$ary[$var] = $val;
-			}
-		}
-		return $ary;
-	}
-
-	public function setVariable($var, $value) {
-		if (is_array($value)) {
-			$this->ary[$var] = $value;
-		} else {
-			$this->ary[$var] = (string) $value;
-		}
-	}
-
-	public function getVariable($var) {
-		if (isset($this->ary[$var])) {
-			return $this->ary[$var];
-		}
-		return "";
-	}
-
-	# returns list($category, $score)
-	private function autoSuggestCategoryAndScore() {
-		$pubAry = $this->toArray();
-		if (is_array($pubAry['Publication Types']) && !empty($pubAry['Publication Types'])) {
-			// $cat = Citation::suggestCategoryFromPubTypes($pubAry['Publication Types'], $pubAry['Title']);
-			// if ($cat) {
-				// return array($cat, 100);
-			// }
-		}
-		if (isset($pubAry['Abstract'])) {
-			return self::analyzeAbstractAndTitle($pubAry['Abstract'], $pubAry['Title']);
-		}
-		# no abstract and no pub types => minimal paper
-		return array("", 0);
-	}
-
-	# returns list($category, $score)
-	private static function analyzeAbstractAndTitle($abstract, $title) {
-		# look in title and in abstract for replies and errata
-		$fullAbstract = $title."\n".$abstract;
-		$isLetter = 0;
-		if (preg_match("/The Author'?s Reply/i", $fullAbstract)) {
-			$isLetter++;
-		}
-
-		$isErrata = 0;
-		if (preg_match("/Erratum/i", $fullAbstract)) {
-			$isErrata++;
-		}
-		if (preg_match("/Errata/i", $fullAbstract)) {
-			$isErrata++;
-		}
-
-		# only look for research topics in abstract
-		$isResearch = 0;
-		$numResearchMatches = 0;
-		if (preg_match("/Problem/i", $abstract)) {
-			$isResearch = 1;
-			$numResearchMatches++;
-		}
-		if (preg_match("/Background/i", $abstract)) {
-			$isResearch = 1;
-			$numResearchMatches++;
-		}
-		if (preg_match("/Methods/i", $abstract)) {
-			$isResearch = 1;
-			$numResearchMatches++;
-		}
-		if (preg_match("/Results/i", $abstract)) {
-			$isResearch = 1;
-			$numResearchMatches++;
-		}
-		if (preg_match("/Discussion/i", $abstract)) {
-			$isResearch = 1;
-			$numResearchMatches++;
-		}
-		if (preg_match("/Conclusion/i", $abstract)) {
-			$isResearch = 1;
-			$numResearchMatches++;
-		}
-
-		if ($isResearch + $isErrata + $isLetter == 1) {
-			# only in one category
-			if ($isResearch) {
-				if ($numResearchMatches >= 3) {
-					return array("research", 100);
-				} else if ($numResearchMatches >= 2) {
-					return array("research", 70);
-				} else {
-					# only one match for research
-					return array("research", 20 + self::scoreAbstractForMinorPhrases($abstract));
-				}
-			} else if ($isErrata) {
-				return array("errata", 100);
-			} else if ($isLetter) {
-				return array("letter-to-the-editor", 100);
-			}
-		} else if ($isResearch + $isErrata + $isLetter > 1) {
-			# in more than one category
-			if ($isResearch) {
-				if ($numResearchMatches >= 4) {
-					return array("research", 90);
-				} else if ($numResearchMatches >= 3) {
-					return array("research", 80);
-				} else if ($numResearchMatches >= 2) {
-					return array("research", 50);
-				} else {
-					# only one match for research and in another category
-					return array("research", 10 + self::scoreAbstractForMinorPhrases($abstract));
-				}
-			} else {
-				# both errata and letter => cannot classify
-				return array("", 0);
-			}
-		}
-
-		# abstract yields no insights
-		return array("", 0);
-	}
-
-	private static function scoreAbstractForMinorPhrases($abstract) {
-		$phrases = array( "/compared/i", "/studied/i", "/examined/i" );
-		$numMatches = 0;
-		$scorePerMatch = 10;
-
-		foreach ($phrases as $regex) {
-			if (preg_match($regex, $abstract)) {
-				$numMatches++;
-			}
-		}
-		return $scorePerMatch * $numMatches;
-	}
-
-	private $ary = array();
-	private $pmid = "";
-}
