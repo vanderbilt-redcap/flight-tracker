@@ -53,9 +53,10 @@ class Application {
     }
 
     public static function getJQueryURL(): string {
+        $module = self::getModule();
         $fileOrder = [
             APP_PATH_DOCROOT."Resources/webpack/js/bundle.js" => APP_PATH_WEBROOT."Resources/webpack/js/bundle.js",
-            __DIR__."/js/jquery.min.js" => self::link("js/jquery.min.js"),
+            __DIR__."/js/jquery.min.js" => $module->getUrl("js/jquery.min.js"),
         ];
         foreach ($fileOrder as $file => $url) {
             if (file_exists($file)) {
