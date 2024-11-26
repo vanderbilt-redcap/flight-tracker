@@ -224,3 +224,5 @@ td.dataForm { width: 370px; vertical-align: top; }
 div.dataForm { background-color: #d4d4eb88; padding: 16px 10px; width: 100%; }
 .inputDataForm { background-color: #dddddd88; }
 textarea.pickDate { width: 180px; height: 44px; }
+.meshOverlay { background: white; position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
+.noBottomMargin { margin-bottom: 0; }

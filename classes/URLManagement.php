@@ -274,15 +274,27 @@ class URLManagement {
     public static function makeHiddenInputs($params, $noID = FALSE) {
         $items = [];
         foreach ($params as $key => $value) {
-            $key = preg_replace("/\[\d+\]/", "[]", $key);
-            $html = "<input type='hidden' name='$key'";
-            if (!$noID) {
-                $html .= "id='$key' ";
+            if (is_array($value)) {
+                $key = $key."[]";
+                $html = "";
+                foreach ($value as $v) {
+                    $html .= "<input type='hidden' name='$key'";
+                    if ($v !== "") {
+                        $html .= " value='$v'";
+                    }
+                    $html .= " />";
+                }
+            } else {
+                $key = preg_replace("/\[\d+\]/", "[]", $key);
+                $html = "<input type='hidden' name='$key'";
+                if (!$noID) {
+                    $html .= "id='$key' ";
+                }
+                if ($value !== "") {
+                    $html .= " value='$value'";
+                }
+                $html .= " />";
             }
-            if ($value !== "") {
-                $html .= " value='$value'";
-            }
-            $html .= ">";
             $items[] = $html;
         }
         return implode("", $items);
@@ -290,18 +302,8 @@ class URLManagement {
 
     public static function splitURL($fullURL) {
         list($url, $paramList) = explode("?", $fullURL);
-        $pairs = explode("&", $paramList);
         $params = [];
-        foreach ($pairs as $pair) {
-            $items = explode("=", $pair);
-            if (count($items) == 2) {
-                $params[urldecode($items[0])] = urldecode($items[1]);
-            } else if (count($items) == 1) {
-                $params[urldecode($items[0])] = "";
-            } else {
-                throw new \Exception("This should never happen. A GET parameter has ".count($items)." items.");
-            }
-        }
+        parse_Str($paramList, $params);
         return [$url, $params];
     }
 

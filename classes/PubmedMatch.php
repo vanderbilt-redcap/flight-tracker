@@ -94,7 +94,6 @@ class PubmedMatch {
     public function getPMID(): string {
         return strval($this->pmid);
     }
-
     public function getVariable($var) {
         if (isset($this->ary[$var])) {
             return $this->ary[$var];

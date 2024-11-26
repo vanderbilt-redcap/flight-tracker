@@ -176,6 +176,10 @@ class Citation {
 		return $str;
 	}
 
+    public function hasMESHTerm(string $term): bool {
+        return in_array($term, $this->getMESHTerms());
+    }
+
 	private function makeTooltip() {
 		$html = "";
 
@@ -482,9 +486,10 @@ class Citation {
 		return json_encode($this->data);
 	}
 
-	public static function explodeList($str) {
+	public static function explodeList(string $str): array {
 		if ($str) {
-			return explode("; ", $str);
+            # PREG_SPLIT_NO_EMPTY avoids blank entries in an array in case of bad data
+			return preg_split("/\s*;\s*/", $str, -1, PREG_SPLIT_NO_EMPTY);
 		} else {
 			return [];
 		}
@@ -501,7 +506,7 @@ class Citation {
         return [];
 	}
 
-	public function getMESHTerms() {
+	public function getMESHTerms(): array {
 		$str = $this->getVariable("mesh_terms");
 		return self::explodeList($str);
 	}

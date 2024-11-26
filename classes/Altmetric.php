@@ -32,7 +32,7 @@ class Altmetric {
             $clickStatus = "on";
         }
         $title = 'Sourced from the Web, altmetrics can tell you a lot about how often journal articles and other scholarly outputs like datasets are discussed and used around the world.';
-        return "<h4><a href='$url' title='$title'>Turn $clickStatus Altmetrics</a></h4><p class='centered max-width'>$title</p>";
+        return "<div class='centered'><a href='$url' title='$title'>Turn $clickStatus Altmetrics</a></div><div class='centered max-width smaller'>$title</div>";
     }
 
     public function getVariable($var) {

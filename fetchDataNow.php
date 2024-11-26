@@ -6,6 +6,7 @@ use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\Upload;
 use \Vanderbilt\CareerDevLibrary\ERIC;
 use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -54,7 +55,19 @@ try {
                 \Vanderbilt\CareerDevLibrary\getNSFGrants($token, $server, $pid, [$recordId]);
             }
 
-            if (in_array("ies_grant", $forms)) {
+            # The IES webpage is incompatible with a bug in cURL
+            # The bug seems to occur between cuRL versions 7.60.0 and 7.88.0
+            # OpenSSL SSL_read: error:0A000126:SSL routines::unexpected eof while reading, errno 0
+            # Hard to find something concrete, but it appears fixed after cURL 7.80.x
+            # Note: We're using PHP's cURL, not the CLI's. Also PHP 8.2 distributes with cURL 7.76.x
+            $curlVersion = curl_version()["version"];
+            if (
+                in_array("ies_grant", $forms)
+                && (
+                    REDCapManagement::versionGreaterThanOrEqualTo($curlVersion, "7.88.0")
+                    || REDCapManagement::versionGreaterThanOrEqualTo("7.60.0", $curlVersion)
+                )
+            ) {
                 require_once(dirname(__FILE__) . "/drivers/24_getIES.php");
                 \Vanderbilt\CareerDevLibrary\getIES($token, $server, $pid, [$recordId]);
             }

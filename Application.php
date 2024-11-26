@@ -53,14 +53,19 @@ class Application {
     }
 
     public static function getJQueryURL(): string {
-        $module = self::getModule();
         $fileOrder = [
             APP_PATH_DOCROOT."Resources/webpack/js/bundle.js" => APP_PATH_WEBROOT."Resources/webpack/js/bundle.js",
-            __DIR__."/js/jquery.min.js" => $module->getUrl("js/jquery.min.js"),
+            __DIR__."/js/jquery.min.js" => "getUrl",
         ];
         foreach ($fileOrder as $file => $url) {
             if (file_exists($file)) {
-                return $url;
+                if ($url == "getUrl") {
+                    # this should only rarely be called => save CPU cycles by lazy instantiation
+                    $module = self::getModule();
+                    return $module->getUrl("js/jquery.min.js");
+                } else {
+                    return $url;
+                }
             }
         }
         return "";

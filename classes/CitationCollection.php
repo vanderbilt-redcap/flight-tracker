@@ -269,6 +269,45 @@ class CitationCollection {
         return $str;
     }
 
+    public function filterForMeSHTerms(array $terms, string $combiner): void {
+        $combiner = strtolower($combiner);
+        if (!in_array($combiner, ["and", "or"]) && (count($terms) >= 2)) {
+            throw new \Exception("Invalid combine term '$combiner'!");
+        }
+        if (count($terms) == 0) {
+            return;
+        }
+        $newCitations = [];
+        foreach ($this->getCitations() as $citation) {
+            if (count($terms) == 1) {
+                $term = $terms[0];
+                if ($citation->hasMESHTerm($term)) {
+                    $newCitations[] = $citation;
+                }
+            } else if ($combiner == "and") {
+                $hasAll = TRUE;
+                foreach ($terms as $term) {
+                    if (!$citation->hasMESHTerm($term)) {
+                        $hasAll = FALSE;
+                    }
+                }
+                if ($hasAll) {
+                    $newCitations[] = $citation;
+                }
+            } else if ($combiner == "or") {
+                foreach ($terms as $term) {
+                    if ($citation->hasMeSHTerm($term)) {
+                        $newCitations[] = $citation;
+                        break;
+                    }
+                }
+            } else {
+                throw new \Exception("Invalid citation state! This should never happen.");
+            }
+        }
+        $this->citations = $newCitations;
+    }
+
     public function filterForAuthorPositions($positions, $name) {
         $methods = [];
         if (in_array("first", $positions)) {

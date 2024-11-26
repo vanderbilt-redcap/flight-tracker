@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use Couchbase\MutateArrayAppendSpec;
 use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(__DIR__ . '/ClassLoader.php');
@@ -17,6 +18,7 @@ class MMAHelper {
     public const EVAL_INSTRUMENT = "mentoring_agreement_evaluations";
     public const STEPS_KEY = "mma_steps";
     public const METADATA_KEY = "mma_metadata";
+    public const SESSION_EMULATOR = "mma_session";
 
     public static function createHash($token, $server) {
         $newHash = REDCapManagement::makeHash(self::getHashLength());
@@ -758,6 +760,24 @@ function startNow() {
         }
     }
 
+    public static function getCurrentDatabaseSession(string $recordId, $pid): array {
+        $field = self::SESSION_EMULATOR."___".$recordId;
+        $session = Application::getSetting($field, $pid) ?: [];
+        $interval = 12 * 3600;
+        if ($session["timestamp"] + $interval > time()) {
+            # expired
+            Application::saveSetting($field, [], $pid);
+            return [];
+        }
+        return $session;
+    }
+
+    public static function saveCurrentDatabaseSession(string $recordId, $pid, array $session): void {
+        $field = self::SESSION_EMULATOR."___".$recordId;
+        $session["timestamp"] = time();
+        Application::saveSetting($field, $session, $pid);
+    }
+
     public static function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
         if (self::isValidHash($userid)) {
             if (isset($_GET['test'])) {
@@ -1239,10 +1259,25 @@ function characteristicsPopup(entity) {
         return "<div class='max-width smaller centered'>".implode(" &rarr; ", $stepHTML)."</div>";
     }
 
+    public static function doesMentoringStartExist(string $recordId, int $instance, $pid): bool {
+        $module = Application::getModule();
+        $redcapDataTable = Application::getDataTable($pid);
+        $params = [$recordId, $pid, "mentoring_start"];
+        if ($instance == 1) {
+            $trail = " IS NULL";
+        } else {
+            $trail = " = ?";
+            $params[] = $instance;
+        }
+        $sql = "SELECT value FROM $redcapDataTable WHERE record = ? AND project_id = ? AND field_name = ? AND instance ".$trail;
+        $result = $module->query($sql, $params);
+        return ($result->num_rows > 0);
+    }
+
     public static function makeStepHTML($metadata, $step, $redcapData, $menteeRecordId, $currInstance, $phase, $notesFields, $userid2, $thisUrl, $token, $server, $pid) {
         $choices = DataDictionaryManagement::getChoices($metadata);
         $secHeaders = self::getSectionHeadersWithMenteeQuestions($metadata);
-        $steps = $_SESSION[self::STEPS_KEY];
+        $steps = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($menteeRecordId, $pid)[self::STEPS_KEY] ?? "";
         if (in_array($step, $steps)) {
             $index = array_search($step, $steps);
             $recordInformation = "&menteeRecord=".urlencode($menteeRecordId)."&instance=$currInstance";
@@ -1267,9 +1302,13 @@ function characteristicsPopup(entity) {
         }
         $stepsHTML = self::makeStepsHTML($steps, $step);
 
+        $mentoringStartHTML = "";
+        if (!self::doesMentoringStartExist($menteeRecordId, $currInstance, $pid)) {
+            $mentoringStartHTML = "<input type='hidden' class='form-hidden-data' name='mentoring_start' id='mentoring_start' value='" . date("Y-m-d H:i:s") . "' />";
+        }
         $html = "<form id='tsurvey' name='tsurvey'>
       <input type='hidden' class='form-hidden-data' name='mentoring_phase' id='mentoring_phase' value='$phase'>
-<input type='hidden' class='form-hidden-data' name='mentoring_start' id='mentoring_start' value='".date("Y-m-d H:i:s")."'>
+      $mentoringStartHTML
 <section class='bg-light'>
     $stepsHTML
     <div class='container'>
@@ -1466,7 +1505,8 @@ function setupAgreement(url) {
     });
     const postdata = {
         redcap_csrf_token: '".Application::generateCSRFToken()."',
-        sectionsToShow: sections
+        sectionsToShow: sections,
+        recordId: '$menteeRecord',
     };
     if (sections.length > 0) {
         $.post(url, postdata, (json) => {
@@ -2013,8 +2053,8 @@ $(document).ready(function() {
         return $html;
     }
 
-    private static function getTableCSS($step) {
-        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? [];
+    private static function getTableCSS(string $step, string $recordId, $pid): string {
+        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?? [];
         $index = array_search($step, $enqueuedSections);
         $colors = [
             "#41a9de14",
@@ -2032,7 +2072,7 @@ $(document).ready(function() {
         return ".tabledquestions { padding: 1em; background-color: $color; }";
     }
 
-    public static function getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS) {
+    public static function getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS, $pid) {
         $hashStr = $hash ? '&hash=$hash' : '';
         if (isset($_REQUEST['uid'])) {
             $uid = Sanitizer::sanitize($_REQUEST['uid']);
@@ -2042,7 +2082,7 @@ $(document).ready(function() {
         }
         $branchingJS = self::getBranchingJS();
         $percCompleteJS = self::makePercentCompleteJS();
-        $tableCSS = self::getTableCSS($_GET['step'] ?? "initial");
+        $tableCSS = self::getTableCSS($_GET['step'] ?? "initial", $menteeRecordId, $pid);
         return "
 <link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />
 <link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
@@ -2270,12 +2310,12 @@ $commentJS
 ";
     }
 
-    private static function getPercentCompleteBySections() {
+    private static function getPercentCompleteBySections(string $recordId, $pid): int {
         $step = $_GET['step'] ?? "initial";
         if ($step == "initial") {
             return 0;
         }
-        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? [];
+        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?? [];
         if (empty($enqueuedSections)) {
             return 0;
         }
@@ -2287,11 +2327,11 @@ $commentJS
         }
     }
 
-    public static function makeSurveyHTML($partners, $partnerRelationship, $row, $metadata) {
+    public static function makeSurveyHTML(string $partners, string $partnerRelationship, string $menteeRecordId, $pid): string {
         $html = "";
         $imageLink = Application::link("mentor/img/temp_image.jpg");
         $scriptLink = Application::link("mentor/js/jquery.easypiechart.min.js");
-        $percComplete = self::getPercentCompleteBySections();
+        $percComplete = self::getPercentCompleteBySections($menteeRecordId, $pid);
 
         $html .= "
 <p><div>
@@ -2491,8 +2531,8 @@ $commentJS
         return $sectionsToShow;
     }
 
-    public static function isLastStep($step) {
-        $enqueuedSteps = $_SESSION[self::STEPS_KEY] ?: [];
+    public static function isLastStep(string $step, string $recordId, $pid): bool {
+        $enqueuedSteps = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?: [];
         $index = array_search($step, $enqueuedSteps);
         if ($index === FALSE) {
             return FALSE;
@@ -2524,7 +2564,7 @@ $commentJS
         }
 
         if ($isMenteePage) {
-            if (self::isLastStep($_GET['step'] ?? "initial")) {
+            if (self::isLastStep($_GET['step'] ?? "initial", $menteeRecordId, $pid)) {
                 $functionToCall = "scheduleMentorEmail";
             } else {
                 $functionToCall = "";

@@ -84,7 +84,7 @@ $completeURL = Application::link("mentor/index_complete.php").$uidString."&mente
                 <h2 style="color: #727272;">Hi, <?= $firstName ?: "Unknown Name" ?>!</h2>
                 <?= $spoofing ?>
 
-                <?= MMAHelper::makeSurveyHTML($menteeName, "mentee", $currInstanceRow, $metadata) ?>
+                <?= MMAHelper::makeSurveyHTML($menteeName, "mentee", $menteeRecordId, $pid) ?>
 
             </div>
 

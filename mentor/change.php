@@ -18,6 +18,10 @@ $phase = REDCapManagement::sanitize($_REQUEST['phase']);
 $end = date("Y-m-d H:i:s");
 $instrument = "mentoring_agreement";
 
+if (MMAHelper::doesMentoringStartExist($recordId, $instance, $pid)) {
+    $start = "";
+}
+
 $recordIds = Download::recordIds($token, $server);
 $metadata = Download::metadata($token, $server);
 $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata, $instrument);
@@ -59,11 +63,13 @@ if ($type == "radio") {
                 "redcap_repeat_instance" => $instance,
                 $fieldName => $value,
                 "mentoring_last_update" => date("Y-m-d"),
-                "mentoring_start" => $start,
                 "mentoring_phase" => $phase,
                 "mentoring_end" => $end,
                 "mentoring_agreement_complete" => "2",
             ];
+            if ($start) {
+                $uploadRow["mentoring_start"] = $start;
+            }
             if ($userid) {
                 $uploadRow["mentoring_userid"] = $userid;
             }
@@ -83,11 +89,13 @@ if ($type == "radio") {
             "redcap_repeat_instance" => $instance,
             $fieldName => $value,
             "mentoring_last_update" => date("Y-m-d"),
-            "mentoring_start" => $start,
             "mentoring_end" => $end,
             "mentoring_phase" => $phase,
             "mentoring_agreement_complete" => "2",
         ];
+        if ($start) {
+            $uploadRow["mentoring_start"] = $start;
+        }
         if ($userid) {
             $uploadRow["mentoring_userid"] = $userid;
         }
@@ -114,12 +122,14 @@ if ($type == "radio") {
             "redcap_repeat_instrument" => $instrument,
             "redcap_repeat_instance" => $instance,
             $fieldName => $newNote,
-            "mentoring_start" => $start,
             "mentoring_end" => $end,
             "mentoring_phase" => $phase,
             "mentoring_last_update" => date("Y-m-d"),
             "mentoring_agreement_complete" => "2",
         ];
+        if ($start) {
+            $uploadRow["mentoring_start"] = $start;
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\MeSHTerms;
 use \Vanderbilt\CareerDevLibrary\Publications;
 use \Vanderbilt\CareerDevLibrary\CitationCollection;
 use \Vanderbilt\CareerDevLibrary\Download;
@@ -15,33 +16,35 @@ use \Vanderbilt\CareerDevLibrary\URLManagement;
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
+define("NUM_MESH_TERMS", 3);
+
 if ($_GET['record']) {
     if ($_GET['record'] == "all") {
         if ($_GET['cohort']) {
             $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
             $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
         } else {
-            $records = Download::recordIds($token, $server);
+            $records = Download::recordIdsByPid($pid);
         }
     } else {
-        $recordIds = Download::recordIds($token, $server);
+        $recordIds = Download::recordIdsByPid($pid);
         $records = [Sanitizer::getSanitizedRecord($_GET['record'], $recordIds)];
     }
 } else {
     $records = [];
 }
 
-$names = Download::names($token, $server);
+$names = Download::namesByPid($pid);
 if (isset($_GET['download']) && $records) {
-    $metadata = Download::metadata($token, $server);
-    list($citations, $dates) = getCitationsForRecords($records, $token, $server, $metadata);
+    $metadata = Download::metadataByPid($pid);
+    list($citations, $dates) = getCitationsForRecords($records, $token, $server, $pid, $metadata);
     $html = makePublicationListHTML($citations, $names, $dates);
     Application::writeHTMLToDoc($html, "Publications ".date("Y-m-d").".docx");
     exit;
 }
-if (isset($_GET['grantCounts'])) {
+if (isset($_GET['grantCounts']) && isset($_POST['fullUrl'])) {
     if (empty($records)) {
-        $records = Download::records($token, $server);
+        $records = Download::recordIdsByPid($pid);
     }
     $citationFields = ["record_id", "citation_pmid", "citation_include", "citation_flagged", "citation_grants"];
     $grantCounts = [];
@@ -69,32 +72,21 @@ if (isset($_GET['grantCounts'])) {
             }
         }
     }
-
-        # slow
-        // $pubs = new Publications($token, $server, $metadata);
-        // $pubs->setRows($redcapData);
-        // $recordGrantCounts = $pubs->getAllGrantCounts("Included");
-        // foreach ($recordGrantCounts as $awardNo => $count) {
-            // if (!isset($grantCounts[$awardNo])) {
-                // $grantCounts[$awardNo] = 0;
-            // }
-            // $grantCounts[$awardNo] += $count;
-        //}
     arsort($grantCounts);
 
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "sort"]);
-    list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
+    $fullURL = Sanitizer::sanitizeURL($_POST['fullUrl']);
+    list($url, $paramsWithoutGrants) = URLManagement::splitURL(stripGrantsFromURL($fullURL));
 
     $html = "";
     $html .= "<form method='GET' action='$url'>";
-    $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
-    $html .= "<h4>Pubs Associated With a Grant</h4>";
+    $html .= URLManagement::makeHiddenInputs($paramsWithoutGrants, TRUE);
+    $html .= "<h4 class='noBottomMargin'>Pubs Associated With a Grant</h4>";
     $allSelected = "";
     $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
     if (empty($grants) || in_array("all", $grants)) {
         $allSelected = " selected";
     }
-    $html .= "<p class='centered'>Hold down Shift or Control to select multiple:<br/><select id='grants' name='grants[]' multiple><option value='all'$allSelected>---ALL---</option>";
+    $html .= "<div class='centered'>Hold down Shift or Control to select multiple:<br/><select id='grants' name='grants[]' multiple><option value='all'$allSelected>---ALL---</option>";
     foreach ($grantCounts as $awardNo => $count) {
         $selected = "";
         if (in_array($awardNo, $grants)) {
@@ -120,7 +112,7 @@ if (isset($_GET['grantCounts'])) {
         $html .= "<option value='$awardNo'$selected>$shownAwardNo ($count $phrase)</option>";
     }
     $html .= "</select>";
-    $html .= "<br><button>Re-Configure</button></p>";
+    $html .= "<br><button>Re-Configure for Grants Cited</button></div>";
     $html .= "</form>";
     echo $html;
     exit;
@@ -131,13 +123,13 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 Application::increaseProcessingMax(1); // some people run long/large queries
 $metadata = Download::metadataByPid($pid);
 $link = Application::link("publications/view.php")."&download".makeExtraURLParams();
-echo "<h1>View Publications</h1>\n";
+echo "<h1>View Publications</h1>";
 if (Application::hasComposer() && CareerDev::isVanderbilt()) {
-    echo "<p class='centered'><a href='$link'>Download as MS Word doc</a></p>\n";
+    echo "<p class='centered'><a href='$link'>Download as MS Word doc</a></p>";
 }
-echo makeCustomizeTable($token, $server, $metadata);
+echo makeCustomizeTable($token, $server, $pid);
 if ($records) {
-    list($citations, $dates) = getCitationsForRecords($records, $token, $server, $metadata);
+    list($citations, $dates) = getCitationsForRecords($records, $token, $server, $pid, $metadata);
     $record = (count($records) == 1) ? $records[0] : NULL;
     echo makePublicationSearch($names, $record);
     echo makePublicationListHTML($citations, $names, $dates);
@@ -145,9 +137,9 @@ if ($records) {
 	echo makePublicationSearch($names);
 }
 
-function getCitationsForRecords($records, $token, $server, $metadata) {
-    $trainingStarts = Download::oneField($token, $server, "summary_training_start");
-    $trainingEnds = Download::oneField($token, $server, "summary_training_end");
+function getCitationsForRecords(array $records, string $token, string $server, $pid, array $metadata): array {
+    $trainingStarts = Download::oneFieldByPid($pid, "summary_training_start");
+    $trainingEnds = Download::oneFieldByPid($pid, "summary_training_end");
     $confirmed = "Confirmed Publications";
     $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
     if (!empty($grants) && !in_array("all", $grants)) {
@@ -167,10 +159,27 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         "citation_pmid",
         "citation_include",
         "citation_flagged",
-        "citation_grants",
-        "citation_date",
-        "citation_authors",
     ];
+    if (!empty($grants) && !in_array("all", $grants)) {
+        $focusedFields[] = "citation_grants";
+    }
+    if (
+        (
+            isset($_GET['trainingPeriodPlusDays'])
+            && is_numeric($_GET['trainingPeriodPlusDays'])
+        )
+        || (
+            $_GET['begin'] ?? FALSE
+        )
+    ){
+        $focusedFields[] = "citation_date";
+    }
+    if (isset($_GET['author_first']) || isset($_GET['author_middle']) || isset($_GET['author_last'])) {
+        $focusedFields[] = "citation_authors";
+    }
+    if (!empty(getMeSHTerms())) {
+        $focusedFields[] = "citation_mesh_terms";
+    }
     $allFields = [
         "record_id",
         "citation_pmid",
@@ -189,13 +198,12 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
         "citation_day",
         "citation_date",
         "citation_pages",
-        "citation_grants",
         "citation_pilot_grants",
         "citation_altmetric_score",
         "citation_altmetric_image",
     ];
     foreach ($records as $record) {
-        $redcapData = Download::fieldsForRecords($token, $server, $focusedFields, [$record]);
+        $redcapData = Download::fieldsForRecordsByPid($pid, $focusedFields, [$record]);
         $pubs = new Publications($token, $server, $metadata);
         $pubs->setRows($redcapData);
         if (isset($_GET['test'])) {
@@ -240,10 +248,11 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
                 # do not filter
                 $dates[$record] = "Training period not recorded";
             }
-        } else if (isset($_GET['begin']) && $_GET['begin']) {
+        }
+        if ($_GET['begin'] ?? FALSE) {
             $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['begin']);
             $startTs = $startDate ? strtotime($startDate) : 0;
-            if (isset($_GET['end']) && $_GET['end']) {
+            if ($_GET['end'] ?? FALSE) {
                 $endTs = strtotime(Sanitizer::sanitizeDate($_GET['end']));
             } else {
                 $endTs = time();
@@ -263,6 +272,12 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
             }
             $included->filterForAuthorPositions($positions, "{$firstNames[$record]} {$lastNames[$record]}");
             $notDone->filterForAuthorPositions($positions, "{$firstNames[$record]} {$lastNames[$record]}");
+        }
+        $meshTerms = getMeSHTerms();
+        if (!empty($meshTerms) && isset($_GET['mesh_combiner'])) {
+            $combiner = Sanitizer::sanitize($_GET['mesh_combiner']);
+            $included->filterForMeSHTerms($meshTerms, $combiner);
+            $notDone->filterForMeSHTerms($meshTerms, $combiner);
         }
 
         if (isset($_GET['test'])) {
@@ -285,7 +300,7 @@ function getCitationsForRecords($records, $token, $server, $metadata) {
     return [$citations, $dates];
 }
 
-function totalCitationColls($citColls) {
+function totalCitationColls(array $citColls): int {
     $total = 0;
     foreach ($citColls as $citColl) {
         $total += $citColl->getCount();
@@ -293,17 +308,27 @@ function totalCitationColls($citColls) {
     return $total;
 }
 
-function makePublicationListHTML($citations, $names, $dates) {
+function getMeSHTerms(): array {
+    $terms = [];
+    for ($i = 1; $i <= NUM_MESH_TERMS; $i++) {
+        if ($_GET['mesh_term_'.$i] ?? FALSE) {
+            $terms[] = Sanitizer::sanitize($_GET['mesh_term_'.$i]);
+        }
+    }
+    return $terms;
+}
+
+function makePublicationListHTML(array $citations, array $names, array $dates): string {
     $html = "";
     $filterWordString = Sanitizer::sanitize($_GET['title_filter'] ?? "");
     # split by newlines and accompanying spaces; also remove any empty array elements
     $filterWords = preg_split("/\s*[\n\r]+\s*/", $filterWordString, -1, PREG_SPLIT_NO_EMPTY);
     foreach ($citations as $header => $citColls) {
         $total = totalCitationColls($citColls);
-        $html .= "<h2>$header (" . REDCapManagement::pretty($total) . ")</h2>\n";
-        $html .= "<div class='centered' style='max-width: 800px;'>\n";
+        $html .= "<h2>$header (" . REDCapManagement::pretty($total) . ")</h2>";
+        $html .= "<div class='centered' style='max-width: 800px;'>";
         if ($total == 0) {
-            $html .= "<p class='centered'>No citations.</p>\n";
+            $html .= "<p class='centered'>No citations.</p>";
         } else {
             foreach ($citColls as $record => $citColl) {
                 if (!empty($filterWords)) {
@@ -315,7 +340,7 @@ function makePublicationListHTML($citations, $names, $dates) {
                 if ($date) {
                     $header .= "<br>$date";
                 }
-                $header .= "</p>\n";
+                $header .= "</p>";
                 if ($citColl->getCount() > 0) {
                     $html .= $header;
                 }
@@ -331,24 +356,33 @@ function makePublicationListHTML($citations, $names, $dates) {
                     if ($rcr) {
                         $html .= " RCR: ".REDCapManagement::pretty($rcr, 2);
                     }
-                    $html .= "</p>\n";
+                    $html .= "</p>";
                 }
             }
         }
-        $html .= "</div>\n";
+        $html .= "</div>";
     }
     $html .= "<br><br><br>";
     return $html;
 }
 
-function makeExtraURLParams($exclude = []) {
+function makeMeSHTermsToUse(): array {
+    $terms = ["mesh_combiner"];
+    for ($i = 1; $i <= NUM_MESH_TERMS; $i++) {
+        $terms[] = "mesh_term_$i";
+    }
+    return $terms;
+}
+
+function makeExtraURLParams(array $exclude = []): string {
     $additionalParams = "";
     $expected = ["record", "altmetrics", "trainingPeriodPlusDays", "grants", "begin", "end", "cohort", "limitPubs", "author_first", "author_middle", "author_last", "sort", "title_filter"];
+    $expected = array_merge($expected, makeMeSHTermsToUse());
     foreach ($expected as $key) {
         if (isset($_GET[$key]) && !in_array($key, $exclude)) {
             $key = Sanitizer::sanitize($key);
             if (is_array($_GET[$key])) {
-                foreach (Sanitizer::sanitizeArray($_GET[$key]) as $value) {
+                foreach (Sanitizer::sanitizeArray(array_unique($_GET[$key])) as $value) {
                     $additionalParams .= "&".urlencode($key."[]")."=".urlencode($value);
                 }
             } else {
@@ -356,7 +390,7 @@ function makeExtraURLParams($exclude = []) {
                 if ($value === "") {
                     $additionalParams .= "&".$key;
                 } else {
-                    $additionalParams .= "&$key=".urlencode(Sanitizer::sanitize($value));
+                    $additionalParams .= "&$key=".urlencode($value);
                 }
             }
         }
@@ -364,7 +398,7 @@ function makeExtraURLParams($exclude = []) {
     return $additionalParams;
 }
 
-function makeCustomizeTable($token, $server, $metadata) {
+function makeCustomizeTable(string $token, string $server, $pid): string {
     if (isset($_GET['author_first']) || isset($_GET['author_middle']) || isset($_GET['author_last'])) {
         $authorFirstChecked = ($_GET['author_first'] == "on") ? "checked" : "";
         $authorMiddleChecked = ($_GET['author_middle'] == "on") ? "checked" : "";
@@ -390,46 +424,63 @@ function makeCustomizeTable($token, $server, $metadata) {
     $cohort = isset($_GET['cohort']) ? Sanitizer::sanitizeCohort($_GET['cohort']) : "";
     $cohorts = new Cohorts($token, $server, Application::getModule());
     $html = "";
-    $style = "style='width: 450px; padding: 15px; vertical-align: top;'";
+    $style = "style='width: 450px; padding: 15px; vertical-align: middle;'";
     $defaultDays = "";
     if (isset($_GET['trainingPeriodPlusDays']) && is_numeric($_GET['trainingPeriodPlusDays'])) {
         $defaultDays = Sanitizer::sanitize($_GET['trainingPeriodPlusDays']);
     }
-    $fullURL = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "sort"]);
-    list($url, $trainingPeriodParams) = REDCapManagement::splitURL($fullURL);
-    $fullURLMinusCohort = preg_replace("/&cohort=[^\&]+/", "", $fullURL);
+    $meshExcludes = makeMeSHTermsToUse();
+    $fullURL = Application::link("publications/view.php").makeExtraURLParams();
+    $fullURLMinusMesh = Application::link("publications/view.php").makeExtraURLParams($meshExcludes);
+    $fullURLMinusCohort = Application::link("publications/view.php").makeExtraURLParams(["cohort"]);
+    $url = URLManagement::splitURL($fullURL)[0];
     $begin = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['begin'] ?? "");
     $end = Sanitizer::sanitizeDate($_GET['end']);
 
-    $html .= "<table class='centered'>\n";
-    $html .= "<tr>\n";
-    $html .= "<td colspan='2' $style><h2 class='nomargin'>Step 1: Customize</h2></td>\n";
-    $html .= "</tr>\n";
-    $html .= "<tr>\n";
-    $html .= "<td $style class='yellow'>".Altmetric::makeClickText(Application::link("publications/view.php").makeExtraURLParams(["altmetrics"]))."</td>\n";
-    $html .= "<td $style class='green'>";
-    $html .= "<h4>Show Pubs During Training</h4>";
+    # $paramsToInclude is modified for each <form>
+    $html .= "<table class='centered'>";
+    $html .= "<tr>";
+    $paramsToInclude = URLManagement::splitURL($fullURLMinusMesh)[1];
+    $html .= "<td colspan='2' $style><h2 class='nomargin'>Step 1: Customize</h2></td>";
+    $html .= "</tr>";
+    $html .= "<tr>";
+    $html .= "<td $style class='yellow'>";
+    $html .= "<h4 class='noBottomMargin'>MeSH Terms to Match</h4>";
     $html .= "<form action='$url' method='GET'>";
-    $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
-    $html .= "<p class='centered'>Additional Days After Training: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br><button>Re-Configure</button></p>";
+    $html .= URLManagement::makeHiddenInputs($paramsToInclude, TRUE);
+    $html .= "<div style='font-size: 0.9em;'>";
+    $html .= MeSHTerms::makeHTMLTable(NUM_MESH_TERMS, $pid);
+    $andSelected = (!isset($_GET['mesh_combiner']) || ($_GET['mesh_combiner'] == "and")) ? "selected" : "";
+    $orSelected = ($andSelected == "selected") ? "" : "selected";
+    $html .= "<div class='centered'><select name='mesh_combiner'><option value='and' $andSelected>AND</option><option value='or' $orSelected>OR</option></select></div>";
+    $html .= "</div>";
+    $html .= "<p class='centered'><button>Re-Configure</button></p>";
+    $html .= "</form>";
+    $html .= "</td>";
+
+    $paramsToInclude = URLManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]))[1];
+    $html .= "<td $style class='green'>";
+    $html .= Altmetric::makeClickText(Application::link("publications/view.php").makeExtraURLParams(["altmetrics"]));
+    $html .= "<h4 class='noBottomMargin'>Show Pubs During Training</h4>";
+    $html .= "<form action='$url' method='GET'>";
+    $html .= URLManagement::makeHiddenInputs($paramsToInclude, TRUE);
+    $html .= "<div class='centered'>Additional Days After Training: <input type='number' name='trainingPeriodPlusDays' style='width: 60px;' value='$defaultDays'><br/><button>Re-Configure</button></div>";
     $html .= "</form>";
     $html .= "</td>";
     $html .= "</tr>";
     $html .= "<tr>";
     $html .= "</tr>";
+
+    $paramsToInclude = URLManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["begin", "end", "sort", "author_first", "author_middle", "author_last"]))[1];
     $html .= "<tr>";
-    $html .= "<td class='blue'>";
+    $html .= "<td class='orange'>";
+    $html .= Publications::makeLimitButton();
     $html .= "<form action='$url' method='GET'>";
-    $html .= "<h4 style='margin-bottom: 0;'>Filter for Timespan</h4>";
-    $trainingPeriodParams = REDCapManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]))[1];
-    $html .= URLManagement::makeHiddenInputs($trainingPeriodParams, TRUE);
-    if (isset($_GET['limitPubs'])) {
-        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-        $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
-    }
+    $html .= "<h4 class='noBottomMargin'>Filter for Timespan</h4>";
+    $html .= URLManagement::makeHiddenInputs($paramsToInclude, TRUE);
     $html .= "<p class='centered' style='margin-top: 0;'>Start Date: <input type='date' name='begin' style='width: 150px;' value='$begin'><br>";
     $html .= "End Date: <input type='date' name='end' value='$end' style='width: 150px;'><br>";
-    $html .= "<h4 style='margin-bottom: 0;'>Sorting</h4>";
+    $html .= "<h4 class='noBottomMargin'>Sorting</h4>";
     $html .= "<p class='centered' style='margin-top: 0;'>";
     $html .= "<input type='radio' name='sort' id='sort_date' value='date' $dateChecked /> <label for='sort_date'>By Date</label>";
     $html .= "&nbsp;&nbsp;&nbsp;";
@@ -437,7 +488,7 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "&nbsp;&nbsp;&nbsp;";
     $html .= "<input type='radio' name='sort' id='sort_altmetrics' value='altmetrics' $altmetricsChecked /> <label for='sort_altmetrics'>By Altmetric Score</label>";
     $html .= "</p>";
-    $html .= "<h4 style='margin-bottom: 0;'>Filter for Author Position</h4>";
+    $html .= "<h4 class='noBottomMargin'>Filter for Author Position</h4>";
     $html .= "<p class='centered' style='margin-top: 0;'>";
     $html .= "<input type='checkbox' name='author_first' id='author_first' $authorFirstChecked /> <label for='author_first'>First Author</label>";
     $html .= "&nbsp;&nbsp;&nbsp;";
@@ -448,21 +499,23 @@ function makeCustomizeTable($token, $server, $metadata) {
     $html .= "<button>Re-Configure</button></p>";
     $html .= "</form>";
     $html .= "</td>";
-    $html .= "<td class='orange'>";
+    
+    # note: not using <form> - use JS instead
+    $html .= "<td class='blue'>";
     $html .= $cohorts->makeCohortSelect($cohort, "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
-    $html .= Publications::makeLimitButton();
     $html .= "<div id='grantCounts'>";
-    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs", "sort"])."&grantCounts";
+    # exclude the dates because we want a list of all grants
+    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"])."&grantCounts";
     $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
     if (!empty($grants) && !in_array("all", $grants)) {
-        $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\"); });</script>";
+        $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"$fullURL\", \"#grantCounts\"); });</script>";
     } else {
-        $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Filter by Grants Cited</a></p>";
+        $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"$fullURL\", \"#grantCounts\");'>Filter by Grants Cited</a></p>";
     }
+    $html .= "</div>";
     $filterUrl = Application::link("publications/view.php").makeExtraURLParams(["title_filter"]);
     $html .= "<h4 style='margin-bottom: 0;'><label for='title_filter'>Filter by Word(s) in Title</label></h4>";
-    $html .= "<div class='centered smaller'>(one per line; case-insensitive):<br/><textarea id='title_filter' name='title_filter'>$filterWords</textarea></div><p style='margin-top: 0;'><button onclick='window.location.href = \"$filterUrl&title_filter=\"+encodeURIComponent($(\"#title_filter\").val());'>Re-Configure</button></p>";
-    $html .= "</div>";
+    $html .= "<div class='centered smaller'>(one per line; case-insensitive):<br/><textarea id='title_filter' name='title_filter'>$filterWords</textarea></div><p style='margin-top: 0;'><button onclick='window.location.href = \"$filterUrl&title_filter=\"+encodeURIComponent($(\"#title_filter\").val());'>Re-Configure for Title Words</button></p>";
     $html .= "</td>";
     $html .= "</tr>";
     $html .= "</table>";
@@ -470,20 +523,20 @@ function makeCustomizeTable($token, $server, $metadata) {
     return $html;
 }
 
-function makePublicationSearch($names, $record = NULL) {
+function makePublicationSearch(array $names, $record = NULL): string {
 	$html = "";
-	$html .= "<h2>Step 2: Select Scholar's Publications</h2>\n";
+	$html .= "<h2>Step 2: Select Scholar's Publications</h2>";
     $html .= "<p class='centered max-width'>If you have made changes, you must first press the appropriate Re-Configure button above in order for this step to work.</p>";
-	$html .= "<p class='centered'><a href='".Application::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>\n";
-	$html .= "<p class='centered'><select onchange='window.location.href = \"".Application::link("publications/view.php").makeExtraURLParams(["record"])."&record=\" + $(this).val();'><option value=''>---SELECT---</option>\n";
+	$html .= "<p class='centered'><a href='".Application::link("publications/view.php")."&record=all".makeExtraURLParams(["record"])."'>View All Scholars' Publications</a></p>";
+	$html .= "<p class='centered'><select onchange='window.location.href = \"".Application::link("publications/view.php").makeExtraURLParams(["record"])."&record=\" + $(this).val();'><option value=''>---SELECT---</option>";
 	foreach ($names as $recordId => $name) {
 		$html .= "<option value='$recordId'";
 		if ($_GET['record'] && ($_GET['record'] == $recordId)) {
 			$html .= " selected";
 		}
-		$html .= ">$name</option>\n";
+		$html .= ">$name</option>";
 	}
-	$html .= "</select></p>\n";
+	$html .= "</select></p>";
     if (!isset($_GET['record'])) {
         $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
         $grantText = !empty($grants) ? " all publications associated with ".REDCapManagement::makeConjunction($grants) : "";
@@ -494,4 +547,19 @@ function makePublicationSearch($names, $record = NULL) {
         $html .= "<p class='centered'><a href='javascript:;' onclick='window.location.href=\"$link\";'>Wrangle This Scholar's Publications</a></p>";
     }
 	return $html;
+}
+
+function stripGrantsFromURL(string $url): string {
+    if (strpos($url, "?") === FALSE) {
+        return $url;
+    }
+    list($baseUrl, $paramString) = explode("?", $url);
+    $paramNodes = explode("&", $paramString);
+    $filteredNodes = [];
+    foreach ($paramNodes as $node) {
+        if (!preg_match("/^grants\[\]=/", $node)) {
+            $filteredNodes[] = $node;
+        }
+    }
+    return $baseUrl."?".implode("&", $filteredNodes);
 }

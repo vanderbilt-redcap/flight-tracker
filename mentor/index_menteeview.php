@@ -10,13 +10,17 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 if (isset($_POST['sectionsToShow'])) {
     $allSections = MMAHelper::getAllSections();
     $requestedSections = Sanitizer::sanitizeArray($_POST['sectionsToShow']);
+    $menteeRecordId = Sanitizer::sanitize($_POST['recordId']);
     $sectionsToShow = [];
     foreach ($requestedSections as $section) {
         if (isset($allSections[$section])) {
             $sectionsToShow[] = $section;
         }
     }
+    $session = MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid);
     $_SESSION[MMAHelper::STEPS_KEY] = $sectionsToShow;
+    $session[MMAHelper::STEPS_KEY] = $sectionsToShow;
+    MMAHelper::saveCurrentDatabaseSession($menteeRecordId, $pid, $session);
     if (empty($sectionsToShow)) {
         echo json_encode(["error" => "No validated sections to show!"]);
     } else {
@@ -105,7 +109,7 @@ $sectionsToShow = MMAHelper::getSectionsToShow($userid2, $secHeaders, $redcapDat
         <div class="col-lg-12">
             <?= $spoofing ?>
             <h2 style="color: #727272;">Hi, <?= $firstName ?>!</h2>
-            <?= MMAHelper::makeSurveyHTML($otherMentors, "mentor(s)", $instanceRow, $metadata) ?>
+            <?= MMAHelper::makeSurveyHTML($otherMentors, "mentor(s)", $menteeRecordId, $pid) ?>
         </div>
     </div>
   </div>
@@ -115,10 +119,13 @@ $sectionsToShow = MMAHelper::getSectionsToShow($userid2, $secHeaders, $redcapDat
 
 include dirname(__FILE__).'/_footer.php';
 $commentJS = MMAHelper::makeCommentJS($userid2, $menteeRecordId, $currInstance, $currInstance, $priorNotes, $menteeName, $dateToRemind, TRUE, in_array("mentoring_agreement_evaluations", $allMetadataForms), $pid);
-echo MMAHelper::getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS);
-$enqueuedSteps = $_SESSION[MMAHelper::STEPS_KEY] ?: [];
+echo MMAHelper::getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS, $pid);
+$enqueuedSteps = $_SESSION[MMAHelper::STEPS_KEY] ?: MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid)[MMAHelper::STEPS_KEY] ?: [];
 if (!in_array($step, $enqueuedSteps)) {
-    $_SESSION['steps'] = [];
+    $_SESSION[MMAHelper::STEPS_KEY] = [];
+    $session = MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid);
+    $session[MMAHelper::STEPS_KEY] = [];
+    MMAHelper::saveCurrentDatabaseSession($menteeRecordId, $pid, $session);
     $step = "initial";
 }
 $thisUrl = Application::link("this").$uidString;

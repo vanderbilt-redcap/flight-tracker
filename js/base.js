@@ -1148,12 +1148,12 @@ function getLoadingImageUrl(baseUrl) {
 	return getPageUrl(imageLoc);
 }
 
-function downloadUrlIntoPage(url, selector) {
+function downloadUrlIntoPage(url, fullUrl, selector) {
 	let spinnerUrl = getLoadingImageUrl();
 	$(selector).html("<p class='centered'><img src='"+spinnerUrl+"' style='width: 25%;'></p>");
 	let startTs = Date.now();
 	$.ajax(url, {
-		data: { 'redcap_csrf_token': getCSRFToken() },
+		data: { 'redcap_csrf_token': getCSRFToken(), 'fullUrl': fullUrl },
 		type: 'POST',
 		success: function(html) {
 			let endTs = Date.now();

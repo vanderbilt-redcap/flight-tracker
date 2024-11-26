@@ -104,5 +104,4 @@ footer .smaller,footer .smaller a { font-size: 12px !important; }
 .dropScore { float: left; font-weight: bold; color: #319f48; font-size: 36px; line-height: 36px; padding-left: 8px; }
 .greentext { color: #319f48; }
 tr:has(td .portalOverlay) { position: relative; }
-.portalOverlay { background: white; position: absolute; top: 0; bottom: 0; right: 0; left: 0; }
 .searchTerms { width: 400px; }
