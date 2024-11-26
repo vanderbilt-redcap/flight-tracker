@@ -125,7 +125,7 @@ class Sanitizer {
         if (!$url) {
             throw new \Exception("Invalid URL!");
         } else {
-            return $url;
+            return self::sanitize($url);
         }
     }
 
