@@ -42,7 +42,7 @@ if (isset($_GET['download']) && $records) {
     Application::writeHTMLToDoc($html, "Publications ".date("Y-m-d").".docx");
     exit;
 }
-if (isset($_GET['grantCounts']) && isset($_POST['fullUrl'])) {
+if (isset($_GET['grantCounts'])) {
     if (empty($records)) {
         $records = Download::recordIdsByPid($pid);
     }
@@ -74,8 +74,11 @@ if (isset($_GET['grantCounts']) && isset($_POST['fullUrl'])) {
     }
     arsort($grantCounts);
 
-    $fullURL = Sanitizer::sanitizeURL($_POST['fullUrl']);
-    list($url, $paramsWithoutGrants) = URLManagement::splitURL(stripGrantsFromURL($fullURL));
+    $url = URLManagement::splitURL(Application::link("this"))[0];
+    $paramsWithoutGrants = [];
+    parse_str(explode("?", $_SERVER['REQUEST_URI'])[1], $paramsWithoutGrants);
+    unset($paramsWithoutGrants["grantCounts"]);
+    unset($paramsWithoutGrants["grants"]);
 
     $html = "";
     $html .= "<form method='GET' action='$url'>";
@@ -505,12 +508,12 @@ function makeCustomizeTable(string $token, string $server, $pid): string {
     $html .= $cohorts->makeCohortSelect($cohort, "location.href=\"$fullURLMinusCohort\"+\"&cohort=\"+encodeURIComponent($(this).val());");
     $html .= "<div id='grantCounts'>";
     # exclude the dates because we want a list of all grants
-    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays", "begin", "end", "limitPubs"])."&grantCounts";
+    $grantCountsFetchUrl = Application::link("publications/view.php").makeExtraURLParams()."&grantCounts";
     $grants = Sanitizer::sanitizeArray($_GET['grants'] ?? []);
     if (!empty($grants) && !in_array("all", $grants)) {
-        $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"$fullURL\", \"#grantCounts\"); });</script>";
+        $html .= "<script>$(document).ready(function() { downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\"); });</script>";
     } else {
-        $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"$fullURL\", \"#grantCounts\");'>Filter by Grants Cited</a></p>";
+        $html .= "<p class='centered'><a href='javascript:;' onclick='downloadUrlIntoPage(\"$grantCountsFetchUrl\", \"#grantCounts\");'>Filter by Grants Cited</a></p>";
     }
     $html .= "</div>";
     $filterUrl = Application::link("publications/view.php").makeExtraURLParams(["title_filter"]);
@@ -547,19 +550,4 @@ function makePublicationSearch(array $names, $record = NULL): string {
         $html .= "<p class='centered'><a href='javascript:;' onclick='window.location.href=\"$link\";'>Wrangle This Scholar's Publications</a></p>";
     }
 	return $html;
-}
-
-function stripGrantsFromURL(string $url): string {
-    if (strpos($url, "?") === FALSE) {
-        return $url;
-    }
-    list($baseUrl, $paramString) = explode("?", $url);
-    $paramNodes = explode("&", $paramString);
-    $filteredNodes = [];
-    foreach ($paramNodes as $node) {
-        if (!preg_match("/^grants\[\]=/", $node)) {
-            $filteredNodes[] = $node;
-        }
-    }
-    return $baseUrl."?".implode("&", $filteredNodes);
 }

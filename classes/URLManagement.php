@@ -303,7 +303,7 @@ class URLManagement {
     public static function splitURL($fullURL) {
         list($url, $paramList) = explode("?", $fullURL);
         $params = [];
-        parse_Str($paramList, $params);
+        parse_str($paramList, $params);
         return [$url, $params];
     }
 
