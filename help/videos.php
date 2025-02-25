@@ -13,7 +13,6 @@ echo "<h1>Training Videos</h1>\n";
 $videoPlaceholders = array(
 				"intro.php" => "Introduction to Flight Tracker",
 				"install.php" => "Installing Flight Tracker",
-				"excelToFT.php" => "Converting from Excel to Flight Tracker",
 				);
 
 foreach ($videoPlaceholders as $page => $title) {

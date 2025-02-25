@@ -104,6 +104,7 @@ function loadLocalCrons(&$manager, $token, $server) {
                 $manager->addCron("drivers/updateNewmanFigures.php", "updateNewmanFigures", date("Y-m-20"), $allRecords, 10000);
                 $manager->addCron("drivers/refreshAlumniAssociations.php", "refreshAlumniAssociations", "Monday", $allRecords, 10000);
                 $manager->addCron("drivers/26_workday.php", "identifyNewFaculty", date("Y-m-01"), $allRecords, 10000);
+                $manager->addCron("drivers/updateStudioCSV.php", "emailVRR", date("Y-m-15"), $allRecords, 10000);
             }
         }
 
@@ -369,10 +370,11 @@ function loadLongRunningCrons(&$manager, $currToken, $currServer, $currPid) {
 function loadMultiProjectCrons(&$manager, $pids) {
     try {
         if (Application::isVanderbilt() && !Application::isLocalhost()) {
-            $manager->addMultiCron("drivers/11_vfrs.php", "updateVFRSMulti", "Thursday", $pids);
-            $manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
-            $manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
-            $manager->addMultiCron("drivers/updateAllMetadata.php", "updateMetadataMulti", "Monday", $pids);
+			$manager->addMultiCron("drivers/11_vfrs.php", "updateVFRSMulti", "Thursday", $pids);
+			$manager->addMultiCron("drivers/19_updateNewCoeus.php", "updateAllCOEUSMulti", "Wednesday", $pids);
+			$manager->addMultiCron("drivers/22_getVERA.php", "getVERAMulti", "Monday", $pids);
+			$manager->addMultiCron("drivers/updateAllMetadata.php", "updateMetadataMulti", "Monday", $pids);
+			$manager->addMultiCron("drivers/updateAllMetadata.php", "updateMetadataMulti", "2025-02-05", $pids);
             if (Application::isServer("redcap.vanderbilt.edu") || Application::isServer("redcap.vumc.org")) {
                 $manager->addMultiCron("drivers/26_workday.php", "getAllWorkday", "Friday", $pids);
             }

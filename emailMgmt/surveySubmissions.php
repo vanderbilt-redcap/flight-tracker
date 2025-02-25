@@ -130,7 +130,7 @@ echo "<tbody>";
 $counts = [];
 foreach (array_keys($instrumentsToFields) as $instrument) {
     if ($instrument) {
-        $counts[$instrument] = ["Total People" => 0, "Total Surveys" => 0];
+        $counts[$instrument] = ["Total People" => [], "Total Surveys" => []];
     }
 }
 foreach ($names as $recordId => $name) {
@@ -142,10 +142,10 @@ foreach ($names as $recordId => $name) {
         if ($instrument) {
             $instrumentName = $surveys[$instrument];
             $valueHTML = [];
-            $valueTable = [];
             $isRepeating = FALSE;
             foreach ($fields as $field) {
                 $value = "";
+                $valueTable = [];
                 $instance = FALSE;
                 if ($repeatingFieldValues[$field]) {
                     $isRepeating = TRUE;
@@ -181,18 +181,27 @@ foreach ($names as $recordId => $name) {
                     $valueHTML[$instance] = [];
                 }
                 if ($value !== "") {
-                    $counts[$instrument]["Total People"]++;
-                    $counts[$instrument]["Total Surveys"]++;
+                    if (!in_array($recordId, $counts[$instrument]["Total People"])) {
+                        $counts[$instrument]["Total People"][] = $recordId;
+                    }
+                    if (!in_array($recordId, $counts[$instrument]["Total Surveys"])) {
+                        $counts[$instrument]["Total Surveys"][] = $recordId;
+                    }
                     $valueHTML[$instance][] = $value;
                 }
             }
             $valueWithTooltip = "";
             if (!empty($valueTable)) {
                 $tableOfValues = "<table class='centered bordered'>";
-                $counts[$instrument]["Total People"]++;
+                if (!in_array($recordId, $counts[$instrument]["Total People"])) {
+                    $counts[$instrument]["Total People"][] = $recordId;
+                }
                 foreach ($valueTable as $instance => $fieldValues) {
                     if (!REDCapManagement::isArrayBlank($fieldValues)) {
-                        $counts[$instrument]["Total Surveys"]++;
+                        $licensePlate = "$recordId:$instance";
+                        if (!in_array($licensePlate, $counts[$instrument]["Total Surveys"])) {
+                            $counts[$instrument]["Total Surveys"][] = $licensePlate;
+                        }
                     }
                     $tableOfValues .= "<tr>";
                     foreach ($fields as $field) {
@@ -224,8 +233,8 @@ echo "<tr><th class='odd'>Totals</th>";
 foreach (array_keys($instrumentsToFields) as $instrument) {
     if ($instrument) {
         $items = [];
-        foreach ($counts[$instrument] as $header => $value) {
-            $items[] = "$header: $value";
+        foreach ($counts[$instrument] as $header => $records) {
+            $items[] = "$header: ".count($records);
         }
         echo "<td class='smaller odd'>".implode("<br/>", $items)."</td>";
     }

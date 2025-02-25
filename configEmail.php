@@ -31,7 +31,10 @@ if ($action == "delete") {
     } else if ($content == "high_impact_pubs") {
         $scope = "High-Impact";
         $what = "Publications";
-    }
+    } else if ($content == "new_honors") {
+		$scope = "New";
+		$what = "Honors";
+	}
     if ($scope && $what) {
         $setting = [
             "who" => Sanitizer::sanitize($_POST['who']),

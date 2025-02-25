@@ -1596,6 +1596,7 @@ function getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord = 0)
     $calcFields = REDCapManagement::getFieldsOfType($destMetadata, "calc");
     $timeFields = REDCapManagement::getFieldsOfType($destMetadata, "text", "datetime_ymd");
     $destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($destMetadata);
+    $descriptiveFields = REDCapManagement::getFieldsOfType($destMetadata, "descriptive");
     $srcRecords = Download::recordIdsByPid($srcPid);
     $newRecordData = [];
     foreach ($srcRecords as $record) {
@@ -1616,6 +1617,7 @@ function getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord = 0)
                         !in_array($field, $calcFields)
                         && !in_array($field, $timeFields)
                         && in_array($field, $destMetadataFields)
+                        && !in_array($field, $descriptiveFields)
                     )
                 ) {
                     $newRow[$field] = $value;

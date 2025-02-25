@@ -8,15 +8,26 @@ require_once(dirname(__FILE__)."/../vendor/autoload.php");
 define("MIN_INSTITUTION_LENGTH", 6);
 
 function getIES($token, $server, $pid, $records, $homeInstitutionsOnly = FALSE) {
-    $availableInstitutions = getAvailableInstitutions($pid);
-    $matchedInstitutions = getMatchingInstitutions($availableInstitutions, $token, $server, $pid, $records, $homeInstitutionsOnly);
-    $excelData = downloadExcelData($matchedInstitutions, $pid);
-    $upload = matchNamesWithExcel($excelData, $token, $server, $pid);
-    if (!empty($upload)) {
-        Application::log("Found ".count($upload)." rows of IES matches", $pid);
-        Upload::rows($upload, $token, $server);
-    }
-    Application::saveCurrentDate("Dept. of Ed. Grants", $pid);
+	# The IES webpage is incompatible with a bug in cURL
+	# The bug seems to occur between cuRL versions 7.60.0 and 7.88.0
+	# OpenSSL SSL_read: error:0A000126:SSL routines::unexpected eof while reading, errno 0
+	# Hard to find something concrete, but it appears fixed after cURL 7.80.x
+	# Note: We're using PHP's cURL, not the CLI's. Also PHP 8.2 distributes with cURL 7.76.x
+	$curlVersion = curl_version()["version"];
+	if (
+		REDCapManagement::versionGreaterThanOrEqualTo($curlVersion, "7.88.0")
+		|| REDCapManagement::versionGreaterThanOrEqualTo("7.60.0", $curlVersion)
+	) {
+		$availableInstitutions = getAvailableInstitutions($pid);
+		$matchedInstitutions = getMatchingInstitutions($availableInstitutions, $token, $server, $pid, $records, $homeInstitutionsOnly);
+		$excelData = downloadExcelData($matchedInstitutions, $pid);
+		$upload = matchNamesWithExcel($excelData, $token, $server, $pid);
+		if (!empty($upload)) {
+			Application::log("Found ".count($upload)." rows of IES matches", $pid);
+			Upload::rows($upload, $token, $server);
+		}
+		Application::saveCurrentDate("Dept. of Ed. Grants", $pid);
+	}
 }
 
 function matchNamesWithExcel($excelData, $token, $server, $pid) {

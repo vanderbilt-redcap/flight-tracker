@@ -19,6 +19,7 @@ use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 use Vanderbilt\CareerDevLibrary\MSTP;
 use Vanderbilt\CareerDevLibrary\Grant;
+use Vanderbilt\CareerDevLibrary\REDCapLookupByUserid;
 
 require_once(__DIR__."/classes/Autoload.php");
 require_once(__DIR__."/cronLoad.php");
@@ -390,19 +391,6 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                     $servers[$pid] = $server;
                     $pids[] = $pid;
                 }
-            }
-        }
-        $credentialsFile = Application::getCredentialsDir() . "/career_dev/credentials.php";
-        if (preg_match("/redcap.vanderbilt.edu/", SERVER_NAME) && file_exists($credentialsFile)) {
-            include($credentialsFile);
-            if (isset($info["prod"])) {
-                $prodPid = $info["prod"]["pid"];
-                $prodToken = $info["prod"]["token"];
-                $prodServer = $info["prod"]["server"];
-                $pids[] = $prodPid;
-                $tokens[$prodPid] = $prodToken;
-                $servers[$prodPid] = $prodServer;
-                Application::log("Searching through Vanderbilt Master Project ($prodPid)", $prodPid);
             }
         }
         return [$tokens, $servers, $pids];
@@ -1414,7 +1402,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
             $firstNames = $this->getProjectSetting(self::FIRST_NAMES, $pid);
             $lastNames = $this->getProjectSetting(self::LAST_NAMES, $pid);
             foreach ($userids as $recordId => $userid) {
-                if ($userid) {
+				$lookup = new REDCapLookupByUserid($userid);
+                if ($userid && $lookup->getName()) {
                     $previousSetting = Application::getSystemSetting($userid) ?: [];
                     $needToUpdate = empty($previousSetting) || !$previousSetting["done"] || ($previousSetting["date"] != $today);
                     if ($needToUpdate) {
@@ -1429,6 +1418,8 @@ class FlightTrackerExternalModule extends AbstractExternalModule
                             "done" => TRUE,
                         ];
                         Application::saveSystemSetting($userid, $storedData);
+						unset($storedData);
+						gc_collect_cycles();
                     }
                 }
             }

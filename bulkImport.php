@@ -371,7 +371,7 @@ function findDepartment($value, $allChoices, $field) {
 function translateIntoIndex($value, $allChoices, $field) {
 	$choices = $allChoices[$field];
 	foreach ($choices as $idx => $label) {
-	    if ($label == $value) {
+	    if (strtolower($label) == strtolower($value)) {
 	        return $idx;
         }
     }
