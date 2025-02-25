@@ -2489,7 +2489,7 @@ class Publications {
                                 $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
                                 $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
                                 $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
-                                if (in_array("citation_referencing", $metadataFields)) {
+                                if (in_array("citation_icite_referencing", $metadataFields)) {
                                     $sep = ", ";
                                     $upload[$j]["citation_icite_cited_by_clinical"] = implode($sep, $iCite->getVariable($pmid, "cited_by_clin") ?: []);
                                     $upload[$j]["citation_icite_cited_by"] = implode($sep, $iCite->getVariable($pmid, "cited_by") ?: []);

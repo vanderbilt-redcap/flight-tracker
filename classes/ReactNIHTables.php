@@ -154,7 +154,7 @@ class ReactNIHTables {
     public function sendVerificationEmail($post, &$nihTables) {
         $email = strtolower(Sanitizer::sanitize($post['email']));
         $scholarEmail = strtolower(Sanitizer::sanitize($post['scholarEmail']));
-        if (!REDCapManagement::isEmailOrEmails($email) || !REDCapManagement::isEmailOrEmails($scholarEmail)) {
+        if (!REDCapManagement::isEmailOrEmails($email) && !REDCapManagement::isEmailOrEmails($scholarEmail)) {
             return ["error" => "Improper email"];
         }
         $name = Sanitizer::sanitize($post['name'] ?? "");

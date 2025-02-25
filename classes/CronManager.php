@@ -743,7 +743,7 @@ class CronManager {
                                 && ($numRunBeforeInCron <= self::MAX_BATCHES_IN_ONE_CRON)
                             ) {
                                 sleep(1);
-                                Application::log("Flight Tracker repeating cron", $firstBatchQueue['pid']);
+                                Application::log("Flight Tracker repeating cron $this->title", $firstBatchQueue['pid']);
                                 $this->runBatchJobs($numRunBeforeInCron);
                             }
                         } else {
@@ -762,6 +762,10 @@ class CronManager {
                     $this->saveBatchQueueToDB($batchQueue);
                     return;
                 }
+				if (!$queueHasRun) {
+					sleep(60);
+					Application::log("End of CronManager.php While Loop $this->title");
+				}
             } while (!$queueHasRun);
         } else if (!in_array($firstBatchQueue['status'], $validBatchStatuses)) {
             throw new \Exception("Improper batch status ".$firstBatchQueue['status']);
