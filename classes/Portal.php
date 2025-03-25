@@ -1234,16 +1234,18 @@ Examples:
 
         $rcrs = [];
         $altmetricScores = [];
-        foreach ($pubs->getCitations() as $citation) {
-            $rcr = $citation->getVariable("rcr");
-            if ($rcr) {
-                $rcrs[] = $rcr;
-            }
-            $altmetricScore = $citation->getVariable("altmetric_score");
-            if ($altmetricScore) {
-                $altmetricScores[] = $altmetricScore;
-            }
-        }
+		if (Altmetric::isActive()) {
+			foreach ($pubs->getCitations() as $citation) {
+				$rcr = $citation->getVariable("rcr");
+				if ($rcr) {
+					$rcrs[] = $rcr;
+				}
+				$altmetricScore = $citation->getVariable("altmetric_score");
+				if ($altmetricScore) {
+					$altmetricScores[] = $altmetricScore;
+				}
+			}
+		}
 
         $rcrLink = "https://icite.od.nih.gov/";
         $entries = [];

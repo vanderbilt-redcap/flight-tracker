@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
+use Vanderbilt\CareerDevLibrary\Altmetric;
 use \Vanderbilt\CareerDevLibrary\Download;
 use \Vanderbilt\CareerDevLibrary\Application;
 use \Vanderbilt\CareerDevLibrary\BarChart;
@@ -31,9 +32,11 @@ $fields = [
     "record_id",
     "citation_include",
     "citation_rcr",
-    "citation_altmetric_score",
     "citation_ts",
 ];
+if (Altmetric::isActive()) {
+	$fields[] = "citation_altmetric_score";
+}
 $coauthorshipsOnly = FALSE;
 if (isset($_GET['coauthorships']) && ($_GET['coauthorships'] == "on")) {
     $fields[] = "citation_authors";
@@ -61,8 +64,10 @@ $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 
 $metrics = [
     "citation_rcr" => "Relative Citation Ratio",
-    "citation_altmetric_score" => "Altmetric Score",
 ];
+if (Altmetric::isActive()) {
+	$metrics["citation_altmetric_score"] = "Altmetric Score";
+}
 $dist = [];
 $byYear = [];
 $highImpactRCRsByYear = [];
@@ -160,7 +165,11 @@ if (!empty($foundList)) {
             # to turn on, use $relevantNames, but my experience is that too many false matches are made
             $citation = new Citation($token, $server, $recordId, $instance, $row);
             $rcr = $row['citation_rcr'];
-            $altmetricScore = $row['citation_altmetric_score'] ? "Altmetric Score: ".$row['citation_altmetric_score']."." : "";
+			if (Altmetric::isActive()) {
+				$altmetricScore = $row['citation_altmetric_score'] ? "Altmetric Score: ".$row['citation_altmetric_score']."." : "";
+			} else {
+				$altmetricScore = "";
+			}
             if (!isset($pertinentCitations[$rcr])) {
                 $pertinentCitations[$rcr] = [];
             }

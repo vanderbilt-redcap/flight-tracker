@@ -351,7 +351,7 @@ function makePublicationListHTML(array $citations, array $names, array $dates): 
                 $citations = $citColl->getCitations($_GET['sort'] ?? "date");
                 foreach ($citations as $citation) {
                     $html .= "<p style='text-align: left; padding: 2px 0;'>";
-                    if (isset($_GET['altmetrics'])) {
+                    if (isset($_GET['altmetrics']) && Altmetric::isActive()) {
                         $html .= $citation->getImage("left");
                     }
                     $html .= $citation->getCitationWithLink(TRUE, TRUE);
@@ -463,7 +463,7 @@ function makeCustomizeTable(string $token, string $server, $pid): string {
 
     $paramsToInclude = URLManagement::splitURL(Application::link("publications/view.php").makeExtraURLParams(["trainingPeriodPlusDays"]))[1];
     $html .= "<td $style class='green'>";
-    $html .= Altmetric::makeClickText(Application::link("publications/view.php").makeExtraURLParams(["altmetrics"]));
+    $html .= Altmetric::isActive() ? Altmetric::makeClickText(Application::link("publications/view.php").makeExtraURLParams(["altmetrics"])) : '';
     $html .= "<h4 class='noBottomMargin'>Show Pubs During Training</h4>";
     $html .= "<form action='$url' method='GET'>";
     $html .= URLManagement::makeHiddenInputs($paramsToInclude, TRUE);
@@ -489,7 +489,7 @@ function makeCustomizeTable(string $token, string $server, $pid): string {
     $html .= "&nbsp;&nbsp;&nbsp;";
     $html .= "<input type='radio' name='sort' id='sort_rcr' value='rcr' $rcrChecked /> <label for='sort_rcr'>By RCR</label>";
     $html .= "&nbsp;&nbsp;&nbsp;";
-    $html .= "<input type='radio' name='sort' id='sort_altmetrics' value='altmetrics' $altmetricsChecked /> <label for='sort_altmetrics'>By Altmetric Score</label>";
+    $html .= Altmetric::isActive() ? "<input type='radio' name='sort' id='sort_altmetrics' value='altmetrics' $altmetricsChecked /> <label for='sort_altmetrics'>By Altmetric Score</label>" : '';
     $html .= "</p>";
     $html .= "<h4 class='noBottomMargin'>Filter for Author Position</h4>";
     $html .= "<p class='centered' style='margin-top: 0;'>";

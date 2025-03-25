@@ -17,7 +17,7 @@ class CareerDev {
 	public static $passedModule = NULL;
 
 	public static function getVersion() {
-		return "6.20.0";
+		return "6.21.0";
 	}
 
     public static function getLocalhostPluginPid() {
@@ -593,7 +593,7 @@ class CareerDev {
         $page = preg_replace("/^\//", "", $http);
         $url = $module->getUrl($page);
         if (
-            (isset($_GET['project_id']) && is_numeric($_GET['project_id']))
+            (isset($_GET['project_id']) && is_numeric($_GET['project_id']) && !isset($_GET['pid']))
             || $isMentorAgreementPage
         ) {
             if (preg_match("/pid=/", $url)) {

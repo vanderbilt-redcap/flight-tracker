@@ -112,7 +112,7 @@ if (isset($_GET['showHeaders'])) {
         <form method="GET" action="<?= REDCapManagement::getPage(Application::link("brag.php")) ?>">
             <?= REDCapManagement::getParametersAsHiddenInputs(Application::link("brag.php")) ?>
             <?php
-            if (isset($_GET['altmetrics'])) {
+            if (isset($_GET['altmetrics']) && Altmetric::isActive()) {
                 echo "<input type='hidden' value='1' id='altmetrics' name='altmetrics' />";
             }
 
@@ -375,7 +375,7 @@ foreach ($recordIds as $recordId) {
             ) {
                 $pmid = $row['citation_pmid'];
                 $doi = $row['citation_doi'];
-                if (isset($_GET['altmetrics']) && $row["citation_altmetric_image"]) {
+                if (isset($_GET['altmetrics']) && $row["citation_altmetric_image"] && Altmetric::isActive()) {
                     $citationStr = Citation::formatImage($row["citation_altmetric_image"], "left", $row["citation_altmetric_details_url"]);
                 } else {
                     $citationStr = "";
@@ -410,7 +410,7 @@ foreach ($recordIds as $recordId) {
             Application::log("All Citations ".count($allCitations), $pid);
         }
         foreach ($allCitations as $citation) {
-            if (isset($_GET['altmetrics'])) {
+            if (isset($_GET['altmetrics']) && Altmetric::isActive()) {
                 $citationStr = $citation->getImage("left");
             } else {
                 $citationStr = "";

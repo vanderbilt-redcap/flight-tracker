@@ -250,9 +250,7 @@ $(document).ready(function() {
 
         <div style='margin: 25px 10px 0px 0px; padding: 4px 0;' class='blueBorder translucentBG'>
             <h3><i class='fa fa-door-open'></i> Orientation</h3>
-            <p class='centered'><i class='fa fa-video'></i> <a href='<?= CareerDev::link("help/videos.php") ?>'>Training Videos</a></p>
-            <p class='centered'><a href='<?= CareerDev::link("help/why.php") ?>'>Why Use Flight Tracker?</a></p>
-            <p class='centered'><a href='<?= CareerDev::link("help/how.php") ?>'>How to Use Flight Tracker?</a></p>
+            <p class='centered'><i class='fa fa-video'></i> <a href='https://edgeforscholars.vumc.org/video-vault/'>Training Videos</a></p>
             <p class='centered'><a href='javascript:;' onclick='toggleHelp("<?= CareerDev::getHelpLink() ?>", "<?= CareerDev::getHelpHiderLink() ?>", "index.php");'>Enable Help on All Pages</a></p>
             <p class='centered'><a href='https://github.com/vanderbilt-redcap/flight-tracker/releases'>Release Log / Change Log</a> (<a href='https://github.com/scottjpearson/flight-tracker/releases'>Old Releases</a>)</p>
             <h3><i class='fa fa-globe-americas'></i> Consortium</h3>
