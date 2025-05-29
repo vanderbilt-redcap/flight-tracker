@@ -27,14 +27,14 @@ if (isset($_GET['showFlagsOnly'])) {
 }
 if (isset($_GET['CDA'])) {
     $thisUrlWithParams .= "&CDA";
-    $title = "Career Development Awards Over Time";
+    $title = "Stylized Table of Career-Defining Awards";
     $maxCols = 15;
     $grantReach = "prior";
     $allPossibleFields = Application::$summaryFields;
     $showTimeline = TRUE;
     $showTimeBetweenGrants = TRUE;
 } else {
-    $title = "Grants Awarded Over Time";
+    $title = "Stylized Table of Grants";
     $maxCols = 25;
     if (isset($_GET['showFlagsOnly'])) {
         $grantReach = "flagged";

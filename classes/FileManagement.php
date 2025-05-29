@@ -5,16 +5,12 @@ namespace Vanderbilt\CareerDevLibrary;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-
 require_once(__DIR__ . '/ClassLoader.php');
 if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
     require_once(__DIR__ . '/../vendor/autoload.php');
 }
 
 class FileManagement {
-
-	public CONST MAX_DOWNLOAD_FILE_SIZE = 20000000; //20 Megabytes
-
     public static function makePDFToTempFile($html) {
         $options = new Options();
         $options->set('tempDir', preg_replace("/\/$/", "", APP_PATH_TEMP));   // for images
@@ -162,23 +158,19 @@ class FileManagement {
     public static function getEdocBase64($id) {
         if (is_numeric($id)) {
             $module = Application::getModule();
-            $sql = "SELECT stored_name, mime_type, doc_size FROM redcap_edocs_metadata WHERE doc_id = ?";
+            $sql = "SELECT stored_name, mime_type FROM redcap_edocs_metadata WHERE doc_id = ?";
             $q = $module->query($sql, [$id]);
             if ($row = $q->fetch_assoc()) {
                 $filename = EDOC_PATH . $row['stored_name'];
                 $mimeType = $row['mime_type'];
-				$fileSize = $row['doc_size'];
-				if ($fileSize <= self::MAX_DOWNLOAD_FILE_SIZE) {
-					if ($mimeType == "application/octet-stream") {
-						if (preg_match("/\.svg$/", $row['stored_name'])) {
-							$mimeType = "image/svg+xml";
-						} else {
-							$mimeType = mime_content_type($row['stored_name']) ?: $mimeType;
-						}
-					}
-					return self::getBase64OfFile($filename, $mimeType);
-				}
-				return "";
+                if ($mimeType == "application/octet-stream") {
+                    if (preg_match("/\.svg$/", $row['stored_name'])) {
+                        $mimeType = "image/svg+xml";
+                    } else {
+                        $mimeType = mime_content_type($row['stored_name']) ?: $mimeType;
+                    }
+                }
+                return self::getBase64OfFile($filename, $mimeType);
             }
         }
         throw new \Exception("Invalid Edoc ID!");

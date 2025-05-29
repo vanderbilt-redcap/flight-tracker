@@ -14,7 +14,7 @@ $oldValue = Sanitizer::sanitize($_POST['oldValue'] ?? "");
 $newValue = Sanitizer::sanitize($_POST['newValue'] ?? "");
 
 if ($oldValue && $newValue) {
-	if (!preg_match("/['\"#]/", $newValue)) {
+	if (!preg_match(Cohorts::PROHIBITED_CHARACTERS_REGEX, $newValue)) {
 		$cohorts = new Cohorts($token, $server, CareerDev::getModule());
 		if (!$cohorts->nameExists($newValue)) {
 			if ($cohorts->nameExists($oldValue)) {
@@ -27,7 +27,7 @@ if ($oldValue && $newValue) {
 			echo "The proposed new name is already used.";
 		}
 	} else {
-		echo "You cannot specify a single-quote, a double-quote, or a hashtag.";
+		echo "You cannot specify a single-quote, a double-quote, an ampersand, or a hashtag.";
 	}
 } else {
 	echo "You must supply a valid old value and a valid new value.";

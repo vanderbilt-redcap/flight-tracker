@@ -363,7 +363,7 @@ function redoBlankDates(array $redcapData, string $pid, array $metadata, string 
                 "citation_year" => $row['citation_year'],
                 "citation_ts" => $row['citation_ts'],
                 "citation_date" => $row['citation_date'],
-                "citation_complete" => Publications::getPublicationCompleteStatusFromInclude($includeValues[$pmid]),
+                "citation_complete" => Publications::getPublicationCompleteStatusFromInclude($includeValues[$pmid] ?? ""),
             ];
             $uploadRows[] = $uploadRow;
         }

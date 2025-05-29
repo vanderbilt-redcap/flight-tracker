@@ -63,6 +63,7 @@ if (!in_array($newPMID, $pmids)) {
                 "redcap_repeat_instrument" => "citation",
                 "redcap_repeat_instance" =>  $row['redcap_repeat_instance'],
                 "citation_include" => $includeValue,
+	            "citation_complete" => Publications::getPublicationCompleteStatusFromInclude($includeValue)
             ];
             $feedback = Upload::oneRow($uploadRow, $token, $server);
             echo json_encode($feedback);

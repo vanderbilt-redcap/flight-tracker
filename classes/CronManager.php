@@ -65,9 +65,6 @@ class CronManager {
     # records here, if specified, overrides the records specified in function run
 	public function addCron($file, $method, $dayOfWeek, $records = [], $numRecordsAtATime = FALSE, $firstParameter = FALSE) {
         try {
-	        if ($this->isJobAlreadyQueued($file, $method, $records)) {
-		        return;
-	        }
             if ($this->module && !Application::isPluginProject($this->pid)) {
                 if (is_numeric($records)) {
                     $numRecordsAtATime = $records;
@@ -171,9 +168,6 @@ class CronManager {
         if (empty($pids)) {
             return;
         }
-		if ($this->isJobAlreadyQueued($file, $method, $pids)) {
-			return;
-		}
 
         $absFile = dirname(__FILE__)."/../".$file;
         $dateTs = strtotime($dayOfWeek);
@@ -1772,24 +1766,6 @@ body { font-size: 1.2em; }
 
 		\REDCap::email($adminEmail, Application::getSetting("default_from", $this->pid), Application::getProgramName()." Cron Error", $mssg);
 		Application::log("Exception: ".$cronjob->getTitle().": ".$e->getMessage()."\nLine: ".$e->getLine()." in ".$e->getFile()."\n".$e->getTraceAsString(), $this->pid);
-	}
-
-	private function isJobAlreadyQueued(string $file, string $method, array $records) {
-		$batchQueue = $this->getBatchQueueFromDB();
-		$compareFile = dirname(__FILE__)."/../".$file;
-		foreach ($batchQueue as $item) {
-			$settings = Application::getSystemSetting($item);
-			if ($settings['file'] != $compareFile) {
-				continue;
-			}
-			if ($settings['method'] != $method) {
-				continue;
-			}
-			if ((isset($settings['records']) && $settings['records'] == $records) || (isset($settings['pids']) && $settings['pids'] == $records)) {
-				return TRUE;
-			}
-		}
-		return false;
 	}
 
 	private $token;

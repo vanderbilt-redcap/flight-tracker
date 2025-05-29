@@ -161,7 +161,7 @@ try {
         $filename = "publications/scoreDistribution.php";
         $pageHTML = $portal->getPage($filename, ["record" => $recordId]);
         $headerHTML = "<h3>Your Distribution of Publication Impact Factors in $projectTitle</h3>";
-        $descriptionHTML = "<p class='portalDescription'>Each Flight Tracker project stores metrics related to your publications. The <a href='https://icite.od.nih.gov/' target='_blank'>Relative Citation Ratio</a> is field-normalized; a value of 1.0 means that your paper is cited as often as the average paper in its field, a value of 2.0 means it's cited twice as often, a value of 0.5 means half as often, and so on. The <a href='https://altmetric.com/' target='_blank'>Altmetric Score</a> looks at newer media such as Twitter to assess a paper's impact.</p>";
+        $descriptionHTML = "<p class='portalDescription'>Each Flight Tracker project stores metrics related to your publications. The <a href='https://icite.od.nih.gov/' target='_blank'>Relative Citation Ratio</a> is field-normalized; a value of 1.0 means that your paper is cited as often as the average paper in its field, a value of 2.0 means it's cited twice as often, a value of 0.5 means half as often, and so on.</p>";
         $data['html'] = $headerHTML.$descriptionHTML.$pageHTML;
     } else if ($action == "timelines") {
         $filename = "charts/timeline.php";

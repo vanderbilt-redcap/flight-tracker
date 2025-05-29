@@ -257,7 +257,7 @@ class CelebrationsEmail {
                 && $isAuthorOk
             ) {
                 $pmid = $row['citation_pmid'];
-                $altmetric = $row['citation_altmetric_details_url'] && Altmetric::isActive() ? " <a href='{$row['citation_altmetric_details_url']}'>Altmetric</a>" : "";
+                $altmetric = $row['citation_altmetric_details_url'] ? " <a href='{$row['citation_altmetric_details_url']}'>Altmetric</a>" : "";
                 $matchedNames = [];
                 $namesWithLink = [];
                 $handles = [];
@@ -831,9 +831,8 @@ a { color: #5764ae; }
                         if (empty($performanceRows)) {
                             $performanceRows[] = "<p>No new publications$caveat have been designated high-performing since $thresholdDateMDY</p>";
                         }
-						if (Altmetric::isActive()) {
-							$html .= "<h2>$settingName for $scholarTitle<br/>Publications With Newly Altmetric &gt; " . Altmetric::THRESHOLD_SCORE . " or RCR &gt; " . iCite::THRESHOLD_SCORE . "</h2>";
-						}
+
+                        $html .= "<h2>$settingName for $scholarTitle<br/>Publications With Newly Altmetric &gt; " . Altmetric::THRESHOLD_SCORE . " or RCR &gt; " . iCite::THRESHOLD_SCORE . "</h2>";
                         if (!empty($requestedGrants)) {
                             $html .= "<p>For grants ".REDCapManagement::makeConjunction($requestedGrants)."</p>";
                         }

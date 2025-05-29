@@ -34,9 +34,6 @@ function loadMainCronsHelper(&$manager, $token, $server) {
         if (in_array("ies_grant", $forms)) {
             $manager->addCron("drivers/24_getIES.php", "getIES", "Thursday", $allRecords, 10000);
         }
-        if (!$securityTestMode) {
-            $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
-        }
 
         if (in_array('patent', $forms) && !$securityTestMode) {
             $manager->addCron("drivers/18_getPatents.php", "getPatents", "Thursday", $records, 100);
@@ -301,9 +298,6 @@ function loadInitialCrons(&$manager, $specialOnly = FALSE, $token = "", $server 
 
             if (in_array("nih_reporter", $forms)) {
                 $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records, 100);
-            }
-            if (!$securityTestMode) {
-                $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", $date, $records, 100);
             }
             if (in_array("citation", $forms)) {
                 $manager->addCron("publications/getAllPubs_func.php", "getPubs", $date, $records, 20);

@@ -564,7 +564,7 @@ class RePORTER {
             $awardNoWithInstances = [];
             $redcapData = Download::fieldsForRecords($token, $server, $fieldsToDownload, [$recordId]);
             foreach ($redcapData as $row) {
-                if (array_key_exists("redcap_repeat_instrument", $row) && $row["redcap_repeat_instrument"] == $instrument) {
+                if ($row["redcap_repeat_instrument"] == $instrument) {
                     if (!isset($awardNoWithInstances[$row[$awardNoField]])) {
                         $awardNoWithInstances[$row[$awardNoField]] = [];
                     }
@@ -825,12 +825,8 @@ class RePORTER {
                             $pi['last_name']." ".$pi['first_name'],
                             $pi['last_name'].", ".$pi['first_name'],
                         ];
-                        if ($pi['middle_name'] ?? FALSE) {
-                            $piNames[] = $pi['first_name']." ".$pi['middle_name']." ".$pi['last_name'];
-                            $piNames[] = $pi['last_name'].", ".$pi['first_name']." ".$pi['middle_name'];
-                        }
                         foreach ($piNames as $piName) {
-                            if (strtolower($piName) == strtolower($excludeName)) {
+                            if ($piName == $excludeName) {
                                 $excludeThisItem = TRUE;
                                 break;
                             }

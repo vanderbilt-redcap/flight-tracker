@@ -17,7 +17,7 @@ if (isset($_POST['title'])) {
 	$name = Sanitizer::sanitize($_POST['title']);
 	$config = Sanitizer::sanitizeArray($_POST['config'], TRUE, FALSE);
 
-	if (preg_match("/['\"#&]/", $name)) {
+	if (preg_match(Cohorts::PROHIBITED_CHARACTERS_REGEX, $name)) {
 		echo "Invalid name. Title cannot contain single-quotes, hashtags, ampersands, or double-quotes.";
 	} else {
 		$cohorts = new Cohorts($token, $server, CareerDev::getModule());

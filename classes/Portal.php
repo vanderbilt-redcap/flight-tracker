@@ -818,8 +818,6 @@ class Portal
                 }
             } else if (!empty($storedData) && !self::isValidStoredDate($storedDate)) {
                 Application::saveSystemSetting($this->username, []);
-            } else {
-				return $storedData;
             }
         }
         return [];
@@ -954,9 +952,8 @@ class Portal
         }
         $html .= "<form action='{$this->driverURL}' method='POST' enctype='multipart/form-data' id='photoForm'>";
         $html .= "<input type='hidden' name='action' value='upload_photo' />";
-		$html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
-        $html .= Application::generateCSRFTokenHTML();
-		$html .= self::makePortalButton("portal.uploadPhoto(\"#photoForm\");", "Upload");
+        $html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
+        $html .= self::makePortalButton("portal.uploadPhoto(\"#photoForm\");", "Upload");
         $html .= "</form>";
         return $html;
     }
@@ -1234,18 +1231,16 @@ Examples:
 
         $rcrs = [];
         $altmetricScores = [];
-		if (Altmetric::isActive()) {
-			foreach ($pubs->getCitations() as $citation) {
-				$rcr = $citation->getVariable("rcr");
-				if ($rcr) {
-					$rcrs[] = $rcr;
-				}
-				$altmetricScore = $citation->getVariable("altmetric_score");
-				if ($altmetricScore) {
-					$altmetricScores[] = $altmetricScore;
-				}
-			}
-		}
+        foreach ($pubs->getCitations() as $citation) {
+            $rcr = $citation->getVariable("rcr");
+            if ($rcr) {
+                $rcrs[] = $rcr;
+            }
+            $altmetricScore = $citation->getVariable("altmetric_score");
+            if ($altmetricScore) {
+                $altmetricScores[] = $altmetricScore;
+            }
+        }
 
         $rcrLink = "https://icite.od.nih.gov/";
         $entries = [];
