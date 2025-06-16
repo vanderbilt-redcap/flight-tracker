@@ -8,5 +8,4 @@ $baseDir = dirname($vendorDir);
 return array(
     'LSS' => array($vendorDir . '/openlss/lib-array2xml'),
     'JsonMapper' => array($vendorDir . '/netresearch/jsonmapper/src'),
-    'HTMLPurifier' => array($vendorDir . '/ezyang/htmlpurifier/library'),
 );
