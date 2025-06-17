@@ -29,7 +29,7 @@ class CitationCollection {
         }
         if ($type != "Filtered") {
             foreach ($redcapData as $row) {
-                if (in_array($row['redcap_repeat_instrument'], ["citation", "eric"]) && ($row['record_id'] == $recordId)) {
+                if (in_array($row['redcap_repeat_instrument'], ["citation", "eric"]) && ($row['record_id'] == $recordId) && ($row['citation_pmid'] ?? FALSE)) {
                     $c = new Citation($token, $server, $recordId, $row['redcap_repeat_instance'], $row, $this->metadata, $lastNames[$recordId], $firstNames[$recordId], $this->pid);
                     if ($c->getType() == $type) {
                         $this->citations[] = $c;

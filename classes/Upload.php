@@ -558,7 +558,7 @@ class Upload
 	}
 
 	public static function resource($recordId, $value, $token, $server, $date = "AUTOFILL", $grant = "") {
-		$redcapData = Download::resources($token, $server, $recordId);
+		$redcapData = Download::resources($token, $server, [$recordId]);
         $metadataFields = Download::metadataFields($token, $server);
 		if ($date == "AUTOFILL") {
 			$date = date("Y-m-d");

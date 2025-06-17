@@ -19,7 +19,6 @@ class MMAHelper {
     public const STEPS_KEY = "mma_steps";
     public const METADATA_KEY = "mma_metadata";
     public const SESSION_EMULATOR = "mma_session";
-	public const NUM_CUSTOM_QUESTIONS = 5;
 
     public static function createHash($token, $server) {
         $newHash = REDCapManagement::makeHash(self::getHashLength());
@@ -1460,8 +1459,8 @@ function characteristicsPopup(entity) {
             $stageRows[] = "<input type='radio' name='stage' id='$id' value='$id' /> <label for='$id'>$label</label>";
         }
         $stageHTML = "<p class='left-align'>".implode("<br/>", $stageRows)."</p>";
-		global $pid;
-        $sections = self::getEnabledSections($pid);
+
+        $sections = self::getAllSections();
         $checkboxes = [];
         foreach ($sections as $id => $label) {
             $checkboxes[] = "<input type='checkbox' class='sections' id='$id' name='$id' value='1' /> <label for='$id'>$label</label>";
@@ -3385,64 +3384,4 @@ $commentJS
     }
 
     protected static $isDebug = FALSE;
-
-	public static function getAgreementSectionsEnabledStatusForProject($pid): array {
-		$agreementStatus = Application::getSetting('mma_agreements_status', $pid);
-		if ($agreementStatus == "") {
-			self::intializeAgreementSectionsForProject($pid);
-			$agreementStatus = Application::getSetting('mma_agreements_status', $pid);
-		}
-		return $agreementStatus;
-	}
-
-	public static function updateAgreementSectionsEnabledStatusForProject($pid, $agreementStatusInput): void {
-		$agreementStatusesTemp = self::getDefaultAgreementSections();
-		foreach (array_keys($agreementStatusesTemp) as $section) {
-			$agreementStatusesTemp[$section] = in_array($section, $agreementStatusInput);
-		}
-		Application::saveSetting('mma_agreements_status', $agreementStatusesTemp, $pid);
-	}
-
-	private static function intializeAgreementSectionsForProject($pid) {
-		Application::saveSetting('mma_agreements_status', self::getDefaultAgreementSections(), $pid);
-	}
-
-	private static function getDefaultAgreementSections(): array {
-		return  [
-			"Lab_Meetings" => true,
-			"Communication" => true,
-			"Mentoring_Panel" => true,
-			"Financial_Support" => true,
-			"Scientific_Development" => true,
-			"Approach_to_Scholarly_Products" => true,
-			"Career_and_Professional_Development" => true,
-			"Individual_Development_Plan" => true
-		];
-	}
-
-	public static function getEnabledSections($pid, $mentorId = null): array {
-		$enabledSections = self::getAgreementSectionsEnabledStatusForProject($pid);
-		$allSections = self::getAllSections();
-		$mentorOverrides = self::getMentorOverrides($pid, $mentorId);
-		$returnArray = array_filter($allSections, function ($key) use ($enabledSections, $mentorOverrides) {
-			if (array_key_exists($key, $mentorOverrides)) {
-				return $mentorOverrides[$key];
-			} elseif (array_key_exists($key, $enabledSections)) {
-				return $enabledSections[$key];
-			}
-			return false;
-		}, ARRAY_FILTER_USE_KEY);
-		return $returnArray;
-	}
-
-	private static function getMentorOverrides($pid, $mentorId): array {
-		if (is_null($mentorId)) {
-			return ['Lab_Meetings' => false, 'Mentoring_Panel' => false];
-		}
-		return ['Lab_Meetings' => false, 'Mentoring_Panel' => false];
-	}
-
-	public static function getCustomQuestionHtml() {
-
-	}
 }

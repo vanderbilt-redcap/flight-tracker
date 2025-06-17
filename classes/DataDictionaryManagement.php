@@ -946,7 +946,7 @@ class DataDictionaryManagement {
             "orcid_memberships" => "[orcid_memberships_id]",
             "orcid_address" => "[orcid_address_id]",
             "orcid_services" => "[orcid_services_id]",
-            "orcid_works" => "[orcid_works_id]",
+            "orcid_works" => "[orcid_works_id]: [orcid_works_title]",
             "orcid_keywords" => "[orcid_keywords_id]",
             "orcid_other_names" => "[orcid_other_names_id]",
             "orcid_researcher_urls" => "[orcid_researcher_urls_id]",

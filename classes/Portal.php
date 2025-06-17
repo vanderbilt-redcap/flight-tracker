@@ -818,6 +818,8 @@ class Portal
                 }
             } else if (!empty($storedData) && !self::isValidStoredDate($storedDate)) {
                 Application::saveSystemSetting($this->username, []);
+            } else {
+				return $storedData;
             }
         }
         return [];
@@ -952,8 +954,9 @@ class Portal
         }
         $html .= "<form action='{$this->driverURL}' method='POST' enctype='multipart/form-data' id='photoForm'>";
         $html .= "<input type='hidden' name='action' value='upload_photo' />";
-        $html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
-        $html .= self::makePortalButton("portal.uploadPhoto(\"#photoForm\");", "Upload");
+		$html .= "<p class='centered'><label for='photoFile'>Photo:</label> <input type='file' id='photoFile' name='photoFile' onchange='portal.validateFile(this);' /><br/>";
+        $html .= Application::generateCSRFTokenHTML();
+		$html .= self::makePortalButton("portal.uploadPhoto(\"#photoForm\");", "Upload");
         $html .= "</form>";
         return $html;
     }
@@ -1231,16 +1234,18 @@ Examples:
 
         $rcrs = [];
         $altmetricScores = [];
-        foreach ($pubs->getCitations() as $citation) {
-            $rcr = $citation->getVariable("rcr");
-            if ($rcr) {
-                $rcrs[] = $rcr;
-            }
-            $altmetricScore = $citation->getVariable("altmetric_score");
-            if ($altmetricScore) {
-                $altmetricScores[] = $altmetricScore;
-            }
-        }
+		if (Altmetric::isActive()) {
+			foreach ($pubs->getCitations() as $citation) {
+				$rcr = $citation->getVariable("rcr");
+				if ($rcr) {
+					$rcrs[] = $rcr;
+				}
+				$altmetricScore = $citation->getVariable("altmetric_score");
+				if ($altmetricScore) {
+					$altmetricScores[] = $altmetricScore;
+				}
+			}
+		}
 
         $rcrLink = "https://icite.od.nih.gov/";
         $entries = [];
@@ -1269,7 +1274,7 @@ Examples:
             if ($HIAnnual) { $entries["HI,annual, calculated from iCite figures<br/>(HI,norm / [number of years of publications])"] = $HIAnnual; }
             if ($gIndex) { $entries["G-Index, calculated from iCite figures<br/>(the largest integer such that the most-cited g articles received together at least g^2 citations)"] = $gIndex; }
         } else {
-            $entries["Publications"] = "We see that you're just getting started... ".REDCapManagement::json_encode_with_spaces($relevantCitationFields);
+            $entries["Publications"] = "We see that you're just getting started...";
         }
 
         $conversionStatusValue = REDCapManagement::findField($redcapData, $this->recordId, $conversionStatusField);

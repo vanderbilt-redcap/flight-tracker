@@ -402,6 +402,9 @@ class Publications {
 
     public function getAltmetricRange($type = "included") {
 	    $scores = [];
+		if (!Altmetric::isActive()) {
+			return "";
+		}
 	    foreach ($this->getCitations($type) as $citation) {
 	        $score = $citation->getVariable("altmetric_score");
 	        if (is_numeric($score) && ($score > 0)) {
@@ -636,9 +639,11 @@ class Publications {
                     "redcap_repeat_instance" => $row['redcap_repeat_instance'],
                     "citation_pmid" => $pmid,
                     "citation_rcr" => $row['citation_rcr'] ?? "",
-                    "citation_altmetric_score" => $row['citation_altmetric_score'] ?? "",
-                    "citation_altmetric_last_update" => $row['citation_altmetric_last_update'],
                 ];
+				if (Altmetric::isActive()) {
+					$setupFields["citation_altmetric_score"] = $row['citation_altmetric_score'] ?? "";
+					$setupFields["citation_altmetric_last_update"] = $row['citation_altmetric_last_update'];
+				}
 	            $upload[] = $setupFields;
             }
         }
@@ -651,6 +656,9 @@ class Publications {
 
     private static function getAltmetricRow($doi, $metadataFields, $pid) {
         $uploadRow = [];
+		if (!Altmetric::isActive()) {
+			return $uploadRow;
+		}
         if ($doi) {
             $altmetric = new Altmetric($doi, $pid);
             if ($altmetric->hasData()) {
@@ -2489,7 +2497,7 @@ class Publications {
                                 $upload[$j]["citation_field_citation_rate"] = $iCite->getVariable($pmid, "field_citation_rate");
                                 $upload[$j]["citation_nih_percentile"] = $iCite->getVariable($pmid, "nih_percentile");
                                 $upload[$j]["citation_rcr"] = $iCite->getVariable($pmid, "relative_citation_ratio");
-                                if (in_array("citation_referencing", $metadataFields)) {
+                                if (in_array("citation_icite_referencing", $metadataFields)) {
                                     $sep = ", ";
                                     $upload[$j]["citation_icite_cited_by_clinical"] = implode($sep, $iCite->getVariable($pmid, "cited_by_clin") ?: []);
                                     $upload[$j]["citation_icite_cited_by"] = implode($sep, $iCite->getVariable($pmid, "cited_by") ?: []);
@@ -2499,7 +2507,11 @@ class Publications {
                                     $upload[$j]["citation_icite_last_update"] = date("Y-m-d");
                                 }
 
-                                $altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
+                                if (Altmetric::isActive()) {
+									$altmetricRow = self::getAltmetricRow($iCite->getVariable($pmid, "doi"), $metadataFields, $pid);
+                                } else {
+									$altmetricRow = [];
+                                }
                                 $upload[$j] = array_merge($upload[$j], $altmetricRow);
                             }
                         }
@@ -2570,29 +2582,31 @@ class Publications {
         }
 
         $i = 0;
-        foreach ($upload as $row) {
-            $prevScore = $row["citation_altmetric_score"] ?: 0;
-            $pmid = $row['citation_pmid'];
-            if (
-                $row['citation_doi']
-                && ($row['citation_altmetric_last_update'] != date("Y-m-d"))
-            ) {
-                $altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $this->pid);
-                foreach ($altmetricRow as $field => $value) {
-                    if (
-                        ($field == "citation_altmetric_score")
-                        && ($value >= Altmetric::THRESHOLD_SCORE)
-                        && ($prevScore <= Altmetric::THRESHOLD_SCORE)
-                        && !in_array($pmid, $todaysHighPerformingPMIDs)
-                    ) {
-                        $todaysHighPerformingPMIDs[] = $pmid;
-                    }
-                    // overwrite
-                    $upload[$i][$field] = $value;
-                }
-            }
-            $i++;
-        }
+		if (Altmetric::isActive()) {
+			foreach ($upload as $row) {
+				$prevScore = $row["citation_altmetric_score"] ?: 0;
+				$pmid = $row['citation_pmid'];
+				if (
+					$row['citation_doi']
+					&& ($row['citation_altmetric_last_update'] != date("Y-m-d"))
+				) {
+					$altmetricRow = self::getAltmetricRow($row['citation_doi'], $metadataFields, $this->pid);
+					foreach ($altmetricRow as $field => $value) {
+						if (
+							($field == "citation_altmetric_score")
+							&& ($value >= Altmetric::THRESHOLD_SCORE)
+							&& ($prevScore <= Altmetric::THRESHOLD_SCORE)
+							&& !in_array($pmid, $todaysHighPerformingPMIDs)
+						) {
+							$todaysHighPerformingPMIDs[] = $pmid;
+						}
+						// overwrite
+						$upload[$i][$field] = $value;
+					}
+				}
+				$i++;
+			}
+		}
         if (!empty($todaysHighPerformingPMIDs)) {
             $today = date("Y-m-d");
             $allHighPerformingPMIDs = Application::getSetting("high_performing_pmids", $this->pid) ?: [];

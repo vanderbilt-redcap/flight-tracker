@@ -1039,6 +1039,9 @@ class Citation {
     }
 
 	public function getImage($alignment = "left") {
+		if (!Altmetric::isActive()) {
+			return "";
+		}
 	    if ($this->origRow["citation_altmetric_image"]) {
 	        return self::formatImage($this->origRow["citation_altmetric_image"], $alignment, $this->origRow["citation_altmetric_details_url"] ?? "");
         }

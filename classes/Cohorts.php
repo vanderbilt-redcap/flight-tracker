@@ -7,6 +7,7 @@ use function Vanderbilt\FlightTrackerExternalModule\json_encode_with_spaces;
 require_once(__DIR__ . '/ClassLoader.php');
 
 class Cohorts {
+	public const PROHIBITED_CHARACTERS_REGEX = "/['\"#&]/";
 	public function __construct($token, $server, $moduleOrMetadata) {
 		$this->token = $token;
 		$this->server = $server;

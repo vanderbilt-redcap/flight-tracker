@@ -2262,6 +2262,9 @@ class Grants {
 			if (in_array("summary_grant_count", $metadataFields)) {
 			    $uploadRow["summary_grant_count"] = $this->getCount("compiled");
             }
+			if (in_array("summary_grant_count_total", $metadataFields)) {
+				$uploadRow["summary_grant_count_total"] = $this->getCount("all");
+			}
             if (in_array("summary_total_budgets", $metadataFields)) {
                 $uploadRow["summary_total_budgets"] = $this->getTotalDollars("compiled");
             }

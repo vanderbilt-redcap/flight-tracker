@@ -154,7 +154,7 @@ class ReactNIHTables {
     public function sendVerificationEmail($post, &$nihTables) {
         $email = strtolower(Sanitizer::sanitize($post['email']));
         $scholarEmail = strtolower(Sanitizer::sanitize($post['scholarEmail']));
-        if (!REDCapManagement::isEmailOrEmails($email) || !REDCapManagement::isEmailOrEmails($scholarEmail)) {
+        if (!REDCapManagement::isEmailOrEmails($email) && !REDCapManagement::isEmailOrEmails($scholarEmail)) {
             return ["error" => "Improper email"];
         }
         $name = Sanitizer::sanitize($post['name'] ?? "");
@@ -243,10 +243,11 @@ table { border-collapse: collapse; }
             $thisLink = Application::link("this", $this->pid);
             $thisLink = str_replace("pid=", "project_id=", $thisLink);
             $tableName = ($numTables == 1) ? "table" : "tables";
-            $hash = $this->makeEmailHash($scholarEmail, $tables);
-            $yesLink = $thisLink."&confirm=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName)."&NOAUTH";
-            $noLink = $thisLink."&revise=".urlencode($scholarEmail)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName)."&NOAUTH";
-            if (($scholarEmail != $email) || ($tableNum == 3)) {
+			$scholarIdentifier = $scholarEmail ?: $name;
+            $hash = $this->makeEmailHash($scholarIdentifier, $tables);
+            $yesLink = $thisLink."&confirm=".urlencode($scholarIdentifier)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName)."&NOAUTH";
+            $noLink = $thisLink."&revise=".urlencode($scholarIdentifier)."&hash=".urlencode($hash)."&date=".urlencode($dateOfReport)."&savedName=".urlencode($savedName)."&NOAUTH";
+            if (($scholarIdentifier != $email) || ($tableNum == 3)) {
                 $noLink .= "&delegate";
                 $yesLink .= "&delegate";
             }
@@ -1054,22 +1055,33 @@ table { border-collapse: collapse; }
 
     }
 
-    public function verify($requestedHash, $email) {
-        if ($email) {
-            $emails = preg_split("/\s*[,;]\s*/", $email);
-            foreach ($emails as $em) {
-                foreach ($this->getValidTableOptions() as $tables) {
-                    $emailHash = $this->makeEmailHash($em, $tables);
-                    if (($requestedHash == $emailHash) && REDCapManagement::isEmail($em)) {
-                        return TRUE;
-                    }
-                }
-            }
-        }
-        return FALSE;
-    }
+	public function verify($requestedHash, $emailOrName) {
+		if ($emailOrName) {
+			if (REDCapManagement::isEmailOrEmails($emailOrName)) {
+				$emails = preg_split("/\s*[,;]\s*/", $emailOrName);
+				foreach ($emails as $em) {
+					foreach ($this->getValidTableOptions() as $tables) {
+						$emailHash = $this->makeEmailHash($em, $tables);
+						if (($requestedHash == $emailHash) && REDCapManagement::isEmail($em)) {
+							return TRUE;
+						}
+					}
+				}
+			} else {
+				$name = $emailOrName;
+				foreach ($this->getValidTableOptions() as $tables) {
+					$nameHash = $this->makeEmailHash($name, $tables);
+					if (($requestedHash == $nameHash)) {
+						return TRUE;
+					}
+				}
+			}
+		}
+		return FALSE;
+	}
 
-    public function getInformation($requestedHash, $email) {
+
+	public function getInformation($requestedHash, $email) {
         foreach ($this->getValidTableOptions() as $tables) {
             $emailHash = $this->makeEmailHash($email, $tables);
             if ($requestedHash == $emailHash) {
@@ -1151,42 +1163,65 @@ table { border-collapse: collapse; }
         return $translation;
     }
 
-    public function getUseridsAndNameAssociatedWithEmail($email) {
-        $email = strtolower($email);
-        $emailsToLookFor = preg_split("/\s*[,;]\s*/", $email);
-        $allUserids = [];
-        $name = "";
-        foreach (Application::getPids() as $pid) {
-            if (REDCapManagement::isActiveProject($pid)) {
-                $emails = Download::fastField($pid, "identifier_email");
-                if (Application::isPluginProject()) {
-                    $useridField = "identifier_vunet";
-                } else {
-                    $useridField = "identifier_userid";
-                }
-                $userids = Download::fastField($pid, $useridField);
-                $firstNames = Download::fastField($pid, "identifier_first_name");
-                $lastNames = Download::fastField($pid, "identifier_last_name");
-                foreach ($emails as $recordId => $fieldValue) {
-                    $recordEmails = $fieldValue ? preg_split("/\s*[,;]\s*/", $fieldValue) : [];
-                    foreach ($recordEmails as $recordEmail) {
-                        if ($recordEmail && in_array(strtolower($recordEmail), $emailsToLookFor)) {
-                            $name = $firstNames[$recordId]." ".$lastNames[$recordId];
-                            $aryOfUserids = $userids[$recordId] ? preg_split("/\s*[,;]\s*/", $userids[$recordId]) : [];
-                            foreach ($aryOfUserids as $u) {
-                                if ($u && !in_array($u, $allUserids)) {
-                                    $allUserids[] = $u;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return [$allUserids, $name];
-    }
 
-    public function hasUseridsAssociatedWithEmail($email) {
+	public function getUseridsAndNameAssociatedWithEmail($emailOrName) {
+		$allUserids = [];
+		$name = "";
+		if (REDCapManagement::isEmailOrEmails($emailOrName)) {
+			$email = strtolower($emailOrName);
+			$emailsToLookFor = preg_split("/\s*[,;]\s*/", $email);
+			foreach (Application::getPids() as $pid) {
+				if (REDCapManagement::isActiveProject($pid)) {
+					$emails = Download::fastField($pid, "identifier_email");
+					if (Application::isPluginProject()) {
+						$useridField = "identifier_vunet";
+					} else {
+						$useridField = "identifier_userid";
+					}
+					$userids = Download::fastField($pid, $useridField);
+					$firstNames = Download::fastField($pid, "identifier_first_name");
+					$lastNames = Download::fastField($pid, "identifier_last_name");
+					foreach ($emails as $recordId => $fieldValue) {
+						$recordEmails = preg_split("/\s*[,;]\s*/", $fieldValue, -1, PREG_SPLIT_NO_EMPTY);
+						foreach ($recordEmails as $recordEmail) {
+							if ($recordEmail && in_array(strtolower($recordEmail), $emailsToLookFor)) {
+								$name = $firstNames[$recordId]." ".$lastNames[$recordId];
+								$aryOfUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId], -1, PREG_SPLIT_NO_EMPTY);
+								$allUserids = array_unique(array_merge($allUserids, $aryOfUserids));
+							}
+						}
+					}
+				}
+			}
+		} else if ($emailOrName) {
+			$name = $emailOrName;
+			list($firstName, $lastName) = NameMatcher::splitName($name, 2);
+			foreach (Application::getPids() as $pid) {
+				if (REDCapManagement::isActiveProject($pid)) {
+					if (Application::isPluginProject()) {
+						$useridField = "identifier_vunet";
+					} else {
+						$useridField = "identifier_userid";
+					}
+					$userids = Download::fastField($pid, $useridField);
+					$firstNames = Download::fastField($pid, "identifier_first_name");
+					$lastNames = Download::fastField($pid, "identifier_last_name");
+					foreach ($firstNames as $recordId => $fn) {
+						$ln = $lastNames[$recordId] ?? "";
+						if (NameMatcher::matchName($fn, $ln, $firstName, $lastName)) {
+							$aryOfUserids = preg_split("/\s*[,;]\s*/", $userids[$recordId], -1, PREG_SPLIT_NO_EMPTY);
+							$allUserids = array_unique(array_merge($allUserids, $aryOfUserids));
+						}
+					}
+				}
+			}
+		}
+		return [$allUserids, $name];
+	}
+
+
+
+	public function hasUseridsAssociatedWithEmail($email) {
         $email = strtolower($email);
         foreach (Application::getPids() as $pid) {
             if (REDCapManagement::isActiveProject($pid)) {
@@ -1207,27 +1242,41 @@ table { border-collapse: collapse; }
         return FALSE;
     }
 
-    public function makeEmailHash($email, $tableNums) {
-        if (preg_match("/[,;]/", $email)) {
-            $emails = preg_split("/\s*[,;]\s*/", $email);
-        } else {
-            $emails = [$email];
-        }
-        foreach ($emails as $email) {
-            $key = "email_".$email."_".implode(",", $tableNums);
-            $previousValue = Application::getSetting($key, $this->pid);
-            if ($previousValue) {
-                return $previousValue;
-            }
-        }
-        $email = $emails[0];
-        $key = "email_".$email."_".implode(",", $tableNums);
-        $hash = substr(md5($this->pid.":".$email.":".implode(",", $tableNums)), 0, 64);
-        Application::saveSetting($key, $hash, $this->pid);
-        return $hash;
-    }
 
-    public function getTable1_4Header() {
+	public function makeEmailHash($emailOrName, $tableNums) {
+		if (REDCapManagement::isEmailOrEmails($emailOrName)) {
+			if (preg_match("/[,;]/", $emailOrName)) {
+				$emails = preg_split("/\s*[,;]\s*/", $emailOrName);
+			} else {
+				$emails = [$emailOrName];
+			}
+			foreach ($emails as $email) {
+				$key = "email_".$email."_".implode(",", $tableNums);
+				$previousValue = Application::getSetting($key, $this->pid);
+				if ($previousValue) {
+					return $previousValue;
+				}
+			}
+			$identifier = $emails[0];
+		} else if (!$emailOrName) {
+			return "badhash";
+		} else {
+			$key = "email_".$emailOrName."_".implode(",", $tableNums);
+			$previousValue = Application::getSetting($key, $this->pid);
+			if ($previousValue) {
+				return $previousValue;
+			}
+			$identifier = $emailOrName;
+		}
+		$key = "email_".$identifier."_".implode(",", $tableNums);
+		$hash = substr(md5($this->pid.":".$email.":".implode(",", $tableNums)), 0, 64);
+		Application::saveSetting($key, $hash, $this->pid);
+		return $hash;
+	}
+
+
+
+	public function getTable1_4Header() {
         $cssLink = Application::link("/css/career_dev.css", $this->pid);
         $jsLink = Application::link("/js/jquery.min.js", $this->pid);
         $csrfToken = Application::generateCSRFToken();
