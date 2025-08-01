@@ -13,62 +13,63 @@ use Vanderbilt\CareerDevLibrary\Cohorts;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Publications;
 
-class CareerDev {
-	public static $passedModule = NULL;
+class CareerDev
+{
+	public static $passedModule = null;
 
 	public static function getVersion() {
-		return "6.21.4";
+		return "6.22.0";
 	}
 
-    public static function getLocalhostPluginPid() {
-        if (Application::getServerEmail() == "scott.j.pearson@vumc.org") {
-            return 16;
-        }
-        return 16;
-    }
+	public static function getLocalhostPluginPid() {
+		if (Application::getServerEmail() == "scott.j.pearson@vumc.org") {
+			return 16;
+		}
+		return 16;
+	}
 
-    public static function getLatestReleaseVersion() {
-        $module = self::getModule();
-        $sql = "SELECT `value` FROM redcap_config WHERE field_name = ?";
-        $result = $module->query($sql, ['external_modules_updates_available']);
-        if ($row = $result->fetch_assoc()) {
-            $json = $row['value'] ?: "[]";
-            $updates = json_decode($json, TRUE);
-            foreach ($updates as $id => $info) {
-                if ($info["name"] == "flight_tracker") {
-                    return $info["version"] ?? "";
-                }
-            }
-        }
-        return "";
-    }
+	public static function getLatestReleaseVersion() {
+		$module = self::getModule();
+		$sql = "SELECT `value` FROM redcap_config WHERE field_name = ?";
+		$result = $module->query($sql, ['external_modules_updates_available']);
+		if ($row = $result->fetch_assoc()) {
+			$json = $row['value'] ?: "[]";
+			$updates = json_decode($json, true);
+			foreach ($updates as $id => $info) {
+				if ($info["name"] == "flight_tracker") {
+					return $info["version"] ?? "";
+				}
+			}
+		}
+		return "";
+	}
 
 	public static function getLockFile($pid) {
-	    $numHours = 4;
+		$numHours = 4;
 		return APP_PATH_TEMP.date("Ymdhis", time() + $numHours * 3600)."_6_makeSummary.$pid.lock";
 	}
 
-    public static function refreshRecordSummary($token, $server, $pid, $recordId, $throwException = FALSE) {
-        if (self::getSetting("auto_recalculate", $pid)) {
-            require_once(dirname(__FILE__) . "/drivers/6d_makeSummary.php");
-            try {
-                \Vanderbilt\CareerDevLibrary\makeSummary($token, $server, $pid, $recordId);
-            } catch (\Exception $e) {
-                if ($throwException) {
-                    throw $e;
-                } else {
-                    echo "<div class='centered padded red'>" . $e->getMessage() . "</div>\n";
-                }
-            }
-        }
-    }
+	public static function refreshRecordSummary($token, $server, $pid, $recordId, $throwException = false) {
+		if (self::getSetting("auto_recalculate", $pid)) {
+			require_once(dirname(__FILE__) . "/drivers/6d_makeSummary.php");
+			try {
+				\Vanderbilt\CareerDevLibrary\makeSummary($token, $server, $pid, $recordId);
+			} catch (\Exception $e) {
+				if ($throwException) {
+					throw $e;
+				} else {
+					echo "<div class='centered padded red'>" . $e->getMessage() . "</div>\n";
+				}
+			}
+		}
+	}
 
-    public static function getUnknown() {
+	public static function getUnknown() {
 		return "Unknown";
 	}
 
 	public static function isWrangler() {
-        $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
+		$page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
 		return preg_match("/wrangler/", $page);
 	}
 
@@ -77,194 +78,194 @@ class CareerDev {
 	}
 
 	public static function isRecordCopied($record) {
-		return FALSE;
+		return false;
 	}
 
-	public static function isCopiedProject($pid = NULL) {
-	    if ($pid) {
-            return self::getSetting("turn_off", $pid);
-        } else {
-            return self::getSetting("turn_off");
-        }
+	public static function isCopiedProject($pid = null) {
+		if ($pid) {
+			return self::getSetting("turn_off", $pid);
+		} else {
+			return self::getSetting("turn_off");
+		}
 	}
 
 	public static function getSourcePid($destPid) {
-	    if (self::isCopiedProject($destPid)) {
-	        if ($sourcePid = self::getSetting("sourcePid", $destPid)) {
-	            return $sourcePid;
-            }
-	        $module = self::getModule();
-	        foreach ($module->getPids() as $pid) {
-	            if (REDCapManagement::isActiveProject($pid)) {
-	                $token = self::getSetting("token", $pid);
-	                $server = self::getSetting("server", $pid);
-                    $cohorts = new Cohorts($token, $server, $module);
-                    foreach ($cohorts->getCohortNames() as $cohort) {
-                        $destPid2 = $cohorts->getReadonlyPortalValue($cohort, "pid");
-                        if ($destPid2 == $destPid) {
-                            $sourcePid = $pid;
-                            self::saveSetting("sourcePid", $sourcePid, $destPid);
-                            return $sourcePid;
-                        }
-                    }
-                }
-            }
-        }
-	    return "";
-    }
+		if (self::isCopiedProject($destPid)) {
+			if ($sourcePid = self::getSetting("sourcePid", $destPid)) {
+				return $sourcePid;
+			}
+			$module = self::getModule();
+			foreach ($module->getPids() as $pid) {
+				if (REDCapManagement::isActiveProject($pid)) {
+					$token = self::getSetting("token", $pid);
+					$server = self::getSetting("server", $pid);
+					$cohorts = new Cohorts($token, $server, $module);
+					foreach ($cohorts->getCohortNames() as $cohort) {
+						$destPid2 = $cohorts->getReadonlyPortalValue($cohort, "pid");
+						if ($destPid2 == $destPid) {
+							$sourcePid = $pid;
+							self::saveSetting("sourcePid", $sourcePid, $destPid);
+							return $sourcePid;
+						}
+					}
+				}
+			}
+		}
+		return "";
+	}
 
-	public static function getSites($all = TRUE) {
-        $sites = [
-            "NIH RePORTER" => "api.reporter.nih.gov",
-            "PubMed" => "eutils.ncbi.nlm.nih.gov",
-            "PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
-            "iCite" => "icite.od.nih.gov",
-    	    "ORCID" => "pub.orcid.org",
-            "Statistics Reporting" => "redcap.vumc.org",
-            "Altmetric" => "api.altmetric.com",
-            "Patents View (US Patent Office)" => "api.patentsview.org",
-            "NSF Grants" => "www.research.gov",
-            "ERIC" => "api.ies.ed.gov",
-            "Dept. of Ed. Grants" => "ies.ed.gov",
-        ];
-        if ($all || self::isScopusEnabled()) {
-            $sites["Scopus (API)"] = "api.elsevier.com";
-            $sites["Scopus (Dev)"] = "dev.elsevier.com";
-        }
-        if ($all || self::isWOSEnabled()) {
-            $sites["Web of Science"] = "ws.isiknowledge.com";
-        }
-        return $sites;
-    }
+	public static function getSites($all = true) {
+		$sites = [
+			"NIH RePORTER" => "api.reporter.nih.gov",
+			"PubMed" => "eutils.ncbi.nlm.nih.gov",
+			"PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
+			"iCite" => "icite.od.nih.gov",
+			"ORCID" => "pub.orcid.org",
+			"Statistics Reporting" => "redcap.vumc.org",
+			"Altmetric" => "api.altmetric.com",
+			"Patents View (US Patent Office)" => "api.patentsview.org",
+			"NSF Grants" => "www.research.gov",
+			"ERIC" => "api.ies.ed.gov",
+			"Dept. of Ed. Grants" => "ies.ed.gov",
+		];
+		if ($all || self::isScopusEnabled()) {
+			$sites["Scopus (API)"] = "api.elsevier.com";
+			$sites["Scopus (Dev)"] = "dev.elsevier.com";
+		}
+		if ($all || self::isWOSEnabled()) {
+			$sites["Web of Science"] = "ws.isiknowledge.com";
+		}
+		return $sites;
+	}
 
-    public static function isWOSEnabled() {
-	    $pid = self::getPid();
-	    if ($pid) {
-            list($userid, $passwd) = WebOfScience::getCredentials($pid);
-            if ($userid && $passwd) {
-                return TRUE;
-            }
-        }
-	    return FALSE;
-    }
+	public static function isWOSEnabled() {
+		$pid = self::getPid();
+		if ($pid) {
+			list($userid, $passwd) = WebOfScience::getCredentials($pid);
+			if ($userid && $passwd) {
+				return true;
+			}
+		}
+		return false;
+	}
 
-    public static function isScopusEnabled($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
-        if (self::getSetting("scopus_api_key", $pid)) {
-	        return TRUE;
-        }
-	    return FALSE;
-    }
+	public static function isScopusEnabled($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
+		if (self::getSetting("scopus_api_key", $pid)) {
+			return true;
+		}
+		return false;
+	}
 
-    public static function getSiteListHTML() {
-        $sites = self::getSites();
-        $html = "<ul>\n";
-        foreach ($sites as $site => $domain) {
-            $html .= "<li>$site ($domain)</li>\n";
-        }
-        $html .= "</ul>\n";
-        return $html;
-    }
+	public static function getSiteListHTML() {
+		$sites = self::getSites();
+		$html = "<ul>\n";
+		foreach ($sites as $site => $domain) {
+			$html .= "<li>$site ($domain)</li>\n";
+		}
+		$html .= "</ul>\n";
+		return $html;
+	}
 
-    public static function getIntroductoryFromEmail($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
-        return self::getSetting("introductory_from", $pid);;
+	public static function getIntroductoryFromEmail($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
+		return self::getSetting("introductory_from", $pid);
 	}
 
 	public static function getEmailName($record) {
 		return "initial_survey_$record";
 	}
 
-    public static function getGrantClasses() {
-        return [
-            "T" => "Training Grant (T)",
-            "K" => "Career Development Grant (K)",
-            "Other" => "Other (e.g., not related to a grant)",
-        ];
-    }
+	public static function getGrantClasses() {
+		return [
+			"T" => "Training Grant (T)",
+			"K" => "Career Development Grant (K)",
+			"Other" => "Other (e.g., not related to a grant)",
+		];
+	}
 
-    public static function getServerClasses() {
-        return [
-            "test" => "Test/Development",
-            "prod" => "Production Server",
-        ];
-    }
+	public static function getServerClasses() {
+		return [
+			"test" => "Test/Development",
+			"prod" => "Production Server",
+		];
+	}
 
-    public static function log($mssg, $pid = FALSE) {
-	    if (!$mssg) {
-	        return;
-        }
-	    $pid = Sanitizer::sanitizePid($pid);
-	    if (self::isLocalhost()) {
-            $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
-	        if (
-	            isset($_GET['test'])
-                || !preg_match('/reporting/', $page)
-            ) {
-                $mssg = Sanitizer::sanitizeWithoutStrippingHTML($mssg, FALSE);
-                if ($pid) {
-                    error_log("$pid: $mssg");
-                    // echo "$pid: $mssg\n";
-                } else {
-                    error_log($mssg);
-                    // echo "$mssg\n";
-                }
-            }
-	        return;
-        }
-        if (isset($_GET['test'])) {
-            $mssg = Sanitizer::sanitizeWithoutStrippingHTML($mssg, FALSE);
-            echo $mssg . "<br>\n";
-        } else {
-            if (!is_array($pid)) {
-                $pids = [$pid];
-            } else if (!$pid) {
-                $pid = self::getPid();
-                if ($pid) {
-                    $pids = [$pid];
-                } else {
-                    $pids = [];
-                    if (self::isVanderbilt()) {
-                        error_log($mssg);
-                    }
-                }
-            } else {
-                # $pid is an array
-                $pids = $pid;
-            }
-            $module = self::getModule();
-            if ($module) {
-                foreach ($pids as $pid) {
-                    if ($pid) {
-                        $params = ["project_id" => $pid];
-                        $module->log($mssg, $params);
-                        if (self::isVanderbilt()) {
-                            $currTime = date("Y-m-d H:i:s");
-                            error_log($pid." ($currTime): ".$mssg);
-                        }
-                    } else if (self::isVanderbilt()) {
-                        error_log($mssg);
-                    }
-                }
-            } else if (self::isVanderbilt()) {
-                error_log($mssg);
-            }
-        }
+	public static function log($mssg, $pid = false) {
+		if (!$mssg) {
+			return;
+		}
+		$pid = Sanitizer::sanitizePid($pid);
+		if (self::isLocalhost()) {
+			$page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
+			if (
+				isset($_GET['test'])
+				|| !preg_match('/reporting/', $page)
+			) {
+				$mssg = Sanitizer::sanitizeWithoutStrippingHTML($mssg, false);
+				if ($pid) {
+					error_log("$pid: $mssg");
+					// echo "$pid: $mssg\n";
+				} else {
+					error_log($mssg);
+					// echo "$mssg\n";
+				}
+			}
+			return;
+		}
+		if (isset($_GET['test'])) {
+			$mssg = Sanitizer::sanitizeWithoutStrippingHTML($mssg, false);
+			echo $mssg . "<br>\n";
+		} else {
+			if (!is_array($pid)) {
+				$pids = [$pid];
+			} elseif (!$pid) {
+				$pid = self::getPid();
+				if ($pid) {
+					$pids = [$pid];
+				} else {
+					$pids = [];
+					if (self::isVanderbilt()) {
+						error_log($mssg);
+					}
+				}
+			} else {
+				# $pid is an array
+				$pids = $pid;
+			}
+			$module = self::getModule();
+			if ($module) {
+				foreach ($pids as $pid) {
+					if ($pid) {
+						$params = ["project_id" => $pid];
+						$module->log($mssg, $params);
+						if (self::isVanderbilt()) {
+							$currTime = date("Y-m-d H:i:s");
+							error_log($pid." ($currTime): ".$mssg);
+						}
+					} elseif (self::isVanderbilt()) {
+						error_log($mssg);
+					}
+				}
+			} elseif (self::isVanderbilt()) {
+				error_log($mssg);
+			}
+		}
 	}
 
 	public static function isREDCap() {
 		$rootPage = $_SERVER['PHP_SELF'] ?? "";
-		if (strpos($rootPage, "ExternalModules") !== FALSE) {
-			return FALSE;
+		if (strpos($rootPage, "ExternalModules") !== false) {
+			return false;
 		}
-		if (strpos($rootPage, APP_PATH_WEBROOT) === FALSE) {
-			return FALSE;
+		if (strpos($rootPage, APP_PATH_WEBROOT) === false) {
+			return false;
 		}
-		return TRUE;
+		return true;
 	}
 
 	public static function isHelpOn() {
@@ -272,147 +273,147 @@ class CareerDev {
 	}
 
 	public static function getCurrPage() {
-	    if (isset($_GET['page'])) {
-            return REDCapManagement::sanitize($_GET['page']).".php";
-        }
-	    return "";
+		if (isset($_GET['page'])) {
+			return REDCapManagement::sanitize($_GET['page']).".php";
+		}
+		return "";
 	}
 
 	public static function isFAQ() {
 		$currPage = self::getCurrPage();
-		$faqs = array("help/faq.php", "help/how.php", "help/why.php");
+		$faqs = ["help/faq.php", "help/how.php", "help/why.php"];
 		if (in_array($currPage, $faqs)) {
-			return TRUE;
+			return true;
 		}
-		return FALSE;
+		return false;
 	}
 
 	public static function setPid($pid) {
-	    // self::log("Setting pid to $pid", $pid);
-        $pid = Sanitizer::sanitizePid($pid);
-        $_GET['pid'] = $pid;
-        $_GET['project_id'] = $pid;
+		// self::log("Setting pid to $pid", $pid);
+		$pid = Sanitizer::sanitizePid($pid);
+		$_GET['pid'] = $pid;
+		$_GET['project_id'] = $pid;
 		self::$pid = $pid;
 	}
 
-    public static function unsetPid() {
-        unset($_GET['pid']);
-        unset($_GET['project_id']);
-        self::$pid = NULL;
-    }
+	public static function unsetPid() {
+		unset($_GET['pid']);
+		unset($_GET['project_id']);
+		self::$pid = null;
+	}
 
-    private static function getProtocol() {
-        $isHTTPS = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off'));
-        $serverPort = $_SERVER['SERVER_PORT'] ?? 0;
-        $isSSLPort = $serverPort == 443;
-        if ($isHTTPS || $isSSLPort) {
-            return "https://";
-        } else if (isset($_GET['pid']) && $_GET['pid']) {
-            $myserver = self::getSetting("server", Sanitizer::sanitizePid($_GET['pid']));
-            if (preg_match("/^https:/i", $myserver)) {
-                # assume https because the setup server requests it
-                # this facilitates unusual REDCap cloud setups where SSL is enabled for the URL
-                # but the apache server just uses http because a proxy handles the encryption
-                return "https://";
-            }
-        }
-        return "http://";
-    }
+	private static function getProtocol() {
+		$isHTTPS = ((!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] != 'off'));
+		$serverPort = $_SERVER['SERVER_PORT'] ?? 0;
+		$isSSLPort = $serverPort == 443;
+		if ($isHTTPS || $isSSLPort) {
+			return "https://";
+		} elseif (isset($_GET['pid']) && $_GET['pid']) {
+			$myserver = self::getSetting("server", Sanitizer::sanitizePid($_GET['pid']));
+			if (preg_match("/^https:/i", $myserver)) {
+				# assume https because the setup server requests it
+				# this facilitates unusual REDCap cloud setups where SSL is enabled for the URL
+				# but the apache server just uses http because a proxy handles the encryption
+				return "https://";
+			}
+		}
+		return "http://";
+	}
 
-    private static function constructThisURL() {
-        if (defined("SERVER_NAME") && defined("APP_PATH_WEBROOT_FULL")) {
-            # UC-Denver has an unusual 3-server setup where a separate app-server runs the PHP and then
-            # feeds the HTML to a separate web server. Thus for them SERVER_NAME != $_SERVER['HTTP_HOST']
-            # Therefore, I'm using SERVER_NAME from REDCap if it exists; if not, HTTP_HOST will be used as a backup
-            $host = SERVER_NAME;
-            $fullWebroot = APP_PATH_WEBROOT_FULL;
-            if (preg_match("/^https:/i", $fullWebroot)) {
-                $protocol = "https://";
-            } else if (preg_match("/^http:/i", $fullWebroot)) {
-                $protocol = "http://";
-            } else {
-                $protocol = self::getProtocol();
-            }
-        } else {
-            $host = $_SERVER['HTTP_HOST'] ?? "";
-            $protocol = self::getProtocol();
-        }
-        $uri = $_SERVER['REQUEST_URI'] ?? "";
-        return $protocol.$host.$uri;
-    }
+	private static function constructThisURL() {
+		if (defined("SERVER_NAME") && defined("APP_PATH_WEBROOT_FULL")) {
+			# UC-Denver has an unusual 3-server setup where a separate app-server runs the PHP and then
+			# feeds the HTML to a separate web server. Thus for them SERVER_NAME != $_SERVER['HTTP_HOST']
+			# Therefore, I'm using SERVER_NAME from REDCap if it exists; if not, HTTP_HOST will be used as a backup
+			$host = SERVER_NAME;
+			$fullWebroot = APP_PATH_WEBROOT_FULL;
+			if (preg_match("/^https:/i", $fullWebroot)) {
+				$protocol = "https://";
+			} elseif (preg_match("/^http:/i", $fullWebroot)) {
+				$protocol = "http://";
+			} else {
+				$protocol = self::getProtocol();
+			}
+		} else {
+			$host = $_SERVER['HTTP_HOST'] ?? "";
+			$protocol = self::getProtocol();
+		}
+		$uri = $_SERVER['REQUEST_URI'] ?? "";
+		return $protocol.$host.$uri;
+	}
 
-    public static function isPageAllowedToBypassUserRights($page) {
-        if (!$page) {
-            return FALSE;
-        }
+	public static function isPageAllowedToBypassUserRights($page) {
+		if (!$page) {
+			return false;
+		}
 
-        $allowedDirectories = [
-            "/^portal\//",
-            "/^mentor\/dashboard/",
-            "/^mentor\/config/",
-            "/^mstp\/reviewAllMSTP/",
-            "/^reporting\/tables2-4WithAuth/",
-        ];
-        foreach ($allowedDirectories as $regex) {
-            if (preg_match($regex, $page)) {
-                return TRUE;
-            }
-        }
+		$allowedDirectories = [
+			"/^portal\//",
+			"/^mentor\/dashboard/",
+			"/^mentor\/config/",
+			"/^mstp\/reviewAllMSTP/",
+			"/^reporting\/tables2-4WithAuth/",
+		];
+		foreach ($allowedDirectories as $regex) {
+			if (preg_match($regex, $page)) {
+				return true;
+			}
+		}
 
-        return FALSE;
-    }
+		return false;
+	}
 
 	public static function getPid($tokenForPid = "") {
-        $token = $tokenForPid;
+		$token = $tokenForPid;
 		if ($token) {
 			$pid = self::getPidFromToken($token);
 			if (!$pid && self::$firstPidError) {
-                self::$firstPidError = FALSE;
-			    self::log("WARNING: Could not find pid $pid for $token: ".json_encode(debug_backtrace()));
-            }
+				self::$firstPidError = false;
+				self::log("WARNING: Could not find pid $pid for $token: ".json_encode(debug_backtrace()));
+			}
 			return $pid;
 		}
 		if (self::$pid) {
 			return self::$pid;
 		}
-        $thisUrl = self::constructThisURL();
-        if (preg_match("/project_id=\d+/", $thisUrl) && preg_match("/pid=\d+/", $thisUrl)) {
-            throw new \Exception("Invalid URL");
-        }
+		$thisUrl = self::constructThisURL();
+		if (preg_match("/project_id=\d+/", $thisUrl) && preg_match("/pid=\d+/", $thisUrl)) {
+			throw new \Exception("Invalid URL");
+		}
 
-		$requestedPid = FALSE;
- 		if (isset($_GET['pid'])) {
+		$requestedPid = false;
+		if (isset($_GET['pid'])) {
 			# least reliable because REDCap can sometimes change this value in other crons
-            $module = self::getModule();
-            if ($module) {
-                $requestedPid = Sanitizer::sanitize($module->getProjectId($_GET['pid']));
-            } else {
-                $requestedPid = Sanitizer::sanitizePid($_GET['pid']);
-            }
-		} else if (isset($_GET['project_id']) && self::isPageAllowedToBypassUserRights($_GET['page'] ?? "")) {
-            $requestedPid = Sanitizer::sanitizePid($_GET['project_id']);
-        }
- 		if ($requestedPid && is_numeric($requestedPid)) {
- 		    $module = self::getModule();
- 		    $possiblePids = $module->getPids();
- 		    foreach ($possiblePids as $possiblePid) {
- 		        if ($possiblePid == $requestedPid) {
- 		            return $possiblePid;
-                }
-            }
-        }
-		return NULL;
+			$module = self::getModule();
+			if ($module) {
+				$requestedPid = Sanitizer::sanitize($module->getProjectId($_GET['pid']));
+			} else {
+				$requestedPid = Sanitizer::sanitizePid($_GET['pid']);
+			}
+		} elseif (isset($_GET['project_id']) && self::isPageAllowedToBypassUserRights($_GET['page'] ?? "")) {
+			$requestedPid = Sanitizer::sanitizePid($_GET['project_id']);
+		}
+		if ($requestedPid && is_numeric($requestedPid)) {
+			$module = self::getModule();
+			$possiblePids = $module->getPids();
+			foreach ($possiblePids as $possiblePid) {
+				if ($possiblePid == $requestedPid) {
+					return $possiblePid;
+				}
+			}
+		}
+		return null;
 	}
 
 	public static function getGeneralSettingName() {
 		return "ft_data";
 	}
 
-	public static function getInternalKLength($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
-        $value = self::getSetting("internal_k_length", $pid);
+	public static function getInternalKLength($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
+		$value = self::getSetting("internal_k_length", $pid);
 		if ($value) {
 			return $value;
 		} else {
@@ -420,11 +421,11 @@ class CareerDev {
 		}
 	}
 
-	public static function getK12KL2Length($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
-        $value = self::getSetting("k12_kl2_length", $pid);
+	public static function getK12KL2Length($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
+		$value = self::getSetting("k12_kl2_length", $pid);
 		if ($value) {
 			return $value;
 		} else {
@@ -432,11 +433,11 @@ class CareerDev {
 		}
 	}
 
-	public static function getIndividualKLength($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
-        $value = self::getSetting("individual_k_length", $pid);
+	public static function getIndividualKLength($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
+		$value = self::getSetting("individual_k_length", $pid);
 		if ($value) {
 			return $value;
 		} else {
@@ -452,20 +453,20 @@ class CareerDev {
 	public static function parseGetParams($url) {
 		$comps = parse_url($url);
 		if (isset($comps['query'])) {
-            $pairs = preg_split("/\&/", $comps['query']);
-            $params = [];
-            foreach ($pairs as $pair) {
-                $a = preg_split("/=/", $pair);
-                if (count($a) == 2) {
-                    $params[$a[0]] = urldecode($a[1]);
-                } else if (count($a) == 1) {
-                    $params[$a[0]] = TRUE;
-                } else {
-                    throw new \Exception("GET parameter '$pair' could not be interpreted!");
-                }
-            }
-            return $params;
-        }
+			$pairs = preg_split("/\&/", $comps['query']);
+			$params = [];
+			foreach ($pairs as $pair) {
+				$a = preg_split("/=/", $pair);
+				if (count($a) == 2) {
+					$params[$a[0]] = urldecode($a[1]);
+				} elseif (count($a) == 1) {
+					$params[$a[0]] = true;
+				} else {
+					throw new \Exception("GET parameter '$pair' could not be interpreted!");
+				}
+			}
+			return $params;
+		}
 		return [];
 	}
 
@@ -473,7 +474,7 @@ class CareerDev {
 		return "<a href='https://redcap.vumc.org/plugins/career_dev/consortium/'><img src='".self::link("img/flight_tracker_logo_medium.png")."' alt='Flight Tracker for Scholars'></a>";
 	}
 
-	public static function link($relativeUrl, $pid = "", $withWebroot = FALSE) {
+	public static function link($relativeUrl, $pid = "", $withWebroot = false) {
 		return self::getLink($relativeUrl, $pid, $withWebroot);
 	}
 
@@ -491,190 +492,190 @@ class CareerDev {
 
 	# used in the plugin version
 	public static function getPluginModule() {
-	    return self::getModule();
-    }
+		return self::getModule();
+	}
 
 	public static function getModule() {
 		global $module;
 
 		if ($module) {
 			return $module;
-		} else if (self::$passedModule) {
+		} elseif (self::$passedModule) {
 			return self::$passedModule;
-		} else if (!Application::isWebBrowser()) {
-            $prefix = self::getPrefix();
-            return ExternalModules::getModuleInstance($prefix);
-        }
-		return NULL;
+		} elseif (!Application::isWebBrowser()) {
+			$prefix = self::getPrefix();
+			return ExternalModules::getModuleInstance($prefix);
+		}
+		return null;
 	}
 
-    public static function getRootDir($withWebroot = FALSE) {
-        global $server;
-        $directoryDir = "/plugins/";
-        if ($withWebroot && $server) {
-            $newWebroot = str_replace("/api/", "", $server);
-        } else if (Application::isLocalhost()) {
-            $newWebroot = "https://localhost/redcap";
-        } else {
-            $newWebroot = "";
-        }
-        return $newWebroot.$directoryDir."career_dev";
-    }
+	public static function getRootDir($withWebroot = false) {
+		global $server;
+		$directoryDir = "/plugins/";
+		if ($withWebroot && $server) {
+			$newWebroot = str_replace("/api/", "", $server);
+		} elseif (Application::isLocalhost()) {
+			$newWebroot = "https://localhost/redcap";
+		} else {
+			$newWebroot = "";
+		}
+		return $newWebroot.$directoryDir."career_dev";
+	}
 
-    private static function getThisPageURL($project_id, $isPortalPage) {
-        if (Application::isPluginProject($project_id)) {
-            $uri = $_SERVER['REQUEST_URI'] ?? "";
-            $protocol = self::getProtocol();
-            $host = $_SERVER['HTTP_HOST'] ?? "";
-            $fileLocation = explode("?", $uri)[0];
-            $url = $protocol . $host . $fileLocation;
-            if ($project_id) {
-                $url .= "?pid=".urlencode($project_id);
-            } else {
-                $url .= "?pid=".urlencode(Sanitizer::sanitizePid($_GET['pid']));
-            }
-            if (isset($_GET['limitPubs'])) {
-                $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-                if ($limitYear) {
-                    $url .= "&limitPubs=".$limitYear;
-                }
-            }
-            if (isset($_GET['showFlagsOnly'])) {
-                $url .= "&showFlagsOnly";
-            }
-            return $url;
-        } else {
-            $fullURL = self::constructThisURL();
-            $url = explode("?", $fullURL)[0];
-            $paramKeys = ["page", "pid", "prefix", "project_id", "limitPubs", "showFlagsOnly"];
-            $initialSeparator = "?";
-            foreach ($paramKeys as $key) {
-                if (isset($_GET[$key])) {
-                    if ($_GET[$key]) {
-                        $url .= "$initialSeparator$key=".urlencode(urldecode(Sanitizer::sanitize($_GET[$key])));
-                    } else {
-                        $url .= "$initialSeparator$key";
-                    }
-                    $initialSeparator = "&";
-                }
-            }
-            if (preg_match("/pid=\d+/", $url) && preg_match("/project_id=\d+/", $url)) {
-                $url = preg_replace("/&pid=\d+/", "", $url);
-            }
-            if ($isPortalPage) {
-                self::clearPIDsFromParams($url);
-            }
-            return $url;
-        }
-    }
+	private static function getThisPageURL($project_id, $isPortalPage) {
+		if (Application::isPluginProject($project_id)) {
+			$uri = $_SERVER['REQUEST_URI'] ?? "";
+			$protocol = self::getProtocol();
+			$host = $_SERVER['HTTP_HOST'] ?? "";
+			$fileLocation = explode("?", $uri)[0];
+			$url = $protocol . $host . $fileLocation;
+			if ($project_id) {
+				$url .= "?pid=".urlencode($project_id);
+			} else {
+				$url .= "?pid=".urlencode(Sanitizer::sanitizePid($_GET['pid']));
+			}
+			if (isset($_GET['limitPubs'])) {
+				$limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+				if ($limitYear) {
+					$url .= "&limitPubs=".$limitYear;
+				}
+			}
+			if (isset($_GET['showFlagsOnly'])) {
+				$url .= "&showFlagsOnly";
+			}
+			return $url;
+		} else {
+			$fullURL = self::constructThisURL();
+			$url = explode("?", $fullURL)[0];
+			$paramKeys = ["page", "pid", "prefix", "project_id", "limitPubs", "showFlagsOnly"];
+			$initialSeparator = "?";
+			foreach ($paramKeys as $key) {
+				if (isset($_GET[$key])) {
+					if ($_GET[$key]) {
+						$url .= "$initialSeparator$key=".urlencode(urldecode(Sanitizer::sanitize($_GET[$key])));
+					} else {
+						$url .= "$initialSeparator$key";
+					}
+					$initialSeparator = "&";
+				}
+			}
+			if (preg_match("/pid=\d+/", $url) && preg_match("/project_id=\d+/", $url)) {
+				$url = preg_replace("/&pid=\d+/", "", $url);
+			}
+			if ($isPortalPage) {
+				self::clearPIDsFromParams($url);
+			}
+			return $url;
+		}
+	}
 
-    private static function getPluginPageURL($http, $project_id, $withWebroot, $isMentorAgreementPage) {
-        if ($isMentorAgreementPage) {
-            $pidParamName = "project_id";
-        } else {
-            $pidParamName = "pid";
-        }
-        $http = $http."?$pidParamName=".$project_id;
-        return self::getRootDir($withWebroot)."/".$http;
-    }
+	private static function getPluginPageURL($http, $project_id, $withWebroot, $isMentorAgreementPage) {
+		if ($isMentorAgreementPage) {
+			$pidParamName = "project_id";
+		} else {
+			$pidParamName = "pid";
+		}
+		$http = $http."?$pidParamName=".$project_id;
+		return self::getRootDir($withWebroot)."/".$http;
+	}
 
-    private static function clearPIDsFromParams(&$url) {
-        $projectIds = ["pid", "project_id"];
-        foreach ($projectIds as $id) {
-            if (preg_match("/&$id=/", $url)) {
-                $url = preg_replace("/&$id=\d+/", "", $url);
-            } else if (preg_match("/$id=\d+&/", $url)) {
-                $url = preg_replace("/$id=\d+&/", "", $url);
-            }
-        }
-    }
+	private static function clearPIDsFromParams(&$url) {
+		$projectIds = ["pid", "project_id"];
+		foreach ($projectIds as $id) {
+			if (preg_match("/&$id=/", $url)) {
+				$url = preg_replace("/&$id=\d+/", "", $url);
+			} elseif (preg_match("/$id=\d+&/", $url)) {
+				$url = preg_replace("/$id=\d+&/", "", $url);
+			}
+		}
+	}
 
-    public static function getModulePageURL($http, $project_id, $isMentorAgreementPage, $isPortalPage, $module) {
-        $page = preg_replace("/^\//", "", $http);
-        $url = $module->getUrl($page);
-        if (
-            (isset($_GET['project_id']) && is_numeric($_GET['project_id']) && !isset($_GET['pid']))
-            || $isMentorAgreementPage
-        ) {
-            if (preg_match("/pid=/", $url)) {
-                $url = preg_replace("/pid=/", "project_id=", $url);
-            } else if (is_numeric($_GET['project_id'])) {
-                $validPids = Application::getPids();
-                foreach ($validPids as $possiblePid) {
-                    if ($possiblePid == $project_id) {
-                        $url .= "&project_id=".$possiblePid;
-                    }
-                }
-            } else if (!preg_match("/project_id=/", $url)) {
-                $url .= "&project_id=$project_id";
-            }
-        } else if ($isPortalPage) {
-            self::clearPIDsFromParams($url);
-            return $url;
-        }
-        if ($project_id && is_numeric($project_id)) {
-            $url = preg_replace("/pid=\d+/", "pid=$project_id", $url);
-            $url = preg_replace("/project_id=\d+/", "project_id=$project_id", $url);
-            if (!preg_match("/pid=/", $url) && !preg_match("/project_id=/", $url)) {
-                $url .= "&pid=$project_id";
-            }
-        }
-        return $url;
-    }
+	public static function getModulePageURL($http, $project_id, $isMentorAgreementPage, $isPortalPage, $module) {
+		$page = preg_replace("/^\//", "", $http);
+		$url = $module->getUrl($page);
+		if (
+			(isset($_GET['project_id']) && is_numeric($_GET['project_id']) && !isset($_GET['pid']))
+			|| $isMentorAgreementPage
+		) {
+			if (preg_match("/pid=/", $url)) {
+				$url = preg_replace("/pid=/", "project_id=", $url);
+			} elseif (is_numeric($_GET['project_id'])) {
+				$validPids = Application::getPids();
+				foreach ($validPids as $possiblePid) {
+					if ($possiblePid == $project_id) {
+						$url .= "&project_id=".$possiblePid;
+					}
+				}
+			} elseif (!preg_match("/project_id=/", $url)) {
+				$url .= "&project_id=$project_id";
+			}
+		} elseif ($isPortalPage) {
+			self::clearPIDsFromParams($url);
+			return $url;
+		}
+		if ($project_id && is_numeric($project_id)) {
+			$url = preg_replace("/pid=\d+/", "pid=$project_id", $url);
+			$url = preg_replace("/project_id=\d+/", "project_id=$project_id", $url);
+			if (!preg_match("/pid=/", $url) && !preg_match("/project_id=/", $url)) {
+				$url .= "&pid=$project_id";
+			}
+		}
+		return $url;
+	}
 
-    private static function getREDCapSignupURL() {
-        if (self::isVanderbilt()) {
-            return 'https://redcap.vumc.org/surveys/?s=L4R3NJ8XME';
-        } else {
-            global $homepage_contact_url, $homepage_contact_email;
-            if ($homepage_contact_url) {
-                return $homepage_contact_url;
-            } else {
-                return "mailto:$homepage_contact_email";
-            }
-        }
-    }
+	private static function getREDCapSignupURL() {
+		if (self::isVanderbilt()) {
+			return 'https://redcap.vumc.org/surveys/?s=L4R3NJ8XME';
+		} else {
+			global $homepage_contact_url, $homepage_contact_email;
+			if ($homepage_contact_url) {
+				return $homepage_contact_url;
+			} else {
+				return "mailto:$homepage_contact_email";
+			}
+		}
+	}
 
-    public static function getLink($relativeUrl, $pid = "", $withWebroot = FALSE) {
-        $relativeUrl = preg_replace("/^\//", "", $relativeUrl);
-        if ($relativeUrl == "js/jquery.min.js") {
-            return Application::getJQueryURL();
-        }
-        $isMentorAgreementPage = (
-            (
-                preg_match("/^mentor\//", $relativeUrl)
-                && !preg_match("/^mentor\/dashboard/", $relativeUrl)
-                && !preg_match("/^mentor\/config/", $relativeUrl)
-            )
-            || preg_match("/^reporting\/tables2-4WithAuth.php/", $relativeUrl)
-            || preg_match("/^mstp\/reviewAllMSTP.php/", $relativeUrl)
-        );
-        $isPortalPage = preg_match("/^portal\//", $relativeUrl);
-        if (!$pid) {
-            $pid = self::getPID();
-        }
-        if ($relativeUrl == "this") {
-            return self::getThisPageURL($pid, $isPortalPage);
-        } else if ($relativeUrl == "signupToREDCap") {
-            return self::getREDCapSignupURL();
-        } else if (Application::isPluginProject($pid)) {
-            return self::getPluginPageURL($relativeUrl, $pid, $withWebroot, $isMentorAgreementPage);
-        } else if ($module = self::getModule()) {
-            return self::getModulePageURL($relativeUrl, $pid, $isMentorAgreementPage, $isPortalPage, $module);
-        }
+	public static function getLink($relativeUrl, $pid = "", $withWebroot = false) {
+		$relativeUrl = preg_replace("/^\//", "", $relativeUrl);
+		if ($relativeUrl == "js/jquery.min.js") {
+			return Application::getJQueryURL();
+		}
+		$isMentorAgreementPage = (
+			(
+				preg_match("/^mentor\//", $relativeUrl)
+				&& !preg_match("/^mentor\/dashboard/", $relativeUrl)
+				&& !preg_match("/^mentor\/config/", $relativeUrl)
+			)
+			|| preg_match("/^reporting\/tables2-4WithAuth.php/", $relativeUrl)
+			|| preg_match("/^mstp\/reviewAllMSTP.php/", $relativeUrl)
+		);
+		$isPortalPage = preg_match("/^portal\//", $relativeUrl);
+		if (!$pid) {
+			$pid = self::getPID();
+		}
+		if ($relativeUrl == "this") {
+			return self::getThisPageURL($pid, $isPortalPage);
+		} elseif ($relativeUrl == "signupToREDCap") {
+			return self::getREDCapSignupURL();
+		} elseif (Application::isPluginProject($pid)) {
+			return self::getPluginPageURL($relativeUrl, $pid, $withWebroot, $isMentorAgreementPage);
+		} elseif ($module = self::getModule()) {
+			return self::getModulePageURL($relativeUrl, $pid, $isMentorAgreementPage, $isPortalPage, $module);
+		}
 		return "";
 	}
 
-    public static function getVFRSToken() {
-        $file = Application::getCredentialsDir()."/career_dev/vfrs.php";
-        if (file_exists($file)) {
-            include($file);
-            return $vfrsToken ?? "";
-        }
-        return "";
-    }
+	public static function getVFRSToken() {
+		$file = Application::getCredentialsDir()."/career_dev/vfrs.php";
+		if (file_exists($file)) {
+			include($file);
+			return $vfrsToken ?? "";
+		}
+		return "";
+	}
 
-    public static function getREDCapDir() {
+	public static function getREDCapDir() {
 		if (APP_PATH_WEBROOT) {
 			# get rid of trailing /'s per convention
 			return preg_replace("/\/$/", "", APP_PATH_WEBROOT);
@@ -686,65 +687,65 @@ class CareerDev {
 		return count(self::getInstitutions());
 	}
 
-	public static function getInstitutions($pid = NULL, $searchOnly = TRUE) {
-        if ($searchOnly) {
-            $shortInst = self::getShortInstitution($pid);
-            $longInst = self::getInstitution($pid);
+	public static function getInstitutions($pid = null, $searchOnly = true) {
+		if ($searchOnly) {
+			$shortInst = self::getShortInstitution($pid);
+			$longInst = self::getInstitution($pid);
 
-            if (preg_match("/[,;]/", $shortInst)) {
-                $shortInstitutions = preg_split("/\s*[,;]\s*/", $shortInst);
-            } else {
-                $shortInstitutions = [$shortInst];
-            }
-            if (preg_match("/[,;]/", $longInst)) {
-                $longInstitutions = preg_split("/\s*[,;]\s*/", $longInst);
-            } else {
-                $longInstitutions = [$longInst];
-            }
-            $institutions = array_unique(array_merge($shortInstitutions, $longInstitutions));
+			if (preg_match("/[,;]/", $shortInst)) {
+				$shortInstitutions = preg_split("/\s*[,;]\s*/", $shortInst);
+			} else {
+				$shortInstitutions = [$shortInst];
+			}
+			if (preg_match("/[,;]/", $longInst)) {
+				$longInstitutions = preg_split("/\s*[,;]\s*/", $longInst);
+			} else {
+				$longInstitutions = [$longInst];
+			}
+			$institutions = array_unique(array_merge($shortInstitutions, $longInstitutions));
 
-            $otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
-            foreach ($otherInsts as $otherInst) {
-                if ($otherInst && !in_array($otherInst, $institutions)) {
-                    $institutions[] = $otherInst;
-                }
-            }
-            Sanitizer::decodeSpecialHTML($institutions);
+			$otherInsts = preg_split("/\s*[,\/]\s*/", self::getSetting("other_institutions", $pid));
+			foreach ($otherInsts as $otherInst) {
+				if ($otherInst && !in_array($otherInst, $institutions)) {
+					$institutions[] = $otherInst;
+				}
+			}
+			Sanitizer::decodeSpecialHTML($institutions);
 
-            return $institutions;
-        } else {
-            $displayInstitutionList = self::getSetting("display_institutions", $pid);
-            if (!$displayInstitutionList) {
-                return self::getInstitutions($pid, TRUE);
-            } else {
-                return preg_split("/\s*[,;]\s*/", trim($displayInstitutionList));
-            }
-        }
+			return $institutions;
+		} else {
+			$displayInstitutionList = self::getSetting("display_institutions", $pid);
+			if (!$displayInstitutionList) {
+				return self::getInstitutions($pid, true);
+			} else {
+				return preg_split("/\s*[,;]\s*/", trim($displayInstitutionList));
+			}
+		}
 	}
 
 	public static function isEligible($pid) {
 		if ($pid == 73405) {
-			$userids = array("pearsosj", "newmanpd", "vanhoose");
+			$userids = ["pearsosj", "newmanpd", "vanhoose"];
 		} else {
-			$userids = array("pearsosj", "newmanpd", "heltonre");
+			$userids = ["pearsosj", "newmanpd", "heltonre"];
 		}
 		return in_array(USERID, $userids);
 	}
 
 	private static function getCredentialsFile() {
-	    return Application::getCredentialsDir()."/career_dev/credentials.php";
-    }
+		return Application::getCredentialsDir()."/career_dev/credentials.php";
+	}
 
 	# gets the pid of a token if a PID context is applicable
 	# returns current PID if no token is specified and if using the current server
 	# otherwise returns empty string
 	public static function getPidFromToken($localToken = "") {
-        global $pid, $token, $server, $info;
-	    if (file_exists(self::getCredentialsFile())) {
-	        include(self::getCredentialsFile());
-        }
+		global $pid, $token, $server, $info;
+		if (file_exists(self::getCredentialsFile())) {
+			include(self::getCredentialsFile());
+		}
 		if (!$localToken) {
-			if (strpos($server, SERVER_NAME) !== FALSE) {
+			if (strpos($server, SERVER_NAME) !== false) {
 				return $pid;
 			}
 		}
@@ -752,74 +753,74 @@ class CareerDev {
 			return $pid;
 		}
 		foreach ($info as $key => $row) {
-			if (($row['token'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
+			if (($row['token'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== false)) {
 				return $row['pid'];
 			}
-            if (isset($row['mentorToken']) && ($row['mentorToken'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== FALSE)) {
-                return $row['mentorPid'];
-            }
+			if (isset($row['mentorToken']) && ($row['mentorToken'] == $localToken) && (strpos($row['server'], SERVER_NAME) !== false)) {
+				return $row['mentorPid'];
+			}
 		}
 		if ($relevantPid = self::getPidFromDatabase($localToken)) {
-            return $relevantPid;
-        }
+			return $relevantPid;
+		}
 		return "";
 	}
 
-    # to distinguish between Vanderbilt servers (which pull straight from the git repo) and those from the REDCap repo
-    # flightTracker = Vanderbilt
-    # flight_tracker = from REDCap Repo
+	# to distinguish between Vanderbilt servers (which pull straight from the git repo) and those from the REDCap repo
+	# flightTracker = Vanderbilt
+	# flight_tracker = from REDCap Repo
 	public static function getPrefix() {
-        if (self::isVanderbilt() || self::isLocalhost()) {
-            return "flightTracker";
-        } else {
-            return "flight_tracker";
-        }
-    }
+		if (self::isVanderbilt() || self::isLocalhost()) {
+			return "flightTracker";
+		} else {
+			return "flight_tracker";
+		}
+	}
 
 	public static function getModuleId() {
-	    return ExternalModules::getIdForPrefix(self::getPrefix());
-    }
+		return ExternalModules::getIdForPrefix(self::getPrefix());
+	}
 
 	public static function getPidFromDatabase($localToken) {
-	    if (isset(self::$tokenTranslateToPid[$localToken])) {
-	        return self::$tokenTranslateToPid[$localToken];
-        } else if (isset(self::$mentorTokenTranslateToPid[$localToken])) {
-	        return self::$mentorTokenTranslateToPid[$localToken];
-        }
-        $fieldsToSearch = ["token", "mentor_token"];
-	    $prefix = self::getPrefix();
-        if ($prefix) {
-            $module = self::getModule();
-            foreach ($fieldsToSearch as $field) {
-                $sql = "SELECT s.project_id AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE s.key = ? AND m.directory_prefix = ? AND s.value = ?";
-                $q = $module->query($sql, [$field, $prefix, $localToken]);
-                $numRows = $q->num_rows;
-                $currentPid = FALSE;
-                while ($row = $q->fetch_assoc()) {
-                    $currentPid = $row["project_id"];
-                    break;
-                }
-                if ($currentPid) {
-                    if ($field == "token") {
-                        self::$tokenTranslateToPid[$localToken] = $currentPid;
-                        return $currentPid;
-                    } else if ($field == "mentor_token") {
-                        # mentor_token
-                        $mentorPid = self::getSetting('mentor_pid', $currentPid);
-                        self::$mentorTokenTranslateToPid[$localToken] = $mentorPid;
-                        return $mentorPid;
-                    } else {
-                        throw new \Exception("Looking through invalid field $field");
-                    }
-                } else {
-                    self::log("Could not find $field; found $numRows rows from $sql");
-                }
-            }
-        } else {
-            throw new \Exception("Could not find module-id");
-        }
-        return "";
-    }
+		if (isset(self::$tokenTranslateToPid[$localToken])) {
+			return self::$tokenTranslateToPid[$localToken];
+		} elseif (isset(self::$mentorTokenTranslateToPid[$localToken])) {
+			return self::$mentorTokenTranslateToPid[$localToken];
+		}
+		$fieldsToSearch = ["token", "mentor_token"];
+		$prefix = self::getPrefix();
+		if ($prefix) {
+			$module = self::getModule();
+			foreach ($fieldsToSearch as $field) {
+				$sql = "SELECT s.project_id AS project_id FROM redcap_external_module_settings AS s INNER JOIN redcap_external_modules AS m ON m.external_module_id = s.external_module_id WHERE s.key = ? AND m.directory_prefix = ? AND s.value = ?";
+				$q = $module->query($sql, [$field, $prefix, $localToken]);
+				$numRows = $q->num_rows;
+				$currentPid = false;
+				while ($row = $q->fetch_assoc()) {
+					$currentPid = $row["project_id"];
+					break;
+				}
+				if ($currentPid) {
+					if ($field == "token") {
+						self::$tokenTranslateToPid[$localToken] = $currentPid;
+						return $currentPid;
+					} elseif ($field == "mentor_token") {
+						# mentor_token
+						$mentorPid = self::getSetting('mentor_pid', $currentPid);
+						self::$mentorTokenTranslateToPid[$localToken] = $mentorPid;
+						return $mentorPid;
+					} else {
+						throw new \Exception("Looking through invalid field $field");
+					}
+				} else {
+					self::log("Could not find $field; found $numRows rows from $sql");
+				}
+			}
+		} else {
+			throw new \Exception("Could not find module-id");
+		}
+		return "";
+	}
 
 	public static function getHelpLink() {
 		return self::link("/help/index.php");
@@ -834,111 +835,111 @@ class CareerDev {
 	}
 
 	public static function saveCurrentDate($setting, $pid, $retriesLeft = 5) {
-        $field = self::getGeneralSettingName();
+		$field = self::getGeneralSettingName();
 		$ary = self::getSetting($field, $pid);
 		if (!is_array($ary)) {
-		    $ary = [];
-        }
+			$ary = [];
+		}
 		$ary[$setting] = date("Y-m-d");
-        try {
-            self::setSetting($field, $ary, $pid);
-        } catch (\Exception $e) {
-            if (
-                ($e->getMessage() == "Prepared statement execution failed")
-                && ($retriesLeft > 0)
-            ) {
-                if ($retriesLeft >= 3) {
-                    sleep(5);
-                } else {
-                    sleep(30);
-                }
-                Application::log("Retrying saving $field; $retriesLeft retries remaining", $pid);
-                self::saveCurrentDate($field, $pid, $retriesLeft - 1);
-            }
-        }
+		try {
+			self::setSetting($field, $ary, $pid);
+		} catch (\Exception $e) {
+			if (
+				($e->getMessage() == "Prepared statement execution failed")
+				&& ($retriesLeft > 0)
+			) {
+				if ($retriesLeft >= 3) {
+					sleep(5);
+				} else {
+					sleep(30);
+				}
+				Application::log("Retrying saving $field; $retriesLeft retries remaining", $pid);
+				self::saveCurrentDate($field, $pid, $retriesLeft - 1);
+			}
+		}
 	}
 
 	public static function clearDate($setting, $pid) {
-        $ary = self::getSetting(self::getGeneralSettingName(), $pid);
-        if (isset($ary[$setting])) {
-            unset($ary[$setting]);
-            self::setSetting(self::getGeneralSettingName(), $ary, $pid);
-        }
-    }
+		$ary = self::getSetting(self::getGeneralSettingName(), $pid);
+		if (isset($ary[$setting])) {
+			unset($ary[$setting]);
+			self::setSetting(self::getGeneralSettingName(), $ary, $pid);
+		}
+	}
 
-	public static function saveSetting($field, $value, $pid = NULL) {
-	    self::setSetting($field, $value, $pid);
-    }
+	public static function saveSetting($field, $value, $pid = null) {
+		self::setSetting($field, $value, $pid);
+	}
 
-	public static function setSetting($field, $value, $pid = NULL) {
+	public static function setSetting($field, $value, $pid = null) {
 		$module = self::getModule();
 		if ($module) {
-		    if (!$pid) {
-                $pid = self::getPid();
-            }
+			if (!$pid) {
+				$pid = self::getPid();
+			}
 			if ($pid) {
-                $module->setProjectSetting($field, $value, $pid);
-            } else {
-                throw new \Exception("Could not find pid!");
-            }
+				$module->setProjectSetting($field, $value, $pid);
+			} else {
+				throw new \Exception("Could not find pid!");
+			}
 		} else {
 			throw new \Exception("Could not find module!");
 		}
 	}
 
 	public static function getAllSettings($pid = "") {
-        $module = self::getModule();
-        if ($module) {
-            if (!$pid) {
-                $pid = self::getPid();
-            }
-            if ($pid) {
-                return $module->getProjectSettings($pid);
-            }
-        }
-        return [];
-    }
+		$module = self::getModule();
+		if ($module) {
+			if (!$pid) {
+				$pid = self::getPid();
+			}
+			if ($pid) {
+				return $module->getProjectSettings($pid);
+			}
+		}
+		return [];
+	}
 
-	public static function getSetting($field, $pid = NULL) {
-        if (($field == "pubmed_api_key") && Application::isVanderbilt() && file_exists(self::getCredentialsFile())) {
-            include(self::getCredentialsFile());
-            if (isset($pubmedAPIKey) && $pubmedAPIKey) {
-                return $pubmedAPIKey;
-            }
-        }
+	public static function getSetting($field, $pid = null) {
+		if (($field == "pubmed_api_key") && Application::isVanderbilt() && file_exists(self::getCredentialsFile())) {
+			include(self::getCredentialsFile());
+			if (isset($pubmedAPIKey) && $pubmedAPIKey) {
+				return $pubmedAPIKey;
+			}
+		}
 		$module = Application::getFlightTrackerModule();
 		if ($module) {
-		    if (!$pid) {
-                $pid = self::getPid();
-            }
+			if (!$pid) {
+				$pid = self::getPid();
+			}
 			$value = $module->getProjectSetting($field, $pid);
-		    if ($value) {
-		        return $value;
-            } else if ($field == "default_from") {
-		        return "noreply.flighttracker@vumc.org";
-            }
+			if ($value) {
+				return $value;
+			} elseif ($field == "default_from") {
+				return "noreply.flighttracker@vumc.org";
+			}
 		}
 		return "";
 	}
 
-	public static function getTimezone($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
+	public static function getTimezone($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
 		return self::getSetting("timezone", $pid);
 	}
 
-	public static function getShortInstitution($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
+	public static function getShortInstitution($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
 		return self::getSetting("short_institution", $pid);
 	}
 
-	public static function getInstitution($pid = NULL) {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
+	public static function getInstitution($pid = null) {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
 		return self::getSetting("institution", $pid);
 	}
 
@@ -947,11 +948,11 @@ class CareerDev {
 	}
 
 	public static function getMenuBackgrounds() {
-		return array(
-                "View" => "view.css",
-                "Grants" => "view.css",
-                "Pubs" => "view.css",
-                "Patents" => "view.css",
+		return [
+				"View" => "view.css",
+				"Grants" => "view.css",
+				"Pubs" => "view.css",
+				"Patents" => "view.css",
 				"Scholars" => "scholars.css",
 				"Dashboards" => "dashboards.css",
 				"Cohorts / Filters" => "cohorts.css",
@@ -962,14 +963,14 @@ class CareerDev {
 				"Wrangle" => "wrangle.css",
 				"Help" => "help.css",
 				"Env" => "env.css",
-				);
+				];
 	}
 
 	public static function getBackgroundCSS() {
 		$currPage = urlencode(REDCapManagement::sanitize($_GET['page']));
 		$bgs = self::getMenuBackgrounds();
 
-        $page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
+		$page = (isset($_GET['page']) && !is_array($_GET['page'])) ? $_GET['page'] : "";
 		if (isset($_GET['headers']) && ($_GET['headers'] == "false")) {
 			return self::link("/css/white.css");
 		}
@@ -981,18 +982,18 @@ class CareerDev {
 		if (preg_match("/search\//", $page)) {
 			$default = self::link("/css/env.css");
 		}
-        if (preg_match("/reporting\//", $page)) {
-            $default = self::link("/css/general.css");
-        }
-        if (preg_match("/dashboard\//", $page)) {
-            $default = self::link("/css/dashboards.css");
-        }
+		if (preg_match("/reporting\//", $page)) {
+			$default = self::link("/css/general.css");
+		}
+		if (preg_match("/dashboard\//", $page)) {
+			$default = self::link("/css/dashboards.css");
+		}
 
 		foreach ($bgs as $menu => $css) {
 			if ($css && ($menu != "Environment")) {
 				$menuItems = self::getMenu($menu);
 				foreach ($menuItems as $itemName => $menuPage) {
-					if ((strpos($menuPage, $currPage) !== FALSE) && !isREDCap()) {
+					if ((strpos($menuPage, $currPage) !== false) && !isREDCap()) {
 						return self::link("/css/".$css);
 					}
 				}
@@ -1025,193 +1026,193 @@ class CareerDev {
 	}
 
 	public static function isVanderbilt() {
-	    if (Application::isLocalhost()) {
-	        return TRUE;
-        }
+		if (Application::isLocalhost()) {
+			return true;
+		}
 		return preg_match("/vanderbilt.edu/", SERVER_NAME) || preg_match("/vumc.org/", SERVER_NAME);
 	}
 
 	public static function getRepeatingFormsAndLabels($metadata = []) {
-	    return DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
-    }
+		return DataDictionaryManagement::getRepeatingFormsAndLabels($metadata);
+	}
 
-    public static function getRelevantChoices() {
-	    $itemChoices = [
-            "scholars" => "Initial Survey (self-survey)",
-            "followup" => "Followup Survey (self-survey)",
-            "custom" => "New Custom Grants (REDCap)",
-            "modify" => "Manual Modification Field (REDCap)",
-            "manual" => "Manual Form (REDCap)",
-            "pubmed" => "PubMed (online database)",
-            "reporter" => "Federal Reporter (online database)",
-            "exporter" => "NIH ExPORTER (online database)",
-            "nih_reporter" => "NIH RePORTER (online database)",
-            "nsf" => "NSF Grants",
-            "ies" => "Dept. of Ed. Grants",
-        ];
-	    if (self::isVanderbilt()) {
-            $itemChoices = array_merge($itemChoices, [
-                "coeus" => "COEUS (online database)",
-                "vfrs" => "VFRS Survey (self-survey)",
-                "accessvu" => "AccessVU (online database)",
-                "ldap" => "University Directory",
-                "vera" => "VERA (online database)",
-            ]);
-        } else {
-            $itemChoices = array_merge($itemChoices, [
-                "local_gms" => "Institutional Grants Management System",
-            ]);
-        }
-	    return $itemChoices;
-    }
+	public static function getRelevantChoices() {
+		$itemChoices = [
+			"scholars" => "Initial Survey (self-survey)",
+			"followup" => "Followup Survey (self-survey)",
+			"custom" => "New Custom Grants (REDCap)",
+			"modify" => "Manual Modification Field (REDCap)",
+			"manual" => "Manual Form (REDCap)",
+			"pubmed" => "PubMed (online database)",
+			"reporter" => "Federal Reporter (online database)",
+			"exporter" => "NIH ExPORTER (online database)",
+			"nih_reporter" => "NIH RePORTER (online database)",
+			"nsf" => "NSF Grants",
+			"ies" => "Dept. of Ed. Grants",
+		];
+		if (self::isVanderbilt()) {
+			$itemChoices = array_merge($itemChoices, [
+				"coeus" => "COEUS (online database)",
+				"vfrs" => "VFRS Survey (self-survey)",
+				"accessvu" => "AccessVU (online database)",
+				"ldap" => "University Directory",
+				"vera" => "VERA (online database)",
+			]);
+		} else {
+			$itemChoices = array_merge($itemChoices, [
+				"local_gms" => "Institutional Grants Management System",
+			]);
+		}
+		return $itemChoices;
+	}
 
-    public static function isLocalhost() {
-        global $homepage_contact_email;
-	    return (SERVER_NAME == "localhost") && ($homepage_contact_email == "scott.j.pearson@vumc.org");
-    }
+	public static function isLocalhost() {
+		global $homepage_contact_email;
+		return (SERVER_NAME == "localhost" || SERVER_NAME == '127.0.0.1') && (in_array($homepage_contact_email, ["scott.j.pearson@vumc.org", "andrew.c.johnson@vumc.org", "email@yoursite.edu"]));
+	}
 
-    public static function isTestGroup($pid) {
-        return (
-            Application::isServer("redcap.vanderbilt.edu")
-            || Application::isServer("redcap.vumc.org")
-        )
-        && in_array($pid, [105963, 101785]);
-    }
+	public static function isTestGroup($pid) {
+		return (
+			Application::isServer("redcap.vanderbilt.edu")
+			|| Application::isServer("redcap.vumc.org")
+		)
+		&& in_array($pid, [105963, 101785]);
+	}
 
-    public static function duplicateAllSettings($srcPid, $destPid, $defaultSettings = []) {
-	    if ($srcPid && $destPid) {
-	        self::setPid($srcPid);
-	        $module = self::getModule();
-	        $srcSettings = $module->getProjectSettings($srcPid);
-	        self::log("Got srcSettings for $srcPid ".substr( json_encode($srcSettings), 0, 50))."...";
-            $destSettings = $defaultSettings;
-            $skip = ["version"];
-            foreach ($srcSettings as $setting => $value) {
-                $v = isset($value['value']) ? $value['value'] : $value;
-                if (!isset($destSettings[$setting]) && !isset($value['system_value']) && !in_array($setting, $skip)) {
-                    $destSettings[$setting] = $v;
-                }
-            }
+	public static function duplicateAllSettings($srcPid, $destPid, $defaultSettings = []) {
+		if ($srcPid && $destPid) {
+			self::setPid($srcPid);
+			$module = self::getModule();
+			$srcSettings = $module->getProjectSettings($srcPid);
+			self::log("Got srcSettings for $srcPid ".substr(json_encode($srcSettings), 0, 50))."...";
+			$destSettings = $defaultSettings;
+			$skip = ["version"];
+			foreach ($srcSettings as $setting => $value) {
+				$v = isset($value['value']) ? $value['value'] : $value;
+				if (!isset($destSettings[$setting]) && !isset($value['system_value']) && !in_array($setting, $skip)) {
+					$destSettings[$setting] = $v;
+				}
+			}
 
-            foreach ($destSettings as $setting => $value) {
-                self::saveSetting($setting, $value, $destPid);
-            }
-            self::log("Copied ".count($destSettings)." settings from $srcPid to $destPid");
-        } else {
-	        throw new \Exception("Could not find source PID $srcPid or destination PID $destPid");
-        }
-    }
+			foreach ($destSettings as $setting => $value) {
+				self::saveSetting($setting, $value, $destPid);
+			}
+			self::log("Copied ".count($destSettings)." settings from $srcPid to $destPid");
+		} else {
+			throw new \Exception("Could not find source PID $srcPid or destination PID $destPid");
+		}
+	}
 
-    public static function has($instrument, $pid = "") {
-        if (!$pid) {
-            $pid = self::getPid();
-        }
-        if ($instrument == "patent") {
-            return Download::hasField($pid, "patent_number", $instrument);
-        }
-        if ($instrument == "mentoring_agreement") {
-            return Download::hasField($pid, "mentoring_frequency", $instrument);
-        }
-        return FALSE;
-    }
+	public static function has($instrument, $pid = "") {
+		if (!$pid) {
+			$pid = self::getPid();
+		}
+		if ($instrument == "patent") {
+			return Download::hasField($pid, "patent_number", $instrument);
+		}
+		if ($instrument == "mentoring_agreement") {
+			return Download::hasField($pid, "mentoring_frequency", $instrument);
+		}
+		return false;
+	}
 
-	public static function getMenu($menuName, $pid = NULL) {
+	public static function getMenu($menuName, $pid = null) {
 		$pid = $pid ?: self::getPid();
 		$r = self::getREDCapDir();
-        if ($menuName == "Grants") {
-            $ary = [
-                "Stylized Table of Career-Defining Awards" => self::link("/charts/makeGrantTable.php")."&CDA",
-                "Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
-                "List of All Grants" => self::link("/charts/makeGrantTable.php")."&plain",
-                "Table of All Grants" => self::link("/charts/grantTable.php"),
-                "Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
+		if ($menuName == "Grants") {
+			$ary = [
+				"Stylized Table of Career-Defining Awards" => self::link("/charts/makeGrantTable.php")."&CDA",
+				"Stylized Table of Grants" => self::link("/charts/makeGrantTable.php"),
+				"List of All Grants" => self::link("/charts/makeGrantTable.php")."&plain",
+				"Table of All Grants" => self::link("/charts/grantTable.php"),
+				"Social Network of Grant Collaboration" => self::link("/socialNetwork/collaboration.php")."&grants",
 //                "Compare Data Sources" => self::link("/tablesAndLists/dataSourceCompare.php"),
-                "Financial ROI for Grants" => self::link("/financial/roi.php"),
-                "Search Grants" => self::link("/search/index.php"),
-                "Search Within a Timespan" => self::link("/search/inTimespan.php"),
-                "Grant Budgets, Active at a Time" => self::link("/financial/budget.php")."&timespan=active",
-                "All-Time Grant Budgets" => self::link("/financial/budget.php")."&timespan=all",
-            ];
-            if (self::isVanderbilt()) {
-                $ary["Grant Success Rates"] = self::link("/successRate.php");
-                // $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
-            }
-            return $ary;
-        }
-        if (in_array($menuName, ["Pubs", "Publications"])) {
-            $ary = [
-                "Publication List" => self::link("/publications/view.php"),
-                "Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
-                "Social Network of Collaborations" => self::link("/socialNetwork/collaboration.php"),
-                "Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
-                "Search Publications" => self::link("/search/publications.php"),
-                "Publication Impact Measures" => self::link("/publications/scoreDistribution.php"),
-                "Multi-Site Collaborations" => self::link("/socialNetwork/multisiteCollaborations.php"),
-                "Public Access Compliance" => self::link("/publications/complianceReport.php"),
-                "Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
-            ];
-            return $ary;
-        }
-        if ($menuName == "View") {
-            $token = self::getSetting("token", $pid);
-            $server = self::getSetting("server", $pid);
-            $switches = new FeatureSwitches($token, $server, $pid);
-            $ary = [
-                "Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
-                "REDCap Reports" => $r."/DataExport/index.php",
-                "Missingness Report" => self::link("/tablesAndLists/missingness.php"),
-            ];
-            if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
-                $ary["Patent Viewer"] = self::link("patents/view.php");
-            }
-            return $ary;
-        }
+				"Financial ROI for Grants" => self::link("/financial/roi.php"),
+				"Search Grants" => self::link("/search/index.php"),
+				"Search Within a Timespan" => self::link("/search/inTimespan.php"),
+				"Grant Budgets, Active at a Time" => self::link("/financial/budget.php")."&timespan=active",
+				"All-Time Grant Budgets" => self::link("/financial/budget.php")."&timespan=all",
+			];
+			if (self::isVanderbilt()) {
+				$ary["Grant Success Rates"] = self::link("/successRate.php");
+				// $ary['Evaluate Grant Submissions'] = self::link("/submissions.php");
+			}
+			return $ary;
+		}
+		if (in_array($menuName, ["Pubs", "Publications"])) {
+			$ary = [
+				"Publication List" => self::link("/publications/view.php"),
+				"Brag: Publications Widget" => self::link("/brag.php")."&showHeaders",
+				"Social Network of Collaborations" => self::link("/socialNetwork/collaboration.php"),
+				"Word Clouds of Publications" => self::link("/publications/wordCloud.php"),
+				"Search Publications" => self::link("/search/publications.php"),
+				"Publication Impact Measures" => self::link("/publications/scoreDistribution.php"),
+				"Multi-Site Collaborations" => self::link("/socialNetwork/multisiteCollaborations.php"),
+				"Public Access Compliance" => self::link("/publications/complianceReport.php"),
+				"Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
+			];
+			return $ary;
+		}
+		if ($menuName == "View") {
+			$token = self::getSetting("token", $pid);
+			$server = self::getSetting("server", $pid);
+			$switches = new FeatureSwitches($token, $server, $pid);
+			$ary = [
+				"Demographics Table" => self::link("/charts/makeDemographicsTable.php"),
+				"REDCap Reports" => $r."/DataExport/index.php",
+				"Missingness Report" => self::link("/tablesAndLists/missingness.php"),
+			];
+			if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
+				$ary["Patent Viewer"] = self::link("patents/view.php");
+			}
+			return $ary;
+		}
 		if (($menuName == "Mentoring") || ($menuName == "Mentor") || ($menuName == "Mentors")) {
-            $token = self::getSetting("token", $pid);
-            $server = self::getSetting("server", $pid);
-            $switches = new FeatureSwitches($token, $server, $pid);
-		    $ary = [];
-            $isMSTP = Application::isMSTP($pid);
-		    if (self::has("mentoring_agreement", $pid) && $switches->isOnForProject("Mentee-Mentor")) {
-                if (!$isMSTP) {
-                    $ary["Start Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
-                }
-                $ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
-                $ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
-            }
+			$token = self::getSetting("token", $pid);
+			$server = self::getSetting("server", $pid);
+			$switches = new FeatureSwitches($token, $server, $pid);
+			$ary = [];
+			$isMSTP = Application::isMSTP($pid);
+			if (self::has("mentoring_agreement", $pid) && $switches->isOnForProject("Mentee-Mentor")) {
+				if (!$isMSTP) {
+					$ary["Start Mentee-Mentor Agreements"] = self::link("/mentor/config.php");
+				}
+				$ary["Mentee-Mentor Agreements Dashboard"] = self::link("/mentor/dashboard.php");
+				$ary["Add Mentors for Existing Scholars"] = self::link("addMentor.php");
+			}
 			$ary = array_merge($ary, [
 					"List of Current Mentors" => self::link("/tablesAndLists/mentorList.php"),
 					"Mentor Performance" => self::link("/tablesAndLists/mentorConversion.php"),
 					"All Mentor Data (CSV)" => self::link("/tablesAndLists/generateMentoringCSV.php"),
-                    "Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
-                    "Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
-                ]);
-            if ($isMSTP) {
-                $ary["Configure IDP Reviewers for Classes"] = self::link("mstp/addMSTPReviewers.php");
-                $ary["Start a MSTP Mentee-Mentor Agreement"] = self::link("mstp/mma.php");
-            }
-		    return $ary;
+					"Trainees Becoming Mentors" => self::link("/tablesAndLists/trainee2mentor.php"),
+					"Publications with Mentor(s)" => self::link("/publications/pubsWithMentor.php"),
+				]);
+			if ($isMSTP) {
+				$ary["Configure IDP Reviewers for Classes"] = self::link("mstp/addMSTPReviewers.php");
+				$ary["Start a MSTP Mentee-Mentor Agreement"] = self::link("mstp/mma.php");
+			}
+			return $ary;
 		}
 		if ($menuName == "Scholars") {
-            $ary = [
-                "Add a New Scholar" => self::link("/addNewScholar.php"),
-                "Scholar Profiles" => self::link("/profile.php"),
-                "Inactivity Report" => self::link("/inactive.php"),
-                "Search PubMed for New Institutions" => self::link("publications/checkForNewInstitutions.php"),
-            ];
-            $ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
-            $ary["View Email Log"] = self::link("/emailMgmt/log.php");
-            $ary["View Email Queue"] = self::link("/emailMgmt/viewQueue.php");
-            $ary["Who Has Responded to Surveys?"] = self::link("/emailMgmt/surveySubmissions.php");
-            $ary["Import General Data"] = self::link("/import.php");
-            $ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
-            if (self::isVanderbilt() && in_array($pid,[145767, 66635])) {
-                # special EFS projects
-                $ary["LDAP Lookup"] = "https://redcap.vumc.org/plugins/career_dev/LDAP/ldapLookup.php";
-            }
+			$ary = [
+				"Add a New Scholar" => self::link("/addNewScholar.php"),
+				"Scholar Profiles" => self::link("/profile.php"),
+				"Inactivity Report" => self::link("/inactive.php"),
+				"Search PubMed for New Institutions" => self::link("publications/checkForNewInstitutions.php"),
+			];
+			$ary["Configure an Email"] = self::link("/emailMgmt/configure.php");
+			$ary["View Email Log"] = self::link("/emailMgmt/log.php");
+			$ary["View Email Queue"] = self::link("/emailMgmt/viewQueue.php");
+			$ary["Who Has Responded to Surveys?"] = self::link("/emailMgmt/surveySubmissions.php");
+			$ary["Import General Data"] = self::link("/import.php");
+			$ary["Import Positions"] = self::link("/bulkImport.php") . "&positions";
+			if (self::isVanderbilt() && in_array($pid, [145767, 66635])) {
+				# special EFS projects
+				$ary["LDAP Lookup"] = "https://redcap.vumc.org/plugins/career_dev/LDAP/ldapLookup.php";
+			}
 
-            return $ary;
-        }
+			return $ary;
+		}
 		if ($menuName == "Dashboards") {
 			$ary = [
 					"Overall" => self::link("/dashboard/overall.php"),
@@ -1219,68 +1220,68 @@ class CareerDev {
 					"Grant Budgets" => self::link("/dashboard/grantBudgets.php"),
 					"Grant Budgets by Year" => self::link("/dashboard/grantBudgetsByYear.php"),
 					"Publications" => self::link("/dashboard/publicationsByCategory.php"),
-                    "Honors, Awards &amp; Activities" => self::link("/dashboard/activities.php"),
+					"Honors, Awards &amp; Activities" => self::link("/dashboard/activities.php"),
 					"Emails" => self::link("/dashboard/emails.php"),
 					"Demographics" => self::link("/dashboard/demographics.php"),
 					"Dates" => self::link("/dashboard/dates.php"),
 					"Resources" => self::link("/dashboard/resources.php"),
-            ];
+			];
 			if (self::has("mentoring_agreement", $pid)) {
-			    $ary["Mentee-Mentor Agreements"] = self::link("mentor/dashboard.php");
-            }
-            return $ary;
+				$ary["Mentee-Mentor Agreements"] = self::link("mentor/dashboard.php");
+			}
+			return $ary;
 		}
 		if (($menuName == "Cohorts / Filters") || ($menuName == "Cohorts")) {
-			return array(
+			return [
 					"Add/Modify a Cohort" => self::link("/cohorts/addCohort.php"),
 					"View Existing Cohorts" => self::link("/cohorts/viewCohorts.php"),
 					"Manage Cohorts" => self::link("/cohorts/manageCohorts.php"),
 					"Cohort Outcomes" => self::link("/cohorts/profile.php"),
 					"Export a Cohort" => self::link("/cohorts/exportCohort.php"),
-                    "View Cohort Metrics" => self::link("/cohorts/selectCohort.php"),
-                    "Hand-Pick a Cohort" => self::link("/cohorts/pickCohort.php"),
-					);
+					"View Cohort Metrics" => self::link("/cohorts/selectCohort.php"),
+					"Hand-Pick a Cohort" => self::link("/cohorts/pickCohort.php"),
+					];
 		}
 		if ($menuName == "General") {
 			return [
-                'NIH Reporting Table 1' => self::link("reporting/table1.php"),
-                'NIH Reporting Tables 2-4' => self::link("reporting/tables2-4/run/index.php"),
-                "NIH Reporting Tables 5 &amp; 8" => self::link("reporting/index.php"),
-                "Upload Prior NIH Reporting Tables" => self::link("reporting/upload_react/run/index.php"),
-                "List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
-                "Conversion Calculator" => self::link("/k2r/index.php"),
-                "Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),
-                "Configure Application" => self::link("/config.php"),
-                "Configure Summaries" => self::link("/config.php")."&order",
-                "Batch Queues" => self::link("batch.php"),
-                "Logging" => self::link("/log/index.php"),
-                "Custom Programming" => self::link("/changes/README.md"),
-                "Test Connectivity" => self::link("/testConnectivity.php"),
-                "Copy Project to Another Server" => self::link("/copyProject.php"),
-            ];
+				'NIH Reporting Table 1' => self::link("reporting/table1.php"),
+				'NIH Reporting Tables 2-4' => self::link("reporting/tables2-4/run/index.php"),
+				"NIH Reporting Tables 5 &amp; 8" => self::link("reporting/index.php"),
+				"Upload Prior NIH Reporting Tables" => self::link("reporting/upload_react/run/index.php"),
+				"List of Scholar Names" => self::link("/tablesAndLists/summaryNames.php"),
+				"Conversion Calculator" => self::link("/k2r/index.php"),
+				"Kaplan-Meier Conversion Success Curve" => self::link("/charts/kaplanMeierCurve.php"),
+				"Configure Application" => self::link("/config.php"),
+				"Configure Summaries" => self::link("/config.php")."&order",
+				"Batch Queues" => self::link("batch.php"),
+				"Logging" => self::link("/log/index.php"),
+				"Custom Programming" => self::link("/changes/README.md"),
+				"Test Connectivity" => self::link("/testConnectivity.php"),
+				"Copy Project to Another Server" => self::link("/copyProject.php"),
+			];
 		}
 		if ($menuName == "REDCap") {
 			return [
-                "REDCap Project" => $r."/index.php",
-                "My REDCap Projects" => APP_PATH_WEBROOT_FULL."index.php?action=myprojects",
-                "Add/Edit Records" => $r."/DataEntry/record_home.php",
-                "Export Data or View Reports" => $r."/DataExport/index.php",
-                "Create a New Report" => $r."/DataExport/index.php?create=1&addedit=1",
-                "Data Dictionary" => $r."/Design/data_dictionary_upload.php",
-                "Online Designer" => $r."/Design/online_designer.php",
-                "Logging" => $r."/Logging/index.php",
-                "API Playground" => $r."/API/playground.php",
-            ];
+				"REDCap Project" => $r."/index.php",
+				"My REDCap Projects" => APP_PATH_WEBROOT_FULL."index.php?action=myprojects",
+				"Add/Edit Records" => $r."/DataEntry/record_home.php",
+				"Export Data or View Reports" => $r."/DataExport/index.php",
+				"Create a New Report" => $r."/DataExport/index.php?create=1&addedit=1",
+				"Data Dictionary" => $r."/Design/data_dictionary_upload.php",
+				"Online Designer" => $r."/Design/online_designer.php",
+				"Logging" => $r."/Logging/index.php",
+				"API Playground" => $r."/API/playground.php",
+			];
 		}
 		if ($menuName == "Resources") {
 			return [
-                "Participation Roster" => self::link("/resources/add.php"),
-                "Participation Roster for All Projects" => self::link("/resources/add.php")."&allPids",
-                "Manage" => self::link("/resources/manage.php"),
-                "Dashboard Metrics" => self::link("/dashboard/resources.php"),
-                "Measure Resource ROI" => self::link("/resources/roi.php"),
-                "Scholar Resource Use" => self::link("/resources/table.php"),
-            ];
+				"Participation Roster" => self::link("/resources/add.php"),
+				"Participation Roster for All Projects" => self::link("/resources/add.php")."&allPids",
+				"Manage" => self::link("/resources/manage.php"),
+				"Dashboard Metrics" => self::link("/dashboard/resources.php"),
+				"Measure Resource ROI" => self::link("/resources/roi.php"),
+				"Scholar Resource Use" => self::link("/resources/table.php"),
+			];
 		}
 		if ($menuName == "Help") {
 			$currPage = self::getCurrPage();
@@ -1291,8 +1292,8 @@ class CareerDev {
 					"Why Use?" => self::link("/help/why.php"),
 					"How to Use?" => self::link("/help/how.php"),
 					"Introductory Video" => self::link("/help/intro.php"),
-                    "Full FAQ" => self::link("/help/faq.php"),
-                    "Codebook" => self::link("/help/Codebook.pdf"),
+					"Full FAQ" => self::link("/help/faq.php"),
+					"Codebook" => self::link("/help/Codebook.pdf"),
 					"How to Extend?" => self::link("/help/extend.php"),
 					"Brand Your Project" => self::link("/help/brand.php"),
 					// "Feedback" => self::link("/help/feedback.php"),
@@ -1303,130 +1304,130 @@ class CareerDev {
 			$token = self::getSetting("token", $pid);
 			$server = self::getSetting("server", $pid);
 			$switches = new FeatureSwitches($token, $server, $pid);
-            if ($switches->isOnForProject("Grants")) {
-                $ary["Add a Custom Grant"] = self::link("/customGrants.php");
-                $ary["Add Custom Grants by Bulk"] = self::link("/bulkImport.php")."&grants";
-                $ary["Grant Wrangler"] = self::link("/wrangler/index_new.php");
-            }
+			if ($switches->isOnForProject("Grants")) {
+				$ary["Add a Custom Grant"] = self::link("/customGrants.php");
+				$ary["Add Custom Grants by Bulk"] = self::link("/bulkImport.php")."&grants";
+				$ary["Grant Wrangler"] = self::link("/wrangler/index_new.php");
+			}
 			if ($switches->isOnForProject("Publications")) {
-                if (Publications::areFlagsOn($pid)) {
-                    $ary["Publication Flagger"] = self::link("/wrangler/include.php")."&wranglerType=FlagPublications";
-                } else {
-                    $ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
-                }
-                $ary["ORCID Wrangler"] = self::link("/wrangler/orcid.php");
-            }
-            if ($switches->isOnForProject("Grants")) {
-                $ary["Grant Lexical Translator"] = self::link("/lexicalTranslator.php");
-            }
-            $ary["Position Change Wrangler"] = self::link("/wrangler/positions.php");
+				if (Publications::areFlagsOn($pid)) {
+					$ary["Publication Flagger"] = self::link("/wrangler/include.php")."&wranglerType=FlagPublications";
+				} else {
+					$ary["Publication Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Publications";
+				}
+				$ary["ORCID Wrangler"] = self::link("/wrangler/orcid.php");
+			}
+			if ($switches->isOnForProject("Grants")) {
+				$ary["Grant Lexical Translator"] = self::link("/lexicalTranslator.php");
+			}
+			$ary["Position Change Wrangler"] = self::link("/wrangler/positions.php");
 			if (self::has("patent", $pid) && $switches->isOnForProject("Patents")) {
-                $ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
-            }
-            if (!empty(self::getAdditionalSurveys($pid))) {
-                $ary["Share Survey Data"] = self::link("/wrangler/shareSurveys.php");
-            }
-            $ary["Convert Honors &amp; Awards"] = self::link("/wrangler/convertHonors.php");
+				$ary["Patent Wrangler"] = self::link("/wrangler/include.php")."&wranglerType=Patents";
+			}
+			if (!empty(self::getAdditionalSurveys($pid))) {
+				$ary["Share Survey Data"] = self::link("/wrangler/shareSurveys.php");
+			}
+			$ary["Convert Honors &amp; Awards"] = self::link("/wrangler/convertHonors.php");
 			return $ary;
 		}
 		return [];
 	}
 
-    public static function getAdditionalSurveys($pid) {
-        $surveys = DataDictionaryManagement::getSurveys($pid);
-        $defaultSurveys = DataDictionaryManagement::getDefaultSurveysAndLabels($pid);
-        $additionalSurveys = [];
-        foreach ($surveys as $instrument => $label) {
-            if (!isset($defaultSurveys[$instrument])) {
-                $additionalSurveys[$instrument] = $label;
-            }
-        }
-        return $additionalSurveys;
-    }
+	public static function getAdditionalSurveys($pid) {
+		$surveys = DataDictionaryManagement::getSurveys($pid);
+		$defaultSurveys = DataDictionaryManagement::getDefaultSurveysAndLabels($pid);
+		$additionalSurveys = [];
+		foreach ($surveys as $instrument => $label) {
+			if (!isset($defaultSurveys[$instrument])) {
+				$additionalSurveys[$instrument] = $label;
+			}
+		}
+		return $additionalSurveys;
+	}
 
-    # intentionally missing many minor Altmetric fields
-    private static $citationFields = [
-        "record_id",
-        "citation_pmid",
-        "citation_doi",
-        "citation_include",
-        "citation_flagged",
-        "citation_ts",
-        "citation_full_citation",
-        "citation_source",
-        "citation_pmcid",
-        "citation_authors",
-        "citation_title",
-        "citation_pub_types",
-        "citation_mesh_terms",
-        "citation_journal",
-        "citation_volume",
-        "citation_issue",
-        "citation_year",
-        "citation_month",
-        "citation_day",
-        "citation_date",
-        "citation_pages",
-        "citation_affiliations",
-        "citation_grants",
-        "citation_abstract",
-        "citation_pilot_grants",
-        "citation_is_research",
-        "citation_num_citations",
-        "citation_citations_per_year",
-        "citation_expected_per_year",
-        "citation_field_citation_rate",
-        "citation_nih_percentile",
-        "citation_rcr",
-        "citation_icite_last_update",
-        "citation_altmetric_score",
-        "citation_altmetric_image",
-        "citation_altmetric_details_url",
-        "citation_altmetric_last_update",
-        "eric_id",
-        "eric_link",
-        "eric_include",
-        "eric_author",
-        "eric_description",
-        "eric_isbn",
-        "eric_issn",
-        "eric_peerreviewed",
-        "eric_publicationdateyear",
-        "eric_publicationtype",
-        "eric_publisher",
-        "eric_subject",
-        "eric_title",
-        "eric_sourceid",
-        "eric_source",
-        "eric_sponsor",
-        "eric_url",
-        "eric_institution",
-        "eric_iesgrantcontractnum",
-        "eric_ieswwcreviewed",
-        "eric_e_datemodified",
-        "eric_e_fulltext",
-        "eric_educationlevel",
-        "eric_pilot_grants",
-        "eric_last_update",
-    ];
+	# intentionally missing many minor Altmetric fields
+	private static $citationFields = [
+		"record_id",
+		"citation_pmid",
+		"citation_doi",
+		"citation_include",
+		"citation_flagged",
+		"citation_ts",
+		"citation_full_citation",
+		"citation_source",
+		"citation_pmcid",
+		"citation_authors",
+		"citation_title",
+		"citation_pub_types",
+		"citation_mesh_terms",
+		"citation_journal",
+		"citation_volume",
+		"citation_issue",
+		"citation_year",
+		"citation_month",
+		"citation_day",
+		"citation_date",
+		"citation_pages",
+		"citation_affiliations",
+		"citation_grants",
+		"citation_abstract",
+		"citation_pilot_grants",
+		"citation_is_research",
+		"citation_num_citations",
+		"citation_citations_per_year",
+		"citation_expected_per_year",
+		"citation_field_citation_rate",
+		"citation_nih_percentile",
+		"citation_rcr",
+		"citation_icite_last_update",
+		"citation_altmetric_score",
+		"citation_altmetric_image",
+		"citation_altmetric_details_url",
+		"citation_altmetric_last_update",
+		"eric_id",
+		"eric_link",
+		"eric_include",
+		"eric_author",
+		"eric_description",
+		"eric_isbn",
+		"eric_issn",
+		"eric_peerreviewed",
+		"eric_publicationdateyear",
+		"eric_publicationtype",
+		"eric_publisher",
+		"eric_subject",
+		"eric_title",
+		"eric_sourceid",
+		"eric_source",
+		"eric_sponsor",
+		"eric_url",
+		"eric_institution",
+		"eric_iesgrantcontractnum",
+		"eric_ieswwcreviewed",
+		"eric_e_datemodified",
+		"eric_e_fulltext",
+		"eric_educationlevel",
+		"eric_pilot_grants",
+		"eric_last_update",
+	];
 
-    public static $smallCitationFields = [
-        "record_id",
-        "citation_pmid",
-        "citation_include",
-        "citation_is_research",
-        "eric_id",
-        "eric_include",
-        "eric_peerreviewed",
-    ];
+	public static $smallCitationFields = [
+		"record_id",
+		"citation_pmid",
+		"citation_include",
+		"citation_is_research",
+		"eric_id",
+		"eric_include",
+		"eric_peerreviewed",
+	];
 
-	public static $resourceFields = array(
+	public static $resourceFields = [
 						'record_id',
 						'resources_participated',
 						'resources_resource',
-						);
+						];
 
-	public static $reporterFields = array(
+	public static $reporterFields = [
 						"reporter_projectnumber",
 						"reporter_fy",
 						"reporter_title",
@@ -1451,31 +1452,31 @@ class CareerDev {
 						"reporter_orgzipcode",
 						"reporter_projectstartdate",
 						"reporter_projectenddate",
-                        "reporter_cfdacode",
-                        "reporter_flagged",
-						);
+						"reporter_cfdacode",
+						"reporter_flagged",
+						];
 
-    public static $customFields = [
-        "record_id",
-        "custom_title",
-        "custom_number",
-        "custom_type",
-        "custom_start",
-        "custom_end",
-        "custom_org",
-        "custom_recipient_org",
-        "custom_role",
-        "custom_role_other",
-        "custom_start",
-        "custom_end",
-        "custom_costs",
-        "custom_last_update",
-        "custom_submission_status",
-        "custom_submission_date",
-        "custom_flagged",
-    ];
+	public static $customFields = [
+		"record_id",
+		"custom_title",
+		"custom_number",
+		"custom_type",
+		"custom_start",
+		"custom_end",
+		"custom_org",
+		"custom_recipient_org",
+		"custom_role",
+		"custom_role_other",
+		"custom_start",
+		"custom_end",
+		"custom_costs",
+		"custom_last_update",
+		"custom_submission_status",
+		"custom_submission_date",
+		"custom_flagged",
+	];
 
-    public static $exporterFields = array(
+	public static $exporterFields = [
 						"exporter_application_id",
 						"exporter_activity",
 						"exporter_administering_ic",
@@ -1523,11 +1524,11 @@ class CareerDev {
 						"exporter_total_cost",
 						"exporter_total_cost_sub_project",
 						"exporter_abstract",
-                        "exporter_last_update",
-                        "exporter_flagged",
-						);
+						"exporter_last_update",
+						"exporter_flagged",
+						];
 
-	public static $followupFields = array(
+	public static $followupFields = [
 						"record_id",
 						"followup_name_first",
 						"followup_name_middle",
@@ -1749,27 +1750,27 @@ class CareerDev {
 						"followup_grant15_role_other",
 						"followup_grant15_start",
 						"followup_grant15_end",
-                        "followup_grant15_costs",
-                        "followup_grant1_flagged",
-                        "followup_grant2_flagged",
-                        "followup_grant3_flagged",
-                        "followup_grant4_flagged",
-                        "followup_grant5_flagged",
-                        "followup_grant6_flagged",
-                        "followup_grant7_flagged",
-                        "followup_grant8_flagged",
-                        "followup_grant9_flagged",
-                        "followup_grant10_flagged",
-                        "followup_grant11_flagged",
-                        "followup_grant12_flagged",
-                        "followup_grant13_flagged",
-                        "followup_grant14_flagged",
-                        "followup_grant15_flagged",
+						"followup_grant15_costs",
+						"followup_grant1_flagged",
+						"followup_grant2_flagged",
+						"followup_grant3_flagged",
+						"followup_grant4_flagged",
+						"followup_grant5_flagged",
+						"followup_grant6_flagged",
+						"followup_grant7_flagged",
+						"followup_grant8_flagged",
+						"followup_grant9_flagged",
+						"followup_grant10_flagged",
+						"followup_grant11_flagged",
+						"followup_grant12_flagged",
+						"followup_grant13_flagged",
+						"followup_grant14_flagged",
+						"followup_grant15_flagged",
 						"followup_date",
 						"followup_complete",
-						);
+						];
 
-	public static $checkFields = array(
+	public static $checkFields = [
 						"record_id",
 						"check_ecommons_id",
 						"check_name_first",
@@ -2104,55 +2105,55 @@ class CareerDev {
 						"check_grant15_role_other",
 						"check_grant15_start",
 						"check_grant15_end",
-                        "check_grant15_costs",
-                        "check_grant1_flagged",
-                        "check_grant2_flagged",
-                        "check_grant3_flagged",
-                        "check_grant4_flagged",
-                        "check_grant5_flagged",
-                        "check_grant6_flagged",
-                        "check_grant7_flagged",
-                        "check_grant8_flagged",
-                        "check_grant9_flagged",
-                        "check_grant10_flagged",
-                        "check_grant11_flagged",
-                        "check_grant12_flagged",
-                        "check_grant13_flagged",
-                        "check_grant14_flagged",
-                        "check_grant15_flagged",
+						"check_grant15_costs",
+						"check_grant1_flagged",
+						"check_grant2_flagged",
+						"check_grant3_flagged",
+						"check_grant4_flagged",
+						"check_grant5_flagged",
+						"check_grant6_flagged",
+						"check_grant7_flagged",
+						"check_grant8_flagged",
+						"check_grant9_flagged",
+						"check_grant10_flagged",
+						"check_grant11_flagged",
+						"check_grant12_flagged",
+						"check_grant13_flagged",
+						"check_grant14_flagged",
+						"check_grant15_flagged",
 						"check_date",
 						"initial_survey_complete",
-						);
+						];
 
 	public static $coeus2Fields = [
-        "coeus2_id",
-        "coeus2_altid",
-        "coeus2_title",
-        "coeus2_collaborators",
-        "coeus2_role",
-        "coeus2_in_progress",
-        "coeus2_approval_in_progress",
-        "coeus2_award_status",
-        "coeus2_submitted_to_agency",
-        "coeus2_awaiting_pi_approval",
-        "coeus2_status",
-        "coeus2_center_number",
-        "coeus2_lead_department",
-        "coeus2_agency_id",
-        "coeus2_agency_name",
-        "coeus2_agency_grant_number",
-        "coeus2_grant_award_type",
-        "coeus2_current_period_indirect_funding",
-        "coeus2_current_period_total_funding",
-        "coeus2_current_period_start",
-        "coeus2_current_period_end",
-        "coeus2_grant_activity_type",
-        "coeus2_current_period_direct_funding",
-        "coeus2_last_update",
-        "coeus2_flagged",
-    ];
+		"coeus2_id",
+		"coeus2_altid",
+		"coeus2_title",
+		"coeus2_collaborators",
+		"coeus2_role",
+		"coeus2_in_progress",
+		"coeus2_approval_in_progress",
+		"coeus2_award_status",
+		"coeus2_submitted_to_agency",
+		"coeus2_awaiting_pi_approval",
+		"coeus2_status",
+		"coeus2_center_number",
+		"coeus2_lead_department",
+		"coeus2_agency_id",
+		"coeus2_agency_name",
+		"coeus2_agency_grant_number",
+		"coeus2_grant_award_type",
+		"coeus2_current_period_indirect_funding",
+		"coeus2_current_period_total_funding",
+		"coeus2_current_period_start",
+		"coeus2_current_period_end",
+		"coeus2_grant_activity_type",
+		"coeus2_current_period_direct_funding",
+		"coeus2_last_update",
+		"coeus2_flagged",
+	];
 
-	public static $coeusFields = array(
+	public static $coeusFields = [
 						"coeus_org",
 						"coeus_dev_prop",
 						"coeus_ip_number",
@@ -2211,11 +2212,11 @@ class CareerDev {
 						"coeus_directory_title",
 						"coeus_coeus_department",
 						"coeus_update_timestamp",
-                        "coeus_career_active",
-                        "coeus_flagged",
-						);
+						"coeus_career_active",
+						"coeus_flagged",
+						];
 
-	public static $institutionFields = array(
+	public static $institutionFields = [
 						"record_id",
 						"identifier_institution",
 						"identifier_institution_source",
@@ -2225,9 +2226,9 @@ class CareerDev {
 						"identifier_left_date_source",
 						"identifier_left_date_sourcetype",
 						"identifier_left_job_category",
-						);
+						];
 
-	public static $summaryFields = array(
+	public static $summaryFields = [
 						"record_id",
 						"identifier_first_name",
 						"identifier_last_name",
@@ -2441,78 +2442,78 @@ class CareerDev {
 						"summary_first_r01",
 						"summary_first_k_to_first_r01",
 						"summary_first_any_k_to_first_r01",
-						);
-						
-	public static $calculateFields = array(
+						];
+
+	public static $calculateFields = [
 						"record_id",
 						"summary_calculate_order",
 						"summary_calculate_list_of_awards",
-                        "summary_calculate_to_import",
-                        "summary_calculate_flagged_grants",
-						);
+						"summary_calculate_to_import",
+						"summary_calculate_flagged_grants",
+						];
 
-    public static $nihreporterFields = [
-        "record_id",
-        "nih_appl_id",
-        "nih_subproject_id",
-        "nih_fiscal_year",
-        "nih_org_name",
-        "nih_org_city",
-        "nih_org_state",
-        "nih_org_state_name",
-        "nih_dept_type",
-        "nih_project_num",
-        "nih_project_serial_num",
-        "nih_org_country",
-        "nih_award_type",
-        "nih_activity_code",
-        "nih_award_amount",
-        "nih_is_active",
-        "nih_is_territory",
-        "nih_project_num_split",
-        "nih_principal_investigators",
-        "nih_contact_pi_name",
-        "nih_program_officers",
-        "nih_agency_ic_fundings",
-        "nih_cong_dist",
-        "nih_spending_categories",
-        "nih_project_start_date",
-        "nih_project_end_date",
-        "nih_all_text",
-        "nih_foa",
-        "nih_full_study_section",
-        "nih_award_notice_date",
-        "nih_is_new",
-        "nih_mechanism_code_dc",
-        "nih_core_project_num",
-        "nih_terms",
-        "nih_pref_terms",
-        "nih_abstract_text",
-        "nih_project_title",
-        "nih_phr_text",
-        "nih_spending_categories_desc",
-        "nih_awd_doc_num",
-        "nih_init_encumbrance_date",
-        "nih_can_task",
-        "nih_special_topic_code",
-        "nih_agency_code",
-        "nih_covid_response",
-        "nih_last_update",
-        "nih_opportunity_number",
-        "nih_arra_funded",
-        "nih_budget_start",
-        "nih_budget_end",
-        "nih_cfda_code",
-        "nih_funding_mechanism",
-        "nih_direct_cost_amt",
-        "nih_indirect_cost_amt",
-        "nih_project_detail_url",
-        "nih_date_added",
-        "nih_flagged",
-    ];
+	public static $nihreporterFields = [
+		"record_id",
+		"nih_appl_id",
+		"nih_subproject_id",
+		"nih_fiscal_year",
+		"nih_org_name",
+		"nih_org_city",
+		"nih_org_state",
+		"nih_org_state_name",
+		"nih_dept_type",
+		"nih_project_num",
+		"nih_project_serial_num",
+		"nih_org_country",
+		"nih_award_type",
+		"nih_activity_code",
+		"nih_award_amount",
+		"nih_is_active",
+		"nih_is_territory",
+		"nih_project_num_split",
+		"nih_principal_investigators",
+		"nih_contact_pi_name",
+		"nih_program_officers",
+		"nih_agency_ic_fundings",
+		"nih_cong_dist",
+		"nih_spending_categories",
+		"nih_project_start_date",
+		"nih_project_end_date",
+		"nih_all_text",
+		"nih_foa",
+		"nih_full_study_section",
+		"nih_award_notice_date",
+		"nih_is_new",
+		"nih_mechanism_code_dc",
+		"nih_core_project_num",
+		"nih_terms",
+		"nih_pref_terms",
+		"nih_abstract_text",
+		"nih_project_title",
+		"nih_phr_text",
+		"nih_spending_categories_desc",
+		"nih_awd_doc_num",
+		"nih_init_encumbrance_date",
+		"nih_can_task",
+		"nih_special_topic_code",
+		"nih_agency_code",
+		"nih_covid_response",
+		"nih_last_update",
+		"nih_opportunity_number",
+		"nih_arra_funded",
+		"nih_budget_start",
+		"nih_budget_end",
+		"nih_cfda_code",
+		"nih_funding_mechanism",
+		"nih_direct_cost_amt",
+		"nih_indirect_cost_amt",
+		"nih_project_detail_url",
+		"nih_date_added",
+		"nih_flagged",
+	];
 
-    private static $pid = "";
-    private static $firstPidError = TRUE;
+	private static $pid = "";
+	private static $firstPidError = true;
 
 	private static $tokenTranslateToPid = [];
 	private static $mentorTokenTranslateToPid = [];

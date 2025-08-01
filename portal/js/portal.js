@@ -104,7 +104,7 @@ class Portal {
                 const numProjectsLeft = this.getNumberOfProjectsInBatches(pidBatches, 0);
 
                 $('#results').html(this.makeCollaboratorHTML(numProjectsLeft));
-                this.iterateForCollaborators(url, topics, field, pidBatches, 0, null, doneCallback);
+                this.iterateForCollaborators(url, null, field, pidBatches, 0, null, doneCallback);
             }
         });
     }
@@ -226,13 +226,27 @@ class Portal {
         if (i >= pidBatches.length) {
             doneCallback(this);
         } else {
-            const postdata = {
+            const mainBox = $('#mainBox');
+            const inputs = mainBox.find('input, textarea, select:not(.meshcombobox)');
+            let formData = {};
+            let counter = 0;
+            inputs.each(function() {
+                if ($(this).is('.custom-combobox-input')) {
+                    if ($(this).val() !== '') {
+                        formData['MeshTerm'+counter] = $(this).val();
+                        counter++;
+                    }
+                } else {
+                    formData[$(this).attr('id')] = $(this).val();
+                }
+            });
+            let postdata = {
                 action: 'search_projects_for_collaborator',
-                topics: topics,
                 field: field,
                 pids: pidBatches[i],
                 priorNames: Object.keys(this.stateData.collaboratorMatches)
             };
+            postdata = { ...postdata, ...formData };
             // if undefined in postdata, alternativeTopics will be accessed by Flight Tracker and passed in the next iteration
             if (alternativeTopics !== null) {
                 postdata['alternativeTopics'] = alternativeTopics;

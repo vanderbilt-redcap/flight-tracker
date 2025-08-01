@@ -1,9 +1,9 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Portal;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
-use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Portal;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Download;
 
 require_once(__DIR__."/../classes/Autoload.php");
 require_once(__DIR__."/base.php");
@@ -13,36 +13,36 @@ $username = Portal::siftThroughUsernamesForErrors($usernames, isset($_GET['match
 $name = Portal::makeName($firstName, $lastName);
 $testNames = Portal::getTestNames();
 if (!$name && isset($testNames[$username])) {
-    list ($fn, $ln) = $testNames[$username];
-    $name = Portal::makeName($fn, $ln);
-} else if (!$name && isset($_GET['match'])) {
-    list($currPid, $recordId) = explode(":", Sanitizer::sanitize($_GET['match']));
-    $name = Download::fullNameByPid($currPid, $recordId);
-} else if (!$name) {
-    # more computationally expensive, but rarely used; only when a user is not in REDCap, usually when spoofing
-    $allPids = Application::getActivePids();
-    $matches = Portal::getMatchesForUserid($username, $firstName, $lastName, $allPids)[0];
-    if (!empty($matches)) {
-        foreach ($matches as $currPid => $recordsAndNames) {
-            if (!$name) {
-                foreach ($recordsAndNames as $recordId => $recordName) {
-                    if ($recordName) {
-                        $name = $recordName;
-                        break;
-                    }
-                }
-            }
-        }
-    } else {
-        $name = $username;
-    }
+	list($fn, $ln) = $testNames[$username];
+	$name = Portal::makeName($fn, $ln);
+} elseif (!$name && isset($_GET['match'])) {
+	list($currPid, $recordId) = explode(":", Sanitizer::sanitize($_GET['match']));
+	$name = Download::fullNameByPid($currPid, $recordId);
+} elseif (!$name) {
+	# more computationally expensive, but rarely used; only when a user is not in REDCap, usually when spoofing
+	$allPids = Application::getActivePids();
+	$matches = Portal::getMatchesForUserid($username, $firstName, $lastName, $allPids)[0];
+	if (!empty($matches)) {
+		foreach ($matches as $currPid => $recordsAndNames) {
+			if (!$name) {
+				foreach ($recordsAndNames as $recordId => $recordName) {
+					if ($recordName) {
+						$name = $recordName;
+						break;
+					}
+				}
+			}
+		}
+	} else {
+		$name = $username;
+	}
 }
 
 $uidString = "";
 if (isset($_GET['uid'])) {
-    $uidString = "&uid=$username";
-} else if (isset($_GET['match'])) {
-    $uidString = "&match=".Sanitizer::sanitize($_GET['match']);
+	$uidString = "&uid=$username";
+} elseif (isset($_GET['match'])) {
+	$uidString = "&match=".Sanitizer::sanitize($_GET['match']);
 }
 
 $loadingUrl = Application::link("img/loading.gif");

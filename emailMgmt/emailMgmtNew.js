@@ -49,10 +49,14 @@ function updateNames(pid, existingPost) {
 		} else {
 			$('#filterItems').hide();
 		}
-		if ($('[name=survey_complete]:checked').val() === "yes") {
+		const isCohortGroup = $('[name=recipient][value=cohort_group]').is(':checked');
+		if (
+			($('[name=survey_complete]:checked').val() === "yes")
+			&& !isCohortGroup
+		) {
 			post['none_complete'] = 'false';
 			$('#whenCompleted').slideDown();
-		} else {
+		} else if (!isCohortGroup) {
 			post['none_complete'] = 'true';
 			$('#whenCompleted').hide();
 		}

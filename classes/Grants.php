@@ -8,22 +8,23 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Grants {
-    const FLAGGED_GRANTS_SETTING = "flagged_grants";
-    const SPREADSHEET_SOURCES = ["data", "sheet2", "new2017", ];
+class Grants
+{
+	public const FLAGGED_GRANTS_SETTING = "flagged_grants";
+	public const SPREADSHEET_SOURCES = ["data", "sheet2", "new2017", ];
 
 	public function __construct($token, $server, $metadata = []) {
 		$this->token = $token;
 		$this->server = $server;
-        $this->pid = Application::getPID($token);
+		$this->pid = Application::getPID($token);
 		if (empty($metadata)) {
-            $this->metadata = self::getMetadata($token, $server);
-		} else if ($metadata == "empty") {
-            $this->metadata = [];
-        } else {
-            $this->metadata = $metadata;
+			$this->metadata = self::getMetadata($token, $server);
+		} elseif ($metadata == "empty") {
+			$this->metadata = [];
+		} else {
+			$this->metadata = $metadata;
 		}
-        $this->changes = [];
+		$this->changes = [];
 		$this->lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule());
 	}
 
@@ -31,42 +32,42 @@ class Grants {
 	public static $NUM_GRANT_TESTS = 20;
 	public static $MIN_TITLE_CHARS = 15;
 
-    public function getFlaggedGrants() {
-        if (empty($this->flaggedGrants) && $this->recordId) {
-            $field = "summary_calculate_flagged_grants";
-            if (empty($this->metadata)) {
-                $metadataFields = Download::metadataFields($this->token, $this->server);
-            } else {
-                $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
-            }
-            if (!in_array($field, $metadataFields)) {
-                return $this->flaggedGrants;
-            }
-            $redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", $field], [$this->recordId]);
-            $json = REDCapManagement::findField($redcapData, $this->recordId, $field) ?: "[]";
-            $this->flaggedGrants = json_decode($json, TRUE);
-        }
-        return $this->flaggedGrants;
-    }
+	public function getFlaggedGrants() {
+		if (empty($this->flaggedGrants) && $this->recordId) {
+			$field = "summary_calculate_flagged_grants";
+			if (empty($this->metadata)) {
+				$metadataFields = Download::metadataFields($this->token, $this->server);
+			} else {
+				$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+			}
+			if (!in_array($field, $metadataFields)) {
+				return $this->flaggedGrants;
+			}
+			$redcapData = Download::fieldsForRecords($this->token, $this->server, ["record_id", $field], [$this->recordId]);
+			$json = REDCapManagement::findField($redcapData, $this->recordId, $field) ?: "[]";
+			$this->flaggedGrants = json_decode($json, true);
+		}
+		return $this->flaggedGrants;
+	}
 
-    public static function areFlagsOn($pid) {
-        return Application::getSetting(self::FLAGGED_GRANTS_SETTING, $pid);
-    }
+	public static function areFlagsOn($pid) {
+		return Application::getSetting(self::FLAGGED_GRANTS_SETTING, $pid);
+	}
 
-    public static function turnFlagsOn($pid) {
-        Application::saveSetting(self::FLAGGED_GRANTS_SETTING, TRUE, $pid);
-    }
+	public static function turnFlagsOn($pid) {
+		Application::saveSetting(self::FLAGGED_GRANTS_SETTING, true, $pid);
+	}
 
-    public static function turnFlagsOff($pid) {
-        Application::saveSetting(self::FLAGGED_GRANTS_SETTING, FALSE, $pid);
-    }
+	public static function turnFlagsOff($pid) {
+		Application::saveSetting(self::FLAGGED_GRANTS_SETTING, false, $pid);
+	}
 
-    public function getFlagStatus() {
-        return self::areFlagsOn(Application::getPID($this->token));
-    }
+	public function getFlagStatus() {
+		return self::areFlagsOn(Application::getPID($this->token));
+	}
 
 	public function excludeUnnamedGrants_test($tester) {
-		$patterns = array("/K12\/KL2 - Rec\./", "/Internal K - Rec\./");
+		$patterns = ["/K12\/KL2 - Rec\./", "/Internal K - Rec\./"];
 		for ($i = 1; $i <= self::$NUM_GRANT_TESTS; $i++) {
 			$recordId = $this->setupTests();
 			$this->compileGrants();
@@ -80,10 +81,10 @@ class Grants {
 	}
 
 	public function getNumberOfGrants_test($tester) {
-		$types = array("compiled", "native", "abcd");
+		$types = ["compiled", "native", "abcd"];
 		$this->setupTests();
 		$this->compileGrants();
-		foreach($types as $type) {
+		foreach ($types as $type) {
 			$tester->tag($type);
 			$tester->assertEqual(count($this->getGrants($type)), $this->getNumberOfGrants($type));
 		}
@@ -115,138 +116,138 @@ class Grants {
 
 	public function getNumberOfGrants($type = "compiled") {
 		if (in_array($type, ["precompiled", "prior"])) {
-            return count($this->priorGrants ?: []);
+			return count($this->priorGrants ?: []);
 		}
 		if ($type == "compiled") {
 			return count($this->compiledGrants ?: []);
 		}
-        if ($type == "native") {
-            return count($this->nativeGrants ?: []);
-        }
-        if ($type == "all") {
-            return count($this->dedupedGrants ?: []);
-        }
-        if ($type == "submissions") {
-            return count($this->grantSubmissions ?: []);
-        }
+		if ($type == "native") {
+			return count($this->nativeGrants ?: []);
+		}
+		if ($type == "all") {
+			return count($this->dedupedGrants ?: []);
+		}
+		if ($type == "submissions") {
+			return count($this->grantSubmissions ?: []);
+		}
 		return 0;
 	}
 
 	public function excludeSources($sources) {
-	    if (!is_array($sources)) {
-	        $sources = [$sources];
-        }
-        $this->sourcesToExclude = $sources;
-    }
+		if (!is_array($sources)) {
+			$sources = [$sources];
+		}
+		$this->sourcesToExclude = $sources;
+	}
 
-    public function getSourcesToExclude() {
-	    return $this->sourcesToExclude;
-    }
+	public function getSourcesToExclude() {
+		return $this->sourcesToExclude;
+	}
 
-    public function getGrantsWithinTimespan($grantType, $startTs, $endTs = FALSE) {
-        $grants = [];
-        foreach ($this->getGrants($grantType) as $grant) {
-            $startDate = $grant->getVariable("start");
-            $endDate = $grant->getVariable("end");
-            if ($startDate && $endDate) {
-                $currGrantStartTs = strtotime($startDate);
-                $currGrantEndTs = strtotime($endDate);
-                if (
-                    $currGrantStartTs
-                    && $currGrantEndTs
-                    && ($currGrantEndTs >= $startTs)
-                    && (($currGrantStartTs <= $endTs) || !$endTs)
-                ) {
-                    $grants[] = $grant;
-                }
-            }
-        }
-        return $grants;
-    }
+	public function getGrantsWithinTimespan($grantType, $startTs, $endTs = false) {
+		$grants = [];
+		foreach ($this->getGrants($grantType) as $grant) {
+			$startDate = $grant->getVariable("start");
+			$endDate = $grant->getVariable("end");
+			if ($startDate && $endDate) {
+				$currGrantStartTs = strtotime($startDate);
+				$currGrantEndTs = strtotime($endDate);
+				if (
+					$currGrantStartTs
+					&& $currGrantEndTs
+					&& ($currGrantEndTs >= $startTs)
+					&& (($currGrantStartTs <= $endTs) || !$endTs)
+				) {
+					$grants[] = $grant;
+				}
+			}
+		}
+		return $grants;
+	}
 
-    public function getGrantsAwardedWithinTimespan($grantType, $startTs, $endTs = FALSE) {
-        $grants = [];
-        foreach ($this->getGrants($grantType) as $grant) {
-            $startDate = $grant->getVariable("start");
-            $endDate = $grant->getVariable("end");
-            if ($startDate && $endDate) {
-                $currGrantStartTs = strtotime($startDate);
-                if (
-                    $currGrantStartTs
-                    && ($currGrantStartTs >= $startTs)
-                    && (($currGrantStartTs <= $endTs) || !$endTs)
-                ) {
-                    $grants[] = $grant;
-                }
-            }
-        }
-        return $grants;
-    }
+	public function getGrantsAwardedWithinTimespan($grantType, $startTs, $endTs = false) {
+		$grants = [];
+		foreach ($this->getGrants($grantType) as $grant) {
+			$startDate = $grant->getVariable("start");
+			$endDate = $grant->getVariable("end");
+			if ($startDate && $endDate) {
+				$currGrantStartTs = strtotime($startDate);
+				if (
+					$currGrantStartTs
+					&& ($currGrantStartTs >= $startTs)
+					&& (($currGrantStartTs <= $endTs) || !$endTs)
+				) {
+					$grants[] = $grant;
+				}
+			}
+		}
+		return $grants;
+	}
 
-    public function getCurrentGrants($grantType, $date) {
-        if (!REDCapManagement::isDate($date)) {
-            return [];
-        }
-        $grants = [];
-        $ts = strtotime($date);
-        foreach ($this->getGrants($grantType) as $grant) {
-            $startDate = $grant->getVariable("start");
-            $endDate = $grant->getVariable("end");
-            if ($startDate && $endDate) {
-                $startTs = strtotime($startDate);
-                $endTs = strtotime($endDate);
-                if (($startTs <= $ts) && ($endTs >= $ts)) {
-                    $grants[] = $grant;
-                }
-            }
-        }
-        return $grants;
-    }
+	public function getCurrentGrants($grantType, $date) {
+		if (!REDCapManagement::isDate($date)) {
+			return [];
+		}
+		$grants = [];
+		$ts = strtotime($date);
+		foreach ($this->getGrants($grantType) as $grant) {
+			$startDate = $grant->getVariable("start");
+			$endDate = $grant->getVariable("end");
+			if ($startDate && $endDate) {
+				$startTs = strtotime($startDate);
+				$endTs = strtotime($endDate);
+				if (($startTs <= $ts) && ($endTs >= $ts)) {
+					$grants[] = $grant;
+				}
+			}
+		}
+		return $grants;
+	}
 
-    private static function getLatestGrants($grantAry) {
-        $grantsByBaseAward = [];
-        foreach ($grantAry as $grant) {
-            $baseAwardNo = $grant->getBaseAwardNumber();
-            if (!isset($grantsByBaseAward[$baseAwardNo])) {
-                $grantsByBaseAward[$baseAwardNo] = [];
-            }
-            $grantsByBaseAward[$baseAwardNo][] = $grant;
-        }
+	private static function getLatestGrants($grantAry) {
+		$grantsByBaseAward = [];
+		foreach ($grantAry as $grant) {
+			$baseAwardNo = $grant->getBaseAwardNumber();
+			if (!isset($grantsByBaseAward[$baseAwardNo])) {
+				$grantsByBaseAward[$baseAwardNo] = [];
+			}
+			$grantsByBaseAward[$baseAwardNo][] = $grant;
+		}
 
-        $grantsWithHighestYear = [];
-        foreach ($grantsByBaseAward as $baseAwardNo => $grants) {
-            $bySuffix = [];
-            foreach ($grants as $grant) {
-                $awardNo = $grant->getNumber();
-                $year = Grant::getSupportYear($awardNo);
-                $bySuffix[$year] = $grant;
-            }
-            krsort($bySuffix);
-            $grant = reset($bySuffix);
-            $grantsWithHighestYear[] = $grant;
-        }
-        return $grantsWithHighestYear;
-    }
+		$grantsWithHighestYear = [];
+		foreach ($grantsByBaseAward as $baseAwardNo => $grants) {
+			$bySuffix = [];
+			foreach ($grants as $grant) {
+				$awardNo = $grant->getNumber();
+				$year = Grant::getSupportYear($awardNo);
+				$bySuffix[$year] = $grant;
+			}
+			krsort($bySuffix);
+			$grant = reset($bySuffix);
+			$grantsWithHighestYear[] = $grant;
+		}
+		return $grantsWithHighestYear;
+	}
 
-    public static function makeFlagLink($pid, $url = "this") {
-        $html = "";
-        if (Grants::areFlagsOn($pid)) {
-            if ($url == "this") {
-                $url = Application::link("this", $pid);
-            }
-            if (isset($_GET['showFlagsOnly'])) {
-                $myUrl = str_replace("&showFlagsOnly", "", $url);
-                $html .= "<p class='alignright smaller padded'><a href='$myUrl'>Use All Grants</a></p>";
-            } else {
-                $html .= "<p class='alignright smaller padded'><a href='$url&showFlagsOnly'>Use Only Flagged Grants</a></p>";
-            }
-        }
-        return $html;
-    }
+	public static function makeFlagLink($pid, $url = "this") {
+		$html = "";
+		if (Grants::areFlagsOn($pid)) {
+			if ($url == "this") {
+				$url = Application::link("this", $pid);
+			}
+			if (isset($_GET['showFlagsOnly'])) {
+				$myUrl = str_replace("&showFlagsOnly", "", $url);
+				$html .= "<p class='alignright smaller padded'><a href='$myUrl'>Use All Grants</a></p>";
+			} else {
+				$html .= "<p class='alignright smaller padded'><a href='$url&showFlagsOnly'>Use Only Flagged Grants</a></p>";
+			}
+		}
+		return $html;
+	}
 
-    public function getGrants($type = "compiled") {
+	public function getGrants($type = "compiled") {
 		if (in_array($type, ["precompiled", "prior"])) {
-            return $this->priorGrants;
+			return $this->priorGrants;
 		}
 		if ($type == "compiled") {
 			return $this->compiledGrants;
@@ -254,155 +255,155 @@ class Grants {
 		if ($type == "native") {
 			return $this->nativeGrants;
 		}
-        if ($type == "latest") {
-            return self::getLatestGrants($this->nativeGrants);
-        }
-        if (in_array($type, ["all", "deduped"])) {
-            return $this->dedupedGrants;
-        }
-        if ($type == "current") {
-            return $this->getCurrentGrants("all", date("Y-m-d"));
-        }
-        if ($type == "all_pis") {
-            $grants = $this->dedupedGrants;
-            $filteredGrants = [];
-            $piRoles = ["Co-PI", "PI", "Principal Investigator", "Admin", "PI/Co-PI"];    // exclude: "Post-Doctoral Trainee"
-            foreach ($grants as $grant) {
-                if (in_array($grant->getVariable("role"), $piRoles)) {
-                    $filteredGrants[] = $grant;
-                }
-            }
-            return $filteredGrants;
-        }
-        if ($type == "submissions") {
-            if (empty($this->dedupedGrantSubmissions) && !empty($this->grantSubmissions)) {
-                $this->compileGrantSubmissions();
-            }
-            return $this->dedupedGrantSubmissions;
-        }
-        if ($type == "submission_dates") {
-            $withSubmissionDates = [];
-            foreach ($this->nativeGrants as $grant) {
-                if ($grant->getVariable("submission_date")) {
-                    $withSubmissionDates[] = $grant;
-                }
-            }
-            return $withSubmissionDates;
-        }
-        if ($type == "all_submissions") {
-            return $this->grantSubmissions;
-        }
-        if ($type == "flagged") {
-            if ($this->getFlagStatus()) {
-                $myGrants = [];
-                $flaggedGrantNumbers = $this->getFlaggedGrants();
-                foreach ($this->nativeGrants as $grant) {
-                    $awardNo = REDCapManagement::makeHTMLId(Grant::trimApplicationType($grant->getAwardNumber()));
-                    $source = str_replace("_", " ", $grant->getVariable("source"));
-                    $id = $awardNo."___".$source;
-                    if (in_array($id, $flaggedGrantNumbers)) {
-                        $myGrants[] = $grant;
-                    }
-                }
-                return $myGrants;
-            } else {
-                return [];
-            }
-        }
+		if ($type == "latest") {
+			return self::getLatestGrants($this->nativeGrants);
+		}
+		if (in_array($type, ["all", "deduped"])) {
+			return $this->dedupedGrants;
+		}
+		if ($type == "current") {
+			return $this->getCurrentGrants("all", date("Y-m-d"));
+		}
+		if ($type == "all_pis") {
+			$grants = $this->dedupedGrants;
+			$filteredGrants = [];
+			$piRoles = ["Co-PI", "PI", "Principal Investigator", "Admin", "PI/Co-PI"];    // exclude: "Post-Doctoral Trainee"
+			foreach ($grants as $grant) {
+				if (in_array($grant->getVariable("role"), $piRoles)) {
+					$filteredGrants[] = $grant;
+				}
+			}
+			return $filteredGrants;
+		}
+		if ($type == "submissions") {
+			if (empty($this->dedupedGrantSubmissions) && !empty($this->grantSubmissions)) {
+				$this->compileGrantSubmissions();
+			}
+			return $this->dedupedGrantSubmissions;
+		}
+		if ($type == "submission_dates") {
+			$withSubmissionDates = [];
+			foreach ($this->nativeGrants as $grant) {
+				if ($grant->getVariable("submission_date")) {
+					$withSubmissionDates[] = $grant;
+				}
+			}
+			return $withSubmissionDates;
+		}
+		if ($type == "all_submissions") {
+			return $this->grantSubmissions;
+		}
+		if ($type == "flagged") {
+			if ($this->getFlagStatus()) {
+				$myGrants = [];
+				$flaggedGrantNumbers = $this->getFlaggedGrants();
+				foreach ($this->nativeGrants as $grant) {
+					$awardNo = REDCapManagement::makeHTMLId(Grant::trimApplicationType($grant->getAwardNumber()));
+					$source = str_replace("_", " ", $grant->getVariable("source"));
+					$id = $awardNo."___".$source;
+					if (in_array($id, $flaggedGrantNumbers)) {
+						$myGrants[] = $grant;
+					}
+				}
+				return $myGrants;
+			} else {
+				return [];
+			}
+		}
 
 		$allSources = [];
-        foreach ($this->nativeGrants as $grant) {
-            $source = $grant->getVariable("source");
-            if (in_array($source, $allSources)) {
-                $allSources[] = $source;
-            }
-        }
+		foreach ($this->nativeGrants as $grant) {
+			$source = $grant->getVariable("source");
+			if (in_array($source, $allSources)) {
+				$allSources[] = $source;
+			}
+		}
 		if (in_array($type, $allSources)) {
-		    $sourceGrants = [];
-		    foreach ($this->nativeGrants as $grant) {
-		        if ($grant->getVariable("source") == $type) {
-		            $sourceGrants[] = $grant;
-                }
-            }
-		    return $sourceGrants;
-        }
+			$sourceGrants = [];
+			foreach ($this->nativeGrants as $grant) {
+				if ($grant->getVariable("source") == $type) {
+					$sourceGrants[] = $grant;
+				}
+			}
+			return $sourceGrants;
+		}
 		return [];
 	}
 
-    public function compileGrantSubmissions() {
-        $prioritizedGrants = $this->prioritizeGrantSubmissions($this->grantSubmissions);
-        $deduplicatedGrants = $this->deduplicateGrantSubmissions($prioritizedGrants);
-        $this->dedupedGrantSubmissions = $this->orderGrantSubmissionsByDate($deduplicatedGrants);
-    }
+	public function compileGrantSubmissions() {
+		$prioritizedGrants = $this->prioritizeGrantSubmissions($this->grantSubmissions);
+		$deduplicatedGrants = $this->deduplicateGrantSubmissions($prioritizedGrants);
+		$this->dedupedGrantSubmissions = $this->orderGrantSubmissionsByDate($deduplicatedGrants);
+	}
 
-    private function prioritizeGrantSubmissions($grants) {
-        $order = self::getSourceOrder();
-        $orderedGrants = [];
-        foreach ($order as $source) {
-            foreach ($grants as $grant) {
-                if ($grant->getVariable("source") == $source) {
-                    $orderedGrants[] = $grant;
-                }
-            }
-        }
-        return $orderedGrants;
-    }
+	private function prioritizeGrantSubmissions($grants) {
+		$order = self::getSourceOrder();
+		$orderedGrants = [];
+		foreach ($order as $source) {
+			foreach ($grants as $grant) {
+				if ($grant->getVariable("source") == $source) {
+					$orderedGrants[] = $grant;
+				}
+			}
+		}
+		return $orderedGrants;
+	}
 
-    private function orderGrantSubmissionsByDate($grants) {
-        $grantsByTs = [];
-        foreach ($grants as $grant) {
-            $startDate = $grant->getVariable("start");
-            $startTs = strtotime($startDate);
-            if (!isset($grantsByTs[$startTs])) {
-                $grantsByTs[$startTs] = [];
-            }
-            $grantsByTs[$startTs][] = $grant;
-        }
-        ksort($grantsByTs);
+	private function orderGrantSubmissionsByDate($grants) {
+		$grantsByTs = [];
+		foreach ($grants as $grant) {
+			$startDate = $grant->getVariable("start");
+			$startTs = strtotime($startDate);
+			if (!isset($grantsByTs[$startTs])) {
+				$grantsByTs[$startTs] = [];
+			}
+			$grantsByTs[$startTs][] = $grant;
+		}
+		ksort($grantsByTs);
 
-        $orderedGrants = [];
-        foreach ($grantsByTs as $startTs => $grantsAtTs) {
-            foreach ($grantsAtTs as $grant) {
-                $orderedGrants[] = $grant;
-            }
-        }
-        return $orderedGrants;
-    }
+		$orderedGrants = [];
+		foreach ($grantsByTs as $startTs => $grantsAtTs) {
+			foreach ($grantsAtTs as $grant) {
+				$orderedGrants[] = $grant;
+			}
+		}
+		return $orderedGrants;
+	}
 
-    private function deduplicateGrantSubmissions($grants) {
-        $deduped = [];
-        foreach ($grants as $idx1 => $grant1) {
-            $foundDup = FALSE;
-            foreach ($grants as $idx2 => $grant2) {
-                if (($idx1 < $idx2) && self::areGrantSubmissionsFunctionallyEqual($grant1, $grant2)) {
-                    $foundDup = TRUE;
-                    break;
-                }
-            }
-            if (!$foundDup) {
-                $deduped[] = $grant1;
-            }
-        }
-        return $deduped;
-    }
+	private function deduplicateGrantSubmissions($grants) {
+		$deduped = [];
+		foreach ($grants as $idx1 => $grant1) {
+			$foundDup = false;
+			foreach ($grants as $idx2 => $grant2) {
+				if (($idx1 < $idx2) && self::areGrantSubmissionsFunctionallyEqual($grant1, $grant2)) {
+					$foundDup = true;
+					break;
+				}
+			}
+			if (!$foundDup) {
+				$deduped[] = $grant1;
+			}
+		}
+		return $deduped;
+	}
 
-    private static function areGrantSubmissionsFunctionallyEqual($grant1, $grant2) {
-        $vars = [
-            "start",
-            "end",
-            "project_start",
-            "project_end",
-            "proposal_type",
-            "status",
-            "title",
-        ];
-        foreach ($vars as $var) {
-            if ($grant1->getVariable($var) != $grant2->getVariable($var)) {
-                return FALSE;
-            }
-        }
-        return TRUE;
-    }
+	private static function areGrantSubmissionsFunctionallyEqual($grant1, $grant2) {
+		$vars = [
+			"start",
+			"end",
+			"project_start",
+			"project_end",
+			"proposal_type",
+			"status",
+			"title",
+		];
+		foreach ($vars as $var) {
+			if ($grant1->getVariable($var) != $grant2->getVariable($var)) {
+				return false;
+			}
+		}
+		return true;
+	}
 
 	private static function makeDollarsAndCents($cost) {
 		return round($cost * 100) / 100;
@@ -426,11 +427,11 @@ class Grants {
 		$activityCode = Grant::getActivityCode($awardNo);
 		if (preg_match("/W81XWH/", $awardNo)) {
 			return "defense";
-		} else if (preg_match("/R/", $activityCode) || preg_match("/P/", $activityCode) || preg_match("/U/", $activityCode)) {
+		} elseif (preg_match("/R/", $activityCode) || preg_match("/P/", $activityCode) || preg_match("/U/", $activityCode)) {
 			return "research";
-		} else if (preg_match("/T/", $activityCode) || preg_match("/K/", $activityCode)) {
+		} elseif (preg_match("/T/", $activityCode) || preg_match("/K/", $activityCode)) {
 			return "training";
-		} else if (preg_match("/F/", $activityCode)) {
+		} elseif (preg_match("/F/", $activityCode)) {
 			return "fellowship";
 		}
 		return "";
@@ -446,7 +447,7 @@ class Grants {
 		if ($type == "research") {
 			if (($ts >= strtotime("2004-07-01")) && ($ts < strtotime("2005-07-01"))) {
 				return 0.51;
-			} 
+			}
 			if (($ts >= strtotime("2005-07-01")) && ($ts < strtotime("2006-07-01"))) {
 				return 0.52;
 			}
@@ -486,10 +487,10 @@ class Grants {
 			if (($ts >= strtotime("2018-07-01")) && ($ts < strtotime("2019-07-01"))) {
 				return 0.70;
 			}
-		} else if ($type == "defense") {
+		} elseif ($type == "defense") {
 			if (($ts >= strtotime("2004-07-01")) && ($ts < strtotime("2005-07-01"))) {
 				return 0.54;
-			} 
+			}
 			if (($ts >= strtotime("2005-07-01")) && ($ts < strtotime("2006-07-01"))) {
 				return 0.55;
 			}
@@ -529,7 +530,7 @@ class Grants {
 			if (($ts >= strtotime("2018-07-01")) && ($ts < strtotime("2019-07-01"))) {
 				return 0.;
 			}
-		} else if ($type == "training") {
+		} elseif ($type == "training") {
 			return 0.08;
 		}
 		return 0;
@@ -537,94 +538,96 @@ class Grants {
 
 	public function setRows($rows) {
 		if ($rows) {
-            $thresholdTs = strtotime("2023-05-10 00:00:00");
+			$thresholdTs = strtotime("2023-05-10 00:00:00");
 			$this->rows = $rows;
 			$this->recordId = 0;
-            $this->nativeGrants = [];
-            $this->dedupedGrants = [];
-            $this->grantSubmissions = [];
+			$this->nativeGrants = [];
+			$this->dedupedGrants = [];
+			$this->grantSubmissions = [];
 			$this->compiledGrants = [];
 			$this->priorGrants = [];
 			foreach ($rows as $row) {
-                if (!$this->recordId) {
-                    $this->recordId = $row['record_id'];
-                }
-                if ($row['redcap_repeat_instrument'] == "") {
-                    $firstName = $row['identifier_first_name'] ?? "";
-                    $lastName = $row['identifier_last_name'] ?? "";
+				if (!$this->recordId) {
+					$this->recordId = $row['record_id'];
+				}
+				if ($row['redcap_repeat_instrument'] == "") {
+					$firstName = $row['identifier_first_name'] ?? "";
+					$lastName = $row['identifier_last_name'] ?? "";
 					$this->name = trim($firstName." ".$lastName);
-                    $this->recordId = $row['record_id'];
-                    break;
+					$this->recordId = $row['record_id'];
+					break;
 				}
 			}
-            $i = 0;
+			$i = 0;
 			foreach ($rows as $row) {
-                $i++;
+				$i++;
 				if ($row['redcap_repeat_instrument'] == "") {
-                    $this->calculate = array();
-                    $this->calculate['to_import'] = json_decode($row['summary_calculate_to_import'] ?? "[]", true);
-                    $this->calculate['order'] = json_decode($row['summary_calculate_order'] ?? "[]", true);
-                    $this->calculate['list_of_awards'] = json_decode($row['summary_calculate_list_of_awards'] ?? "[]", true);
-                    foreach ($this->calculate as $type => $ary) {
-                        if (!$ary) {
-                            $this->calculate[$type] = array();
-                        }
-                    }
+					$this->calculate = [];
+					$this->calculate['to_import'] = json_decode($row['summary_calculate_to_import'] ?? "[]", true);
+					$this->calculate['order'] = json_decode($row['summary_calculate_order'] ?? "[]", true);
+					$this->calculate['list_of_awards'] = json_decode($row['summary_calculate_list_of_awards'] ?? "[]", true);
+					foreach ($this->calculate as $type => $ary) {
+						if (!$ary) {
+							$this->calculate[$type] = [];
+						}
+					}
 
-                    $priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
-                    $priorGF->processRow($row, $rows);
-                    $priorGFGrants = $priorGF->getGrants();
-                    foreach ($priorGFGrants as $grant) {
-                        $this->priorGrants[] = $grant;
-                    }
-                }
+					$priorGF = new PriorGrantFactory($this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server);
+					$priorGF->processRow($row, $rows);
+					$priorGFGrants = $priorGF->getGrants();
+					foreach ($priorGFGrants as $grant) {
+						$this->priorGrants[] = $grant;
+					}
+				}
 				$grantFactories = [
-				    "nativeGrants" => "Awarded",
-                    "grantSubmissions" => "Submissions",
-                    ];
+					"nativeGrants" => "Awarded",
+					"grantSubmissions" => "Submissions",
+					];
 				foreach ($grantFactories as $variable => $status) {
-                    $gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status, FALSE);
-                    foreach ($gfList as $gf) {
-                        $time1 = microtime(TRUE);
-                        $gf->processRow($row, $rows);
-                        $gs = $gf->getGrants();
-                        $gfName = get_class($gf);
-                        $time2 = microtime(TRUE);
+					$gfList = GrantFactory::createFactoriesForRow($row, $this->name, $this->lexicalTranslator, $this->metadata, $this->token, $this->server, $rows, $status, false);
+					foreach ($gfList as $gf) {
+						$time1 = microtime(true);
+						$gf->processRow($row, $rows);
+						$gs = $gf->getGrants();
+						$gfName = get_class($gf);
+						$time2 = microtime(true);
 
-                        foreach ($gs as $g) {
-                            # combine all grants into one unordered list
-                            if (self::getShowDebug()) { Application::log("Prospective grant ".json_encode($g->toArray())); }
-                            $this->setupAbstracts($g);
-                            if ($variable == "nativeGrants") {
-                                $this->nativeGrants[] = $g;
-                            } else if ($variable == "grantSubmissions") {
-                                $this->grantSubmissions[] = $g;
-                            } else {
-                                throw new \Exception("Invalid variable $variable");
-                            }
-                        }
-                    }
-                }
+						foreach ($gs as $g) {
+							# combine all grants into one unordered list
+							if (self::getShowDebug()) {
+								Application::log("Prospective grant ".json_encode($g->toArray()));
+							}
+							$this->setupAbstracts($g);
+							if ($variable == "nativeGrants") {
+								$this->nativeGrants[] = $g;
+							} elseif ($variable == "grantSubmissions") {
+								$this->grantSubmissions[] = $g;
+							} else {
+								throw new \Exception("Invalid variable $variable");
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
-    public static function getAwardFieldsForInstrument($instrument, $token, $server) {
-        $row = [
-            'redcap_repeat_instrument' => $instrument,
-        ];
-        $pid = Application::getPID($token);
-        $lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule(), $pid);
-        $gfs = GrantFactory::getGrantFactoryForRow($row, "", $lexicalTranslator, [], $token, $server);
-        if (!is_array($gfs)) {
-            $gfs = [$gfs];
-        }
-        $fields = [];
-        foreach ($gfs as $gf) {
-            $fields = array_unique(array_merge($gf->getAwardFields()));
-        }
-        return $fields;
-    }
+	public static function getAwardFieldsForInstrument($instrument, $token, $server) {
+		$row = [
+			'redcap_repeat_instrument' => $instrument,
+		];
+		$pid = Application::getPID($token);
+		$lexicalTranslator = new GrantLexicalTranslator($token, $server, Application::getModule(), $pid);
+		$gfs = GrantFactory::getGrantFactoryForRow($row, "", $lexicalTranslator, [], $token, $server);
+		if (!is_array($gfs)) {
+			$gfs = [$gfs];
+		}
+		$fields = [];
+		foreach ($gfs as $gf) {
+			$fields = array_unique(array_merge($gf->getAwardFields()));
+		}
+		return $fields;
+	}
 
 	public function getRecordID() {
 		return $this->recordId;
@@ -636,156 +639,168 @@ class Grants {
 
 	public static function getSourceOrderWithLabels() {
 		return [
-            "modify" => "Manual Modifications",
-            "coeus" => "COEUS",
-            "vera" => "VERA",
-            "local_gms" => "Local Grants Management System",
-            "nih_reporter" => "NIH RePORTER",
-            "exporter" => "NIH ExPORTER",
-            "reporter" => "Federal RePORTER",
-            "nsf" => "NSF Grants",
-            "ies" => "Dept. of Ed. Grants",
-            "coeus2" => "COEUS",
-            "custom" => "REDCap Custom Grants",
-            "followup" => "Follow-Up Survey",
-            "scholars" => "Initial Scholar's Survey",
-            "data" => "Newman Spreadsheet 'data'",
-            "sheet2" => "Newman Spreadsheet 'sheet2'",
-            "new2017" => "Spreadsheet with 2017 Scholars",
-            "expertise" => "Expertise Database",
-        ];
+			"modify" => "Manual Modifications",
+			"coeus" => "COEUS",
+			"vera" => "VERA",
+			"local_gms" => "Local Grants Management System",
+			"nih_reporter" => "NIH RePORTER",
+			"exporter" => "NIH ExPORTER",
+			"reporter" => "Federal RePORTER",
+			"nsf" => "NSF Grants",
+			"ies" => "Dept. of Ed. Grants",
+			"coeus2" => "COEUS",
+			"custom" => "REDCap Custom Grants",
+			"followup" => "Follow-Up Survey",
+			"scholars" => "Initial Scholar's Survey",
+			"data" => "Newman Spreadsheet 'data'",
+			"sheet2" => "Newman Spreadsheet 'sheet2'",
+			"new2017" => "Spreadsheet with 2017 Scholars",
+			"expertise" => "Expertise Database",
+		];
 	}
 
 	public static function getSourceOrderForOlderData() {
 		return [
-            "modify",
-            "coeus2",
-            "coeus",
-            "custom",
-            "nih_reporter",
-            "reporter",
-            "nsf",
-            "ies_grant",
-            "exporter",
-            "followup",
-            "scholars",
-            "data",
-            "sheet2",
-            "new2017",
-        ];
+			"modify",
+			"coeus2",
+			"coeus",
+			"custom",
+			"nih_reporter",
+			"reporter",
+			"nsf",
+			"ies_grant",
+			"exporter",
+			"followup",
+			"scholars",
+			"data",
+			"sheet2",
+			"new2017",
+		];
 	}
 
 	# strategy = ["Conversion", "Financial", "Submission", "All"];
-	public function compileGrants($strategy = "Conversion", $startTs = FALSE, $endTs = FALSE) {
+	public function compileGrants($strategy = "Conversion", $startTs = false, $endTs = false) {
 		if ($strategy == "Conversion") {
-			$this->compileGrantsForConversion(FALSE, $startTs, $endTs);
-        } else if ($strategy == "Financial") {
-            $this->compileGrantsForFinancial(FALSE);
-        } else if ($strategy == "Submission") {
-            $this->compileGrantSubmissions();
+			$this->compileGrantsForConversion(false, $startTs, $endTs);
+		} elseif ($strategy == "Financial") {
+			$this->compileGrantsForFinancial(false);
+		} elseif ($strategy == "Submission") {
+			$this->compileGrantSubmissions();
 		} else {
-            $this->compileGrantSubmissions();
-		    $this->compileAllGrants();
-        }
+			$this->compileGrantSubmissions();
+			$this->compileAllGrants();
+		}
 	}
 
-    private function combineEquivalentGrants($awardsByBaseAwardNumber) {
-        $equivalentGrantClasses = [
-            ["R33", "R61"],
-        ];
-        $combineWith = [];
-        $toCombine = [];
-        foreach (array_keys($awardsByBaseAwardNumber) as $baseAwardNumber1) {
-            $awardClass1 = substr($baseAwardNumber1, 0, 3);
-            $remaining1 = str_replace($awardClass1, "", $baseAwardNumber1);
-            foreach ($equivalentGrantClasses as $equivalentClasses) {
-                if (in_array($awardClass1, $equivalentClasses)) {
-                    foreach (array_keys($awardsByBaseAwardNumber) as $baseAwardNumber2) {
-                        $awardClass2 = substr($baseAwardNumber2, 0, 3);
-                        $remaining2 = str_replace($awardClass2, "", $baseAwardNumber2);
-                        if (
-                            ($awardClass1 != $awardClass2)
-                            && in_array($awardClass2, $equivalentClasses)
-                            && ($remaining1 == $remaining2)
-                        ) {
-                            if (isset($combineWith[$baseAwardNumber2])) {
-                                if (!in_array($baseAwardNumber1, $combineWith[$baseAwardNumber2])) {
-                                    $combineWith[$baseAwardNumber2][] = $baseAwardNumber1;
-                                }
-                            } else {
-                                if (!isset($combineWith[$baseAwardNumber1])) {
-                                    $combineWith[$baseAwardNumber1] = [];
-                                }
-                                $combineWith[$baseAwardNumber1][] = $baseAwardNumber2;
-                            }
-                            $toCombine[] = $baseAwardNumber1;
-                            $toCombine[] = $baseAwardNumber2;
-                        }
-                    }
-                }
-            }
-        }
+	private function combineEquivalentGrants($awardsByBaseAwardNumber) {
+		$equivalentGrantClasses = [
+			["R33", "R61"],
+		];
+		$combineWith = [];
+		$toCombine = [];
+		foreach (array_keys($awardsByBaseAwardNumber) as $baseAwardNumber1) {
+			$awardClass1 = substr($baseAwardNumber1, 0, 3);
+			$remaining1 = str_replace($awardClass1, "", $baseAwardNumber1);
+			foreach ($equivalentGrantClasses as $equivalentClasses) {
+				if (in_array($awardClass1, $equivalentClasses)) {
+					foreach (array_keys($awardsByBaseAwardNumber) as $baseAwardNumber2) {
+						$awardClass2 = substr($baseAwardNumber2, 0, 3);
+						$remaining2 = str_replace($awardClass2, "", $baseAwardNumber2);
+						if (
+							($awardClass1 != $awardClass2)
+							&& in_array($awardClass2, $equivalentClasses)
+							&& ($remaining1 == $remaining2)
+						) {
+							if (isset($combineWith[$baseAwardNumber2])) {
+								if (!in_array($baseAwardNumber1, $combineWith[$baseAwardNumber2])) {
+									$combineWith[$baseAwardNumber2][] = $baseAwardNumber1;
+								}
+							} else {
+								if (!isset($combineWith[$baseAwardNumber1])) {
+									$combineWith[$baseAwardNumber1] = [];
+								}
+								$combineWith[$baseAwardNumber1][] = $baseAwardNumber2;
+							}
+							$toCombine[] = $baseAwardNumber1;
+							$toCombine[] = $baseAwardNumber2;
+						}
+					}
+				}
+			}
+		}
 
-        $newAwardsByBaseAwardNumber = [];
-        foreach ($awardsByBaseAwardNumber as $baseAwardNumber => $grants) {
-            if (!in_array($baseAwardNumber, $toCombine)) {
-                $newAwardsByBaseAwardNumber[$baseAwardNumber] = $grants;
-            } else if (isset($combineWith[$baseAwardNumber])) {
-                $combinedGrants = $grants;
-                foreach ($combineWith[$baseAwardNumber] as $baseAwardNumber2) {
-                    $combinedGrants = array_merge($combinedGrants, $awardsByBaseAwardNumber[$baseAwardNumber2]);
-                }
-                if (self::getShowDebug()) { Application::log("Combining equivalent grants $baseAwardNumber with ".implode(", ", $combineWith[$baseAwardNumber]), $this->pid); }
-                for ($i = 0; $i < count($combinedGrants ?: []); $i++) {
-                    $combinedGrants[$i]->setVariable("project_start", self::getEarliestDate($combinedGrants, "project_start"));
-                    $combinedGrants[$i]->setVariable("project_end", self::getLatestDate($combinedGrants, "project_end"));
-                }
-                $newAwardsByBaseAwardNumber[$baseAwardNumber] = $combinedGrants;
-            }
-        }
-        return $newAwardsByBaseAwardNumber;
-    }
+		$newAwardsByBaseAwardNumber = [];
+		foreach ($awardsByBaseAwardNumber as $baseAwardNumber => $grants) {
+			if (!in_array($baseAwardNumber, $toCombine)) {
+				$newAwardsByBaseAwardNumber[$baseAwardNumber] = $grants;
+			} elseif (isset($combineWith[$baseAwardNumber])) {
+				$combinedGrants = $grants;
+				foreach ($combineWith[$baseAwardNumber] as $baseAwardNumber2) {
+					$combinedGrants = array_merge($combinedGrants, $awardsByBaseAwardNumber[$baseAwardNumber2]);
+				}
+				if (self::getShowDebug()) {
+					Application::log("Combining equivalent grants $baseAwardNumber with ".implode(", ", $combineWith[$baseAwardNumber]), $this->pid);
+				}
+				for ($i = 0; $i < count($combinedGrants ?: []); $i++) {
+					$combinedGrants[$i]->setVariable("project_start", self::getEarliestDate($combinedGrants, "project_start"));
+					$combinedGrants[$i]->setVariable("project_end", self::getLatestDate($combinedGrants, "project_end"));
+				}
+				$newAwardsByBaseAwardNumber[$baseAwardNumber] = $combinedGrants;
+			}
+		}
+		return $newAwardsByBaseAwardNumber;
+	}
 
-	private function compileGrantsForFinancial($combine = FALSE) {
+	private function compileGrantsForFinancial($combine = false) {
 		# 1. look for all eligible grants
-		$coeusGrants = array();
-        $coeusSources = Grant::getCoeusSources();
+		$coeusGrants = [];
+		$coeusSources = Grant::getCoeusSources();
 		foreach ($this->nativeGrants as $grant) {
-			if (self::getShowDebug()) { Application::log("1. nativeGrants: ".json_encode($grant->toArray())); }
+			if (self::getShowDebug()) {
+				Application::log("1. nativeGrants: ".json_encode($grant->toArray()));
+			}
 			if (in_array($grant->getVariable("source"), $coeusSources)) {
-			    $coeusGrants[] = $grant;
+				$coeusGrants[] = $grant;
 			}
 		}
 
 		foreach ($coeusGrants as $grant) {
-			if (self::getShowDebug()) { Application::log("2. coeusGrants: ".json_encode($grant->toArray())); }
+			if (self::getShowDebug()) {
+				Application::log("2. coeusGrants: ".json_encode($grant->toArray()));
+			}
 		}
 
 		# 2. combine same grants
 		$awardsBySource = self::combineBySource($coeusSources, $coeusGrants, $combine);
 
 		foreach ($awardsBySource as $awardNo => $grants) {
-			if (self::getShowDebug()) { Application::log("compileGrantsForFinancial: 3. awardsBySource[$awardNo]: ".count($grants)." grants"); }
+			if (self::getShowDebug()) {
+				Application::log("compileGrantsForFinancial: 3. awardsBySource[$awardNo]: ".count($grants)." grants");
+			}
 		}
 
 		# 3. flatten grants instead of throwing out dups
 		$flattenedBySource = self::flatten($awardsBySource);
 
 		foreach ($flattenedBySource as $awardNo => $grant) {
-			if (self::getShowDebug()) { Application::log("compileGrantsForFinancial: 4. flattenedBySource[$awardNo]: ".json_encode($grant->toArray())); }
+			if (self::getShowDebug()) {
+				Application::log("compileGrantsForFinancial: 4. flattenedBySource[$awardNo]: ".json_encode($grant->toArray()));
+			}
 		}
 
 		# 4. order grants by starting date
 		$awardsByStart = self::orderGrantsByStart($flattenedBySource);
 
 		foreach ($awardsByStart as $awardNo => $grant) {
-			if (self::getShowDebug()) { Application::log("5. awardsByStart[$awardNo]: ".json_encode($grant->toArray())); }
+			if (self::getShowDebug()) {
+				Application::log("5. awardsByStart[$awardNo]: ".json_encode($grant->toArray()));
+			}
 		}
 
 		# 5. save in data structure
 		if ($combine) {
-			$awardsByBaseAwardNumber = array();
-			$translateBaseNumbers = array();
+			$awardsByBaseAwardNumber = [];
+			$translateBaseNumbers = [];
 			foreach ($awardsByStart as $awardNo => $grant) {
 				$sponsorAwardNo = $grant->getNumber();
 				$baseAwardNo = $grant->getBaseNumber();
@@ -796,13 +811,13 @@ class Grants {
 					$translateBaseNumbers[$baseAwardNo] = $oldBaseNumber;
 				}
 				if (!isset($awardsByBaseAwardNumber[$baseAwardNo])) {
-					$awardsByBaseAwardNumber[$baseAwardNo] = array();
+					$awardsByBaseAwardNumber[$baseAwardNo] = [];
 				}
 				$awardsByBaseAwardNumber[$baseAwardNo][] = $grant;
 			}
-			$changed = TRUE;
+			$changed = true;
 			while ($changed) {
-				$changed = FALSE;
+				$changed = false;
 				foreach ($awardsByBaseAwardNumber as $baseAwardNo => $grants) {
 					if (isset($translateBaseNumbers[$baseAwardNo])) {
 						$oldBaseNumber = $translateBaseNumbers[$baseAwardNo];
@@ -810,14 +825,14 @@ class Grants {
 							# old list comes first; new list is after old list
 							$awardsByBaseAwardNumber[$oldBaseNumber] = array_merge($awardsByBaseAwardNumber[$oldBaseNumber], $grants);
 							unset($awardsByBaseAwardNumber[$baseAwardNo]);
-							$changed = TRUE;
+							$changed = true;
 							break;   // foreach loop
 						}
 					}
 				}
 			}
 
-			$this->compiledGrants = array();
+			$this->compiledGrants = [];
 			foreach ($awardsByBaseAwardNumber as $awardNo => $grants) {
 				$this->compiledGrants[] = self::combineGrants($grants);
 			}
@@ -827,7 +842,7 @@ class Grants {
 	}
 
 	private static function flatten($awardsBySource) {
-		$newAwards = array();
+		$newAwards = [];
 		foreach ($awardsBySource as $awardNo => $grants) {
 			if (is_array($grants)) {
 				foreach ($grants as $grant) {
@@ -841,21 +856,25 @@ class Grants {
 		return $newAwards;
 	}
 
-	private static function combineBySource($sourceOrder, $grants, $combine = TRUE) {
-	    $awardsBySource = [];
+	private static function combineBySource($sourceOrder, $grants, $combine = true) {
+		$awardsBySource = [];
 		foreach ($sourceOrder as $source) {
 			foreach ($grants as $grant) {
 				if ($grant->getVariable("source") == $source) {
-				    if ($grant->getVariable("start")) {
-                        $awardNo = $grant->getNumber();
-                        if (!isset($awardsBySource[$awardNo])) {
-                            $awardsBySource[$awardNo] = array();
-                        }
-                        $awardsBySource[$awardNo][] = $grant;
-                        if (self::getShowDebug()) { Application::log("combineBySource setup: ".$awardNo." adding ".$grant->getVariable("type")); }
-                    } else {
-                        if (self::getShowDebug()) { Application::log("combineBySource setup: omitting ".$grant->getNumber()." because no start"); }
-                    }
+					if ($grant->getVariable("start")) {
+						$awardNo = $grant->getNumber();
+						if (!isset($awardsBySource[$awardNo])) {
+							$awardsBySource[$awardNo] = [];
+						}
+						$awardsBySource[$awardNo][] = $grant;
+						if (self::getShowDebug()) {
+							Application::log("combineBySource setup: ".$awardNo." adding ".$grant->getVariable("type"));
+						}
+					} else {
+						if (self::getShowDebug()) {
+							Application::log("combineBySource setup: omitting ".$grant->getNumber()." because no start");
+						}
+					}
 				}
 			}
 		}
@@ -864,366 +883,400 @@ class Grants {
 				$awardsBySource[$awardNo] = self::combineGrants($grants);
 			}
 		}
-		if (self::getShowDebug()) { Application::log("combineBySource. ".count($awardsBySource)." awardsBySource"); }
+		if (self::getShowDebug()) {
+			Application::log("combineBySource. ".count($awardsBySource)." awardsBySource");
+		}
 		foreach ($awardsBySource as $awardNo => $grants) {
-		    if (is_array($grants)) {
-                if (self::getShowDebug()) { Application::log("combineBySource: ".$awardNo." with ".count($grants)); }
-            }
+			if (is_array($grants)) {
+				if (self::getShowDebug()) {
+					Application::log("combineBySource: ".$awardNo." with ".count($grants));
+				}
+			}
 		}
 		return $awardsBySource;
 	}
 
 	private static function orderGrantsByStart($awards) {
-        $startingTimes = [];
-        $i = 0;
-        foreach ($awards as $awardNo => $grant) {
-            $start = $grant->getVariable('start');
-            if (REDCapManagement::isDate($start)) {
-                $start = strtotime($start);
-            }
-            if (self::getShowDebug()) {
-                Application::log($awardNo . " has $start; " . date("Y-m-d", $start) . " " . $grant->getVariable("source"));
-            }
-            if ($start && REDCapManagement::isAssoc($awards)) {
-                $startingTimes[$awardNo] = $start;
-            } else if ($start) {
-                $startingTimes[$i] = $start;
-            } else if (REDCapManagement::isAssoc($awards)) {
-                Application::log("A: $awardNo lacks a start " . json_encode($grant->toArray()));
-            } else {
-                Application::log("B: ".$grant->getBaseAwardNumber()." lacks a start ".json_encode($grant->toArray()));
-            }
-            $i++;
-        }
+		$startingTimes = [];
+		$i = 0;
+		foreach ($awards as $awardNo => $grant) {
+			$start = $grant->getVariable('start');
+			if (REDCapManagement::isDate($start)) {
+				$start = strtotime($start);
+			}
+			if (self::getShowDebug()) {
+				Application::log($awardNo . " has $start; " . date("Y-m-d", $start) . " " . $grant->getVariable("source"));
+			}
+			if ($start && REDCapManagement::isAssoc($awards)) {
+				$startingTimes[$awardNo] = $start;
+			} elseif ($start) {
+				$startingTimes[$i] = $start;
+			} elseif (REDCapManagement::isAssoc($awards)) {
+				Application::log("A: $awardNo lacks a start " . json_encode($grant->toArray()));
+			} else {
+				Application::log("B: ".$grant->getBaseAwardNumber()." lacks a start ".json_encode($grant->toArray()));
+			}
+			$i++;
+		}
 
-        $startingTimes = self::orderDuplicateTsByTimeAndType($startingTimes, $awards);
-        $awardsByStart = [];	// a list of the awards used, ordered by starting time
-        foreach ($startingTimes as $idx => $ts) {
-            if (isset($awards[$idx])) {
-                if (is_numeric($idx)) {
-                    $awardsByStart[] = $awards[$idx];
-                } else {
-                    $awardNo = $idx;
-                    $awardsByStart[$awardNo] = $awards[$awardNo];
-                }
-            }
-        }
-        return $awardsByStart;
+		$startingTimes = self::orderDuplicateTsByTimeAndType($startingTimes, $awards);
+		$awardsByStart = [];	// a list of the awards used, ordered by starting time
+		foreach ($startingTimes as $idx => $ts) {
+			if (isset($awards[$idx])) {
+				if (is_numeric($idx)) {
+					$awardsByStart[] = $awards[$idx];
+				} else {
+					$awardNo = $idx;
+					$awardsByStart[$awardNo] = $awards[$awardNo];
+				}
+			}
+		}
+		return $awardsByStart;
 	}
 
 	# Secondary order, after order by timestamp
 	private static function orderDuplicateTsByTimeAndType($startingTimes, $awards) {
-	    $newTimes = [];
-	    $idxesByTs = [];
-	    foreach ($startingTimes as $idx => $ts) {
-	        $ts = intval($ts);
-	        if (!isset($idxesByTs[$ts])) {
-                $idxesByTs[$ts] = [];
-            }
-	        $idxesByTs[$ts][] = $idx;
-        }
-	    ksort($idxesByTs);
-	    $awardTypeLookup = Grant::getAwardTypes();
-	    foreach ($idxesByTs as $ts => $indexes) {
-	        if (count($indexes) == 1) {
-	            $newTimes[$indexes[0]] = $ts;
-            } else {
-	            $awardTypes = [];
-	            foreach ($indexes as $idx) {
-	                $awardTypes[$idx] = $awardTypeLookup[$awards[$idx]->getVariable("type")];
-                }
-	            asort($awardTypes);
-	            $newlyOrderedAwardTypes = [];
-	            $awardTypePriorities = [
-	                [10],         // Training Grant Appt.
-                    [7],          // Research Fellowship
-                    [1, 2, 3, 4], // K-class
-                    [9],          // Bridge Awards
-                    [5, 6],       // R-class
-                    [8],          // Mentoring/Training Grant Admin.
-                ];
-	            $seenTypes = [];
-	            foreach ($awardTypePriorities as $currAwardTypes) {
-	                $seenTypes = array_unique(array_merge($seenTypes, $currAwardTypes));
-                    foreach ($awardTypes as $idx => $awardTypeIdx) {
-                        if (in_array($awardTypeIdx, $currAwardTypes)) {
-                            $newlyOrderedAwardTypes[] = $idx;
-                        }
-                    }
-                }
-                foreach ($awardTypes as $idx => $awardTypeIdx) {
-                    if (!in_array($awardTypeIdx, $seenTypes)) {   // Others
-                        $newlyOrderedAwardTypes[] = $idx;
-                    }
-                }
-                foreach ($newlyOrderedAwardTypes as $idx) {
-                    $newTimes[$idx] = $ts;
-                }
-            }
-        }
-	    return $newTimes;
-    }
+		$newTimes = [];
+		$idxesByTs = [];
+		foreach ($startingTimes as $idx => $ts) {
+			$ts = intval($ts);
+			if (!isset($idxesByTs[$ts])) {
+				$idxesByTs[$ts] = [];
+			}
+			$idxesByTs[$ts][] = $idx;
+		}
+		ksort($idxesByTs);
+		$awardTypeLookup = Grant::getAwardTypes();
+		foreach ($idxesByTs as $ts => $indexes) {
+			if (count($indexes) == 1) {
+				$newTimes[$indexes[0]] = $ts;
+			} else {
+				$awardTypes = [];
+				foreach ($indexes as $idx) {
+					$awardTypes[$idx] = $awardTypeLookup[$awards[$idx]->getVariable("type")];
+				}
+				asort($awardTypes);
+				$newlyOrderedAwardTypes = [];
+				$awardTypePriorities = [
+					[10],         // Training Grant Appt.
+					[7],          // Research Fellowship
+					[1, 2, 3, 4], // K-class
+					[9],          // Bridge Awards
+					[5, 6],       // R-class
+					[8],          // Mentoring/Training Grant Admin.
+				];
+				$seenTypes = [];
+				foreach ($awardTypePriorities as $currAwardTypes) {
+					$seenTypes = array_unique(array_merge($seenTypes, $currAwardTypes));
+					foreach ($awardTypes as $idx => $awardTypeIdx) {
+						if (in_array($awardTypeIdx, $currAwardTypes)) {
+							$newlyOrderedAwardTypes[] = $idx;
+						}
+					}
+				}
+				foreach ($awardTypes as $idx => $awardTypeIdx) {
+					if (!in_array($awardTypeIdx, $seenTypes)) {   // Others
+						$newlyOrderedAwardTypes[] = $idx;
+					}
+				}
+				foreach ($newlyOrderedAwardTypes as $idx) {
+					$newTimes[$idx] = $ts;
+				}
+			}
+		}
+		return $newTimes;
+	}
 
-    private function makeRequestedChanges(&$awards, $unsetRemoves = FALSE) {
-        if (self::getShowDebug()) {
-            Application::log("Making ".count($this->changes)." changes", $this->pid);
-        }
-        foreach ($this->changes as $change) {
-            $changeAwardNo = $change->getNumber();
-            if ($change->isRemove()) {
-                $baseNumber = $change->getBaseNumber();
-                foreach (array_keys($awards) as $awardNo) {
-                    if (is_array($awards[$awardNo])) {
-                        $grants = $awards[$awardNo];
-                    } else {
-                        $grants = [$awards[$awardNo]];
-                    }
-                    if ($unsetRemoves) {
-                        $numGrants = count($grants ?: []);
-                        foreach ($grants as &$grant) {
-                            if ($baseNumber == $grant->getBaseNumber()) {
-                                $numGrants--;
-                            }
-                        }
-                        if ($numGrants === 0) {
-                            unset($awards[$awardNo]);
-                        }
-                    } else {
-                        foreach ($grants as &$grant) {
-                            if ($baseNumber == $grant->getBaseNumber()) {
-                                if (self::getShowDebug()) {
-                                    Application::log("Setting N/A to $awardNo");
-                                }
-                                $grant->setVariable("type", "N/A");
-                            }
-                        }
-                    }
-                }
-            } else if ($change->getTakeOverDate()) {
-                $takeOverDate = strtotime($change->getTakeOverDate());
-                $baseNumber = $change->getBaseNumber();
-                foreach (array_keys($awards) as $awardNo) {
-                    if (is_array($awards[$awardNo])) {
-                        $grants = $awards[$awardNo];
-                    } else {
-                        $grants = [$awards[$awardNo]];
-                    }
-                    foreach ($grants as &$grant) {
-                        if ($baseNumber == $grant->getBaseNumber()) {
-                            $start = strtotime($grant->getVariable('start'));
-                            if ($start < $takeOverDate) {
-                                if (self::getShowDebug()) {
-                                    Application::log("Setting takeover to $awardNo");
-                                }
-                                $grant->setVariable("takeover", "TRUE");
-                            }
-                        }
-                    }
-                }
-            } else {
-                if ($changeAwardNo && isset($awards[$changeAwardNo])) {
-                    if (is_array($awards[$changeAwardNo])) {
-                        $grants = $awards[$changeAwardNo];
-                    } else {
-                        $grants = [$awards[$changeAwardNo]];
-                    }
-                    foreach ($grants as &$grant) {
-                        if (self::getShowDebug()) {
-                            Application::log("Setting " . $change->getChangeType() . " to " . $change->getChangeValue() . " for $changeAwardNo");
-                        }
-                        $grant->setVariable($change->getChangeType(), $change->getChangeValue());
-                    }
-                } else {
-                    if (self::getShowDebug()) { Application::log("Skipping ".$change->getChangeType()." to ".$change->getChangeValue()." for $changeAwardNo"); }
-                }
-            }
-        }
-    }
+	private function makeRequestedChanges(&$awards, $unsetRemoves = false) {
+		if (self::getShowDebug()) {
+			Application::log("Making ".count($this->changes)." changes", $this->pid);
+		}
+		foreach ($this->changes as $change) {
+			$changeAwardNo = $change->getNumber();
+			if ($change->isRemove()) {
+				$baseNumber = $change->getBaseNumber();
+				foreach (array_keys($awards) as $awardNo) {
+					if (is_array($awards[$awardNo])) {
+						$grants = $awards[$awardNo];
+					} else {
+						$grants = [$awards[$awardNo]];
+					}
+					if ($unsetRemoves) {
+						$numGrants = count($grants ?: []);
+						foreach ($grants as &$grant) {
+							if ($baseNumber == $grant->getBaseNumber()) {
+								$numGrants--;
+							}
+						}
+						if ($numGrants === 0) {
+							unset($awards[$awardNo]);
+						}
+					} else {
+						foreach ($grants as &$grant) {
+							if ($baseNumber == $grant->getBaseNumber()) {
+								if (self::getShowDebug()) {
+									Application::log("Setting N/A to $awardNo");
+								}
+								$grant->setVariable("type", "N/A");
+							}
+						}
+					}
+				}
+			} elseif ($change->getTakeOverDate()) {
+				$takeOverDate = strtotime($change->getTakeOverDate());
+				$baseNumber = $change->getBaseNumber();
+				foreach (array_keys($awards) as $awardNo) {
+					if (is_array($awards[$awardNo])) {
+						$grants = $awards[$awardNo];
+					} else {
+						$grants = [$awards[$awardNo]];
+					}
+					foreach ($grants as &$grant) {
+						if ($baseNumber == $grant->getBaseNumber()) {
+							$start = strtotime($grant->getVariable('start'));
+							if ($start < $takeOverDate) {
+								if (self::getShowDebug()) {
+									Application::log("Setting takeover to $awardNo");
+								}
+								$grant->setVariable("takeover", "TRUE");
+							}
+						}
+					}
+				}
+			} else {
+				if ($changeAwardNo && isset($awards[$changeAwardNo])) {
+					if (is_array($awards[$changeAwardNo])) {
+						$grants = $awards[$changeAwardNo];
+					} else {
+						$grants = [$awards[$changeAwardNo]];
+					}
+					foreach ($grants as &$grant) {
+						if (self::getShowDebug()) {
+							Application::log("Setting " . $change->getChangeType() . " to " . $change->getChangeValue() . " for $changeAwardNo");
+						}
+						$grant->setVariable($change->getChangeType(), $change->getChangeValue());
+					}
+				} else {
+					if (self::getShowDebug()) {
+						Application::log("Skipping ".$change->getChangeType()." to ".$change->getChangeValue()." for $changeAwardNo");
+					}
+				}
+			}
+		}
+	}
 
-    private function compileAllGrants() {
-        # like compileGrantsForConversion except include N/A's
-        $this->compileGrantsForConversion(TRUE);
-    }
+	private function compileAllGrants() {
+		# like compileGrantsForConversion except include N/A's
+		$this->compileGrantsForConversion(true);
+	}
 
-    private function loadChanges() {
-        $toImport = $this->calculate['to_import'] ?? [];
-        if (self::getShowDebug()) {
-            Application::log("toImport has ".count($toImport)." items", $this->pid);
-        }
-        foreach ($toImport as $index => $ary) {
-            $action = $ary[0];
-            $grant = $this->dataWranglerToGrant($ary[1]);
-            $awardno = $grant->getNumber();
-            $grant->setVariable('source', "modify");
-            if (in_array($action, ["CHANGE", "ADD", "R_CHANGE", "A_CHANGE"])) {
-                $variables = ["type", "start", "end", "project_start", "project_end"];
-                foreach($variables as $variable) {
-                    if ($grant->getVariable($variable)) {
-                        $change = new ImportedChange($awardno);
-                        $change->setChange($variable, $grant->getVariable($variable));
-                        $this->changes[] = $change;
-                    }
-                }
-            } else if ($action == "TAKEOVER") {
-                $change = new ImportedChange($awardno);
-                $change->setTakeOverDate($grant->getVariable("start"));
-                $this->changes[] = $change;
-            } else if ($action == "REMOVE") {
-                $change = new ImportedChange($awardno);
-                $change->setRemove(TRUE);
-                $this->changes[] = $change;
-            }
-        }
-        if (self::getShowDebug()) {
-            Application::log(count($this->changes)." changes loaded", $this->pid);
-        }
-    }
+	private function loadChanges() {
+		$toImport = $this->calculate['to_import'] ?? [];
+		if (self::getShowDebug()) {
+			Application::log("toImport has ".count($toImport)." items", $this->pid);
+		}
+		foreach ($toImport as $index => $ary) {
+			$action = $ary[0];
+			$grant = $this->dataWranglerToGrant($ary[1]);
+			$awardno = $grant->getNumber();
+			$grant->setVariable('source', "modify");
+			if (in_array($action, ["CHANGE", "ADD", "R_CHANGE", "A_CHANGE"])) {
+				$variables = ["type", "start", "end", "project_start", "project_end"];
+				foreach ($variables as $variable) {
+					if ($grant->getVariable($variable)) {
+						$change = new ImportedChange($awardno);
+						$change->setChange($variable, $grant->getVariable($variable));
+						$this->changes[] = $change;
+					}
+				}
+			} elseif ($action == "TAKEOVER") {
+				$change = new ImportedChange($awardno);
+				$change->setTakeOverDate($grant->getVariable("start"));
+				$this->changes[] = $change;
+			} elseif ($action == "REMOVE") {
+				$change = new ImportedChange($awardno);
+				$change->setRemove(true);
+				$this->changes[] = $change;
+			}
+		}
+		if (self::getShowDebug()) {
+			Application::log(count($this->changes)." changes loaded", $this->pid);
+		}
+	}
 
-    private static function getEarliestDate($grants, $field) {
-        $earliestTs = FALSE;
-        foreach ($grants as $grant) {
-            $value = $grant->getVariable($field);
-            if ($value && DateManagement::isDate($value)) {
-                $ts = strtotime($value);
-                if (
-                    $ts
-                    && (
-                        !$earliestTs
-                        || ($ts < $earliestTs)
-                    )
-                ) {
-                    $earliestTs = $ts;
-                }
-            }
-        }
-        return $earliestTs ? date("Y-m-d", $earliestTs) : "";
-    }
+	private static function getEarliestDate($grants, $field) {
+		$earliestTs = false;
+		foreach ($grants as $grant) {
+			$value = $grant->getVariable($field);
+			if ($value && DateManagement::isDate($value)) {
+				$ts = strtotime($value);
+				if (
+					$ts
+					&& (
+						!$earliestTs
+						|| ($ts < $earliestTs)
+					)
+				) {
+					$earliestTs = $ts;
+				}
+			}
+		}
+		return $earliestTs ? date("Y-m-d", $earliestTs) : "";
+	}
 
-    private static function getLatestDate($grants, $field) {
-        $latestTs = FALSE;
-        foreach ($grants as $grant) {
-            $value = $grant->getVariable($field);
-            if ($value && DateManagement::isDate($value)) {
-                $ts = strtotime($value);
-                if (
-                    $ts
-                    && (
-                        !$latestTs
-                        || ($ts > $latestTs)
-                    )
-                ) {
-                    $latestTs = $ts;
-                }
-            }
-        }
-        return $latestTs ? date("Y-m-d", $latestTs) : "";
+	private static function getLatestDate($grants, $field) {
+		$latestTs = false;
+		foreach ($grants as $grant) {
+			$value = $grant->getVariable($field);
+			if ($value && DateManagement::isDate($value)) {
+				$ts = strtotime($value);
+				if (
+					$ts
+					&& (
+						!$latestTs
+						|| ($ts > $latestTs)
+					)
+				) {
+					$latestTs = $ts;
+				}
+			}
+		}
+		return $latestTs ? date("Y-m-d", $latestTs) : "";
 
-    }
+	}
 
-    private function combineByBaseAwardNumber($awardsByStart) {
-        $awardsByBaseAwardNumberAndSource = [];
-        foreach ($awardsByStart as $awardNo => $grant) {
-            $baseNumber = $grant->getBaseNumber();
-            $source = $grant->getVariable("source");
-            if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber])) {
-                $awardsByBaseAwardNumberAndSource[$baseNumber] = [];
-            }
-            if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber][$source])) {
-                $awardsByBaseAwardNumberAndSource[$baseNumber][$source] = [];
-            }
-            $awardsByBaseAwardNumberAndSource[$baseNumber][$source][] = $grant;
-        }
+	# returns TRUE for empty arrays
+	private static function hasAllNA(array $grants): bool {
+		if (empty($grants)) {
+			return false;
+		}
+		foreach ($grants as $grant) {
+			if ($grant->getVariable("type") != "N/A") {
+				return false;
+			}
+		}
+		return true;
+	}
 
-        $awardsByBaseAwardNumber = [];
-        foreach ($awardsByBaseAwardNumberAndSource as $baseNumber => $sources) {
-            if (self::spansRePORTERBeginning($sources)) {
-                $mySourceOrder = self::getSourceOrderForOlderData();
-            } else {
-                $mySourceOrder = self::getSourceOrder();
-            }
-            foreach ($mySourceOrder as $source) {
-                if (isset($sources[$source])) {
-                    $grants = $sources[$source];
-                    if (!empty($grants)) {
-                        $awardsByBaseAwardNumber[$baseNumber] = $grants;
-                        break;   // source loop
-                    }
-                }
-            }
-        }
-        $awardsByBaseAwardNumber = $this->combineEquivalentGrants($awardsByBaseAwardNumber);
-        Grant::setShowDebug(self::$showDebug);
-        $combinedAwardsByBaseAwardNumber = [];
-        foreach ($awardsByBaseAwardNumber as $baseNumber => $grants) {
-            $grantNumbers = [];
-            foreach ($grants as $grant) {
-                $grantNumbers[] = $grant->getNumber();
-            }
-            $combinedGrant = self::combineGrants($grants);
-            $combinedGrant->putInBins();
-            $awards = [$baseNumber => $combinedGrant];
-            $this->makeRequestedChanges($awards);
-            $combinedGrant = $awards[$baseNumber];
+	private function combineByBaseAwardNumber($awardsByStart) {
+		$awardsByBaseAwardNumberAndSource = [];
+		foreach ($awardsByStart as $awardNo => $grant) {
+			$baseNumber = $grant->getBaseNumber();
+			$source = $grant->getVariable("source");
+			if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber])) {
+				$awardsByBaseAwardNumberAndSource[$baseNumber] = [];
+			}
+			if (!isset($awardsByBaseAwardNumberAndSource[$baseNumber][$source])) {
+				$awardsByBaseAwardNumberAndSource[$baseNumber][$source] = [];
+			}
+			$awardsByBaseAwardNumberAndSource[$baseNumber][$source][] = $grant;
+		}
 
-            if (self::getShowDebug()) { Application::log("Combining grants ".implode(", ", $grantNumbers)." to grant ".$combinedGrant->getVariable("start")." - ".$combinedGrant->getVariable("end")." (".$combinedGrant->getVariable("type").")"); }
-            if ($combinedGrant) {
-                $combinedAwardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
-            }
-        }
+		$awardsByBaseAwardNumber = [];
+		foreach ($awardsByBaseAwardNumberAndSource as $baseNumber => $sources) {
+			if (self::spansRePORTERBeginning($sources)) {
+				$mySourceOrder = self::getSourceOrderForOlderData();
+			} else {
+				$mySourceOrder = self::getSourceOrder();
+			}
+			foreach ($mySourceOrder as $source) {
+				if (isset($sources[$source])) {
+					$grants = $sources[$source];
+					if (
+						!empty($grants)
+						&& (
+							empty($awardsByBaseAwardNumber[$baseNumber])
+							|| self::hasAllNA($awardsByBaseAwardNumber[$baseNumber])
+						)
+						&& (
+							!self::hasAllNA($grants)
+							|| !isset($awardsByBaseAwardNumber[$baseNumber])
+						)
+					) {
+						# put in the first source without an N/A for a grant type
+						# if they all have N/A's, then put the first item in
+						# i.e., prefer the one with a grant type from the first source;
+						#       if that's not possible, prefer the first source
+						$awardsByBaseAwardNumber[$baseNumber] = $grants;
+					}
+				}
+			}
+		}
+		$awardsByBaseAwardNumber = $this->combineEquivalentGrants($awardsByBaseAwardNumber);
+		Grant::setShowDebug(self::$showDebug);
+		$combinedAwardsByBaseAwardNumber = [];
+		foreach ($awardsByBaseAwardNumber as $baseNumber => $grants) {
+			$grantNumbers = [];
+			foreach ($grants as $grant) {
+				$grantNumbers[] = $grant->getNumber();
+			}
+			$combinedGrant = self::combineGrants($grants);
+			$combinedGrant->putInBins();
+			$awards = [$baseNumber => $combinedGrant];
+			$this->makeRequestedChanges($awards);
+			$combinedGrant = $awards[$baseNumber];
 
-        return $combinedAwardsByBaseAwardNumber;
-    }
+			if (self::getShowDebug()) {
+				Application::log("Combining grants ".implode(", ", $grantNumbers)." to grant ".$combinedGrant->getVariable("start")." - ".$combinedGrant->getVariable("end")." (".$combinedGrant->getVariable("type").")");
+			}
+			if ($combinedGrant) {
+				$combinedAwardsByBaseAwardNumber[$baseNumber] = $combinedGrant;
+			}
+		}
 
-    # excludes all F grants (fellowship-based PhD and postdoc grants) if the scholar has received a K-class grant
-    # K-class grants are individual awards; F grants NEVER come after Ks
-    # Likewise, exclude Fs and Ks after an R-class grant
-    # Sometimes, though, an F grant shows up on a scholar's record after a K grant - when their TRAINEE has won it
-    # Likewise, sometimes, an F/K grant shows up on a scholar's record after an R grant - when their TRAINEE has won it
-    # The trainee's award is an improper association; hence this method
-    private static function excludeFsAfterKs(&$orderedGrants) {
-        $filteredGrants = [];
-        $hasK = FALSE;
-        $hasR = FALSE;
-        $kClasses = ["Internal K", "K12/KL2", "Individual K", "K Equivalent", 1, 2, 3, 4];
-        foreach ($orderedGrants as $awardNo => $grant) {
-            if (in_array($grant->getVariable("type"), ["R01", "R01 Equivalent", 5, 6])) {
-                $hasR = TRUE;
-            } else if (in_array($grant->getVariable("type"), $kClasses)) {
-                $hasK = TRUE;
-            }
+		return $combinedAwardsByBaseAwardNumber;
+	}
 
-            if ($hasR) {
-                $activityCode = Grant::getActivityCode($awardNo);
-                # exclude K's and F's after an R
-                if (!preg_match("/^[Ff]/", $activityCode) && !in_array($grant->getVariable("type"), $kClasses)) {
-                    $filteredGrants[$awardNo] =  $grant;
-                }
-            } else if ($hasK) {
-                $activityCode = Grant::getActivityCode($awardNo);
-                # exclude F's after a K
-                if (!preg_match("/^[Ff]/", $activityCode)) {
-                    $filteredGrants[$awardNo] =  $grant;
-                }
-            } else {
-                $filteredGrants[$awardNo] = $grant;
-            }
-        }
-        $orderedGrants = $filteredGrants;
-    }
+	# excludes all F grants (fellowship-based PhD and postdoc grants) if the scholar has received a K-class grant
+	# K-class grants are individual awards; F grants NEVER come after Ks
+	# Likewise, exclude Fs and Ks after an R-class grant
+	# Sometimes, though, an F grant shows up on a scholar's record after a K grant - when their TRAINEE has won it
+	# Likewise, sometimes, an F/K grant shows up on a scholar's record after an R grant - when their TRAINEE has won it
+	# The trainee's award is an improper association; hence this method
+	private static function excludeFsAfterKs(&$orderedGrants) {
+		$filteredGrants = [];
+		$hasK = false;
+		$hasR = false;
+		$kClasses = ["Internal K", "K12/KL2", "Individual K", "K Equivalent", 1, 2, 3, 4];
+		foreach ($orderedGrants as $awardNo => $grant) {
+			if (in_array($grant->getVariable("type"), ["R01", "R01 Equivalent", 5, 6])) {
+				$hasR = true;
+			} elseif (in_array($grant->getVariable("type"), $kClasses)) {
+				$hasK = true;
+			}
 
-    # returns FALSE if and only if both grant 1 and grant 2 has a value and they disagree
-    # otherwise returns TRUE
-    private static function hasSameGrantVariables($grant1, $grant2, $variable) {
-        $val1 = $grant1->getVariable($variable);
-        $val2 = $grant2->getVariable($variable);
-        if (($val1 === "") || ($val2 === "")) {
-            return TRUE;
-        } else {
-            return ($val1 === $val2);
-        }
-    }
+			if ($hasR) {
+				$activityCode = Grant::getActivityCode($awardNo);
+				# exclude K's and F's after an R
+				if (!preg_match("/^[Ff]/", $activityCode) && !in_array($grant->getVariable("type"), $kClasses)) {
+					$filteredGrants[$awardNo] =  $grant;
+				}
+			} elseif ($hasK) {
+				$activityCode = Grant::getActivityCode($awardNo);
+				# exclude F's after a K
+				if (!preg_match("/^[Ff]/", $activityCode)) {
+					$filteredGrants[$awardNo] =  $grant;
+				}
+			} else {
+				$filteredGrants[$awardNo] = $grant;
+			}
+		}
+		$orderedGrants = $filteredGrants;
+	}
 
-    private function compileGrantsForConversion($includeNAs = FALSE, $startTs = FALSE, $endTs = FALSE) {
+	# returns FALSE if and only if both grant 1 and grant 2 has a value and they disagree
+	# otherwise returns TRUE
+	private static function hasSameGrantVariables($grant1, $grant2, $variable) {
+		$val1 = $grant1->getVariable($variable);
+		$val2 = $grant2->getVariable($variable);
+		if (($val1 === "") || ($val2 === "")) {
+			return true;
+		} else {
+			return ($val1 === $val2);
+		}
+	}
+
+	private function compileGrantsForConversion($includeNAs = false, $startTs = false, $endTs = false) {
 		# Strategy: Sort by start timestamp and then look for duplicates
 
 		# listOfAwards contain all the awards
@@ -1238,72 +1291,72 @@ class Grants {
 		# primary order by starting time
 		# secondary order by source ($sourceOrder)
 
-        if ($this->getFlagStatus()) {
-            $grantTypes = [
-                "flagged" => "compiledGrants",
-                "native" => "dedupedGrants",
-            ];
-            $awards = [];
-            $awardsBySource = [];
-            foreach ($grantTypes as $grantType => $variable) {
-                $awardsBySource[$variable] = [];
-                foreach ($this->getGrants($grantType) as $grant) {
-                    $awardsBySource[$variable][$grant->getNumber()] = $grant;
-                }
-                $this->loadChanges();
-                $this->makeRequestedChanges($awardsBySource[$variable]);
-                $awardsByStart = self::orderGrantsByStart($awardsBySource[$variable]);
-                $awardsByBaseAwardNumber = $this->combineByBaseAwardNumber($awardsByStart);
-                $awards[$variable] = [];
-                foreach (array_values($awardsByBaseAwardNumber) as $grant) {
-                    $awards[$variable][] = $grant;
-                }
-                $this->$variable = $awards[$variable];
-            }
-            $this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource["dedupedGrants"]);
-            $this->calculate['order'] = self::makeOrder($awards["compiledGrants"]);
-            return $awards['compiledGrants'];
-        }
+		if ($this->getFlagStatus()) {
+			$grantTypes = [
+				"flagged" => "compiledGrants",
+				"native" => "dedupedGrants",
+			];
+			$awards = [];
+			$awardsBySource = [];
+			foreach ($grantTypes as $grantType => $variable) {
+				$awardsBySource[$variable] = [];
+				foreach ($this->getGrants($grantType) as $grant) {
+					$awardsBySource[$variable][$grant->getNumber()] = $grant;
+				}
+				$this->loadChanges();
+				$this->makeRequestedChanges($awardsBySource[$variable]);
+				$awardsByStart = self::orderGrantsByStart($awardsBySource[$variable]);
+				$awardsByBaseAwardNumber = $this->combineByBaseAwardNumber($awardsByStart);
+				$awards[$variable] = [];
+				foreach (array_values($awardsByBaseAwardNumber) as $grant) {
+					$awards[$variable][] = $grant;
+				}
+				$this->$variable = $awards[$variable];
+			}
+			$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource["dedupedGrants"]);
+			$this->calculate['order'] = self::makeOrder($awards["compiledGrants"]);
+			return $awards['compiledGrants'];
+		}
 
 		# exclude certain names
-		$exclude = array(
+		$exclude = [
 				new Name("Harold", "L", "Moses"),
 				new Name("Richard", "", "Hoover"),
 				new Name("E", "Michelle", "Southard-Smith"),
 				new Name("C", "M", "Stein"),
 				new Name("John", "", "Wilson"),
-				);
+				];
 
 		# 0. Initialize
-		$this->changes = array();	// the changes requested by the Grant Wrangler
+		$this->changes = [];	// the changes requested by the Grant Wrangler
 		$sourceOrder = self::getSourceOrder();
-		$filteredGrants = array();
+		$filteredGrants = [];
 
 		# 1. Filter for exclusions
 		foreach ($this->nativeGrants as $grant) {
 			$person = $grant->getVariable("person_name");
-			$filterOut = FALSE;
+			$filterOut = false;
 			if ($person) {
 				foreach ($exclude as $name) {
 					if ($name->isMatch($person)) {
-						$filterOut = TRUE;
+						$filterOut = true;
 					}
 				}
 			}
 
 			if (in_array($grant->getVariable("source"), $this->sourcesToExclude)) {
-			    $filterOut = TRUE;
-            }
+				$filterOut = true;
+			}
 
-            $grantStartDate = $grant->getVariable("start");
-            if ($grantStartDate) {
-                $grantStartTs = strtotime($grantStartDate);
-                if (($startTs !== FALSE) && ($grantStartTs < $startTs)) {
-                    $filterOut = TRUE;
-                } else if (($endTs !== FALSE) && ($grantStartTs > $endTs)) {
-                    $filterOut = TRUE;
-                }
-            }
+			$grantStartDate = $grant->getVariable("start");
+			if ($grantStartDate) {
+				$grantStartTs = strtotime($grantStartDate);
+				if (($startTs !== false) && ($grantStartTs < $startTs)) {
+					$filterOut = true;
+				} elseif (($endTs !== false) && ($grantStartTs > $endTs)) {
+					$filterOut = true;
+				}
+			}
 
 			if (!$filterOut) {
 				$filteredGrants[] = $grant;
@@ -1312,196 +1365,230 @@ class Grants {
 
 		# 2. Organize grants
 		$awardsBySource = self::combineBySource($sourceOrder, $filteredGrants);
-        foreach ($awardsBySource as $awardNo => $grants) {
-            if (is_array($grants)) {
-                if (self::getShowDebug()) { Application::log("2. $awardNo with ".count($grants)); }
-            }
-        }
+		foreach ($awardsBySource as $awardNo => $grants) {
+			if (is_array($grants)) {
+				if (self::getShowDebug()) {
+					Application::log("2. $awardNo with ".count($grants));
+				}
+			}
+		}
 
-        # 3. import modified lists first from the wrangler/index.php interface (Grant Wrangler)
+		# 3. import modified lists first from the wrangler/index.php interface (Grant Wrangler)
 		# these trump everything
-        $this->loadChanges();
+		$this->loadChanges();
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
 
 		foreach ($awardsBySource as $awardNo => $grants) {
-		    if (is_array($grants)) {
-                if (self::getShowDebug()) { Application::log("3. $awardNo with ".count($grants)); }
-            }
-        }
+			if (is_array($grants)) {
+				if (self::getShowDebug()) {
+					Application::log("3. $awardNo with ".count($grants));
+				}
+			}
+		}
 
 		# 4. make changes
-        $this->loadChanges();
-        $this->makeRequestedChanges($awardsBySource);
+		$this->loadChanges();
+		$this->makeRequestedChanges($awardsBySource);
 		$this->calculate['list_of_awards'] = self::makeListOfAwards($awardsBySource);
-        foreach ($awardsBySource as $awardNo => $grants) {
-            if (is_array($grants)) {
-                if (self::getShowDebug()) { Application::log("4. $awardNo with ".count($grants)); }
-            }
-        }
+		foreach ($awardsBySource as $awardNo => $grants) {
+			if (is_array($grants)) {
+				if (self::getShowDebug()) {
+					Application::log("4. $awardNo with ".count($grants));
+				}
+			}
+		}
 
-        # grants are ordered by source; need to order by start date
+		# grants are ordered by source; need to order by start date
 		# 5. order grants
 		$awardsByStart = self::orderGrantsByStart($awardsBySource);
-        self::excludeFsAfterKs($awardsByStart);
+		self::excludeFsAfterKs($awardsByStart);
 		foreach ($awardsByStart as $awardNo => $grant) {
-			if (self::getShowDebug()) { Application::log("5. awardsByStart: ".$awardNo." ".$grant->getVariable("type")." ".$grant->getVariable("start")); }
+			if (self::getShowDebug()) {
+				Application::log("5. awardsByStart: ".$awardNo." ".$grant->getVariable("type")." ".$grant->getVariable("start"));
+			}
 		}
 
 		# 6. remove duplicates by sources; most-preferred by sourceOrder
-        $awardsByBaseAwardNumber = $this->combineByBaseAwardNumber($awardsByStart);
+		$awardsByBaseAwardNumber = $this->combineByBaseAwardNumber($awardsByStart);
 		foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
-			if (self::getShowDebug()) { Application::log("6. ".$baseNumber." ".$grant->getVariable("type")); }
+			if (self::getShowDebug()) {
+				Application::log("6. ".$baseNumber." ".$grant->getVariable("type"));
+			}
 		}
 
-        $dedupedGrants = self::deepCopyGrants($awardsByBaseAwardNumber);
-        $this->makeRequestedChanges($dedupedGrants, TRUE);
-        $awardsByType = ["deduped" => $dedupedGrants, "summary" => self::deepCopyGrants($awardsByBaseAwardNumber)];
+		$dedupedGrants = self::deepCopyGrants($awardsByBaseAwardNumber);
+		$this->makeRequestedChanges($dedupedGrants, true);
+		$awardsByType = ["deduped" => $dedupedGrants, "summary" => self::deepCopyGrants($awardsByBaseAwardNumber)];
 
 		if (!$includeNAs) {
-            # 7. remove N/A's from summaries
-            foreach ($awardsByType["summary"] as $baseNumber => $grant) {
-                if ($grant->getVariable("type") == "N/A") {
-                    if (self::getShowDebug()) { Application::log("Removing ".json_encode($grant->toArray())); }
-                    if (self::getShowDebug()) { Application::log("7. Removing because N/A ".$baseNumber); }
-                    unset($awardsByType["summary"][$baseNumber]);
-                }
-            }
-            foreach ($awardsByType["deduped"] as $baseNumber => $grant) {
-                if ($grant->isInternalVanderbiltGrant()) {
-                    if (self::getShowDebug()) { Application::log("Removing ".json_encode($grant->toArray())); }
-                    if (self::getShowDebug()) { Application::log("7. Removing because isInternalVanderbiltGrant ".$baseNumber); }
-                    unset($awardsByType["deduped"][$baseNumber]);
-                }
-            }
-        }
+			# 7. remove N/A's from summaries
+			foreach ($awardsByType["summary"] as $baseNumber => $grant) {
+				if ($grant->getVariable("type") == "N/A") {
+					if (self::getShowDebug()) {
+						Application::log("Removing ".json_encode($grant->toArray()));
+					}
+					if (self::getShowDebug()) {
+						Application::log("7. Removing because N/A ".$baseNumber);
+					}
+					unset($awardsByType["summary"][$baseNumber]);
+				}
+			}
+			foreach ($awardsByType["deduped"] as $baseNumber => $grant) {
+				if ($grant->isInternalVanderbiltGrant()) {
+					if (self::getShowDebug()) {
+						Application::log("Removing ".json_encode($grant->toArray()));
+					}
+					if (self::getShowDebug()) {
+						Application::log("7. Removing because isInternalVanderbiltGrant ".$baseNumber);
+					}
+					unset($awardsByType["deduped"][$baseNumber]);
+				}
+			}
+		}
 
 		# 8. remove duplicates by starting timestamp
 		# if two grants start on the same date and have the same type
-        # check title & sponsor; if both have values and disagree, accept as different grants
+		# check title & sponsor; if both have values and disagree, accept as different grants
 		# otherwise => remove the grant that is of a less-preferred source
-		$clean = FALSE;
-        while (!$clean) {
-    		foreach ($awardsByType as $type => $awardsByBaseAwardNumber) {
-                $prevGrant = NULL;
-                $prevBaseNumber = "";
-                $clean = TRUE;
-                foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
-                    if (self::getShowDebug()) { Application::log("8. For $type, inspecting ".$baseNumber); }
-                    if ($prevGrant) {
-                        $sameStart = ($grant->getVariable("start") === $prevGrant->getVariable("start"));
-                        $sameType = ($grant->getVariable("type") === $prevGrant->getVariable("type"));
-                        $sameTitle = self::hasSameGrantVariables($grant, $prevGrant, "title");
-                        $sameSponsor = self::hasSameGrantVariables($grant, $prevGrant, "sponsor");
-                        if ($sameStart && $sameType && $sameTitle && $sameSponsor) {
-                            foreach (array_reverse($sourceOrder) as $source) {
-                                if ($prevGrant->getVariable("source") == $source) {
-                                    if (self::getShowDebug()) { Application::log("8a. $type Removing ".$prevBaseNumber); }
-                                    $clean = FALSE;
-                                    self::setGrantTypeIfSelfReported($grant, $awardsByType[$type][$prevBaseNumber]);
-                                    if ($grant->isSelfReported()) {
-                                        self::copyBudgetsIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
-                                        self::copyTitleIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
-                                    }
-                                    if (self::getShowDebug()) { Application::log("8A. Removing $type because same timestamp ".$prevBaseNumber); }
-                                    unset($awardsByType[$type][$prevBaseNumber]);
-                                    $prevGrant = $grant;
-                                    $prevBaseNumber = $baseNumber;
-                                    break; // sourceOrder loop
-                                } else if ($grant->getVariable("source") == $source) {
-                                    if (self::getShowDebug()) { Application::log("8b. $type Removing ".$baseNumber); }
-                                    $clean = FALSE;
-                                    self::setGrantTypeIfSelfReported($prevGrant, $awardsByType[$type][$baseNumber]);
-                                    if ($prevGrant->isSelfReported()) {
-                                        self::copyBudgetsIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
-                                        self::copyTitleIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
-                                    }
-                                    if (self::getShowDebug()) { Application::log("8B. Removing $type because same timestamp ".$baseNumber); }
-                                    unset($awardsByType[$type][$baseNumber]);
-                                    break; // sourceOrder loop
-                                }
-                            }
-                        }
-                    } else {
-                        $prevGrant = $grant;
-                        $prevBaseNumber = $baseNumber;
-                    }
-                }
-            }
-        }
+		$clean = false;
+		while (!$clean) {
+			foreach ($awardsByType as $type => $awardsByBaseAwardNumber) {
+				$prevGrant = null;
+				$prevBaseNumber = "";
+				$clean = true;
+				foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
+					if (self::getShowDebug()) {
+						Application::log("8. For $type, inspecting ".$baseNumber);
+					}
+					if ($prevGrant) {
+						$sameStart = ($grant->getVariable("start") === $prevGrant->getVariable("start"));
+						$sameType = ($grant->getVariable("type") === $prevGrant->getVariable("type"));
+						$sameTitle = self::hasSameGrantVariables($grant, $prevGrant, "title");
+						$sameSponsor = self::hasSameGrantVariables($grant, $prevGrant, "sponsor");
+						if ($sameStart && $sameType && $sameTitle && $sameSponsor) {
+							foreach (array_reverse($sourceOrder) as $source) {
+								if ($prevGrant->getVariable("source") == $source) {
+									if (self::getShowDebug()) {
+										Application::log("8a. $type Removing ".$prevBaseNumber);
+									}
+									$clean = false;
+									self::setGrantTypeIfSelfReported($grant, $awardsByType[$type][$prevBaseNumber]);
+									if ($grant->isSelfReported()) {
+										self::copyBudgetsIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
+										self::copyTitleIfBlank($grant, [$grant, $awardsByType[$type][$prevBaseNumber]]);
+									}
+									if (self::getShowDebug()) {
+										Application::log("8A. Removing $type because same timestamp ".$prevBaseNumber);
+									}
+									unset($awardsByType[$type][$prevBaseNumber]);
+									$prevGrant = $grant;
+									$prevBaseNumber = $baseNumber;
+									break; // sourceOrder loop
+								} elseif ($grant->getVariable("source") == $source) {
+									if (self::getShowDebug()) {
+										Application::log("8b. $type Removing ".$baseNumber);
+									}
+									$clean = false;
+									self::setGrantTypeIfSelfReported($prevGrant, $awardsByType[$type][$baseNumber]);
+									if ($prevGrant->isSelfReported()) {
+										self::copyBudgetsIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
+										self::copyTitleIfBlank($prevGrant, [$prevGrant, $awardsByType[$type][$baseNumber]]);
+									}
+									if (self::getShowDebug()) {
+										Application::log("8B. Removing $type because same timestamp ".$baseNumber);
+									}
+									unset($awardsByType[$type][$baseNumber]);
+									break; // sourceOrder loop
+								}
+							}
+						}
+					} else {
+						$prevGrant = $grant;
+						$prevBaseNumber = $baseNumber;
+					}
+				}
+			}
+		}
 
 		# 9. adjust end times for Internal Ks and K12s; K awards cannot overlap
-        foreach ($awardsByType as $type => $awardsByBaseAwardNumber) {
-            foreach ($awardsByBaseAwardNumber as $baseNumber1 => $grant1) {
-                if (($grant1->getVariable("type") == "Internal K") || ($grant1->getVariable("type") == "K12/KL2")) {
-                    $after = FALSE;
-                    $setEnd = FALSE;
-                    foreach ($awardsByBaseAwardNumber as $baseNumber2 => $grant2) {
-                        if ($baseNumber2 == $baseNumber1) {
-                            $after = TRUE;
-                        } else if ($after) {
-                            if (($grant2->getVariable("type") == "Individual K") || ($grant2->getVariable("type") == "K Equivalent")) {
-                                $start1 = $grant1->getVariable("start");
-                                $start2 = $grant2->getVariable("start");
-                                $ts2 = strtotime($start2);
-                                $yearspan1 = self::findYearSpan($grant1->getVariable("type"), $this->pid);
-                                $naturalEnd1 = self::addYears($start1, $yearspan1);
-                                $naturalTs1 = strtotime($naturalEnd1);
-                                if ($ts2 < $naturalTs1) {
-                                    $end1 = self::subtractOneDay($start2);
-                                } else {
-                                    $end1 = self::subtractOneDay($naturalEnd1);
-                                }
-                                $awardsByType[$type][$baseNumber1]->setVariable("end", $end1);
-                                $setEnd = TRUE;
-                            }
-                            break;
-                        }
-                    }
-                    if (!$setEnd && !$grant1->getVariable("end")) {
-                        $start1 = $grant1->getVariable("start");
-                        $yearspan = self::findYearSpan($grant1->getVariable("type"), $this->pid);
-                        $awardsByType[$type][$baseNumber1]->setVariable("end", self::addYears($start1, $yearspan));
-                    }
-                }
-            }
-        }
+		foreach ($awardsByType as $type => $awardsByBaseAwardNumber) {
+			foreach ($awardsByBaseAwardNumber as $baseNumber1 => $grant1) {
+				if (($grant1->getVariable("type") == "Internal K") || ($grant1->getVariable("type") == "K12/KL2")) {
+					$after = false;
+					$setEnd = false;
+					foreach ($awardsByBaseAwardNumber as $baseNumber2 => $grant2) {
+						if ($baseNumber2 == $baseNumber1) {
+							$after = true;
+						} elseif ($after) {
+							if (($grant2->getVariable("type") == "Individual K") || ($grant2->getVariable("type") == "K Equivalent")) {
+								$start1 = $grant1->getVariable("start");
+								$start2 = $grant2->getVariable("start");
+								$ts2 = strtotime($start2);
+								$yearspan1 = self::findYearSpan($grant1->getVariable("type"), $this->pid);
+								$naturalEnd1 = self::addYears($start1, $yearspan1);
+								$naturalTs1 = strtotime($naturalEnd1);
+								if ($ts2 < $naturalTs1) {
+									$end1 = self::subtractOneDay($start2);
+								} else {
+									$end1 = self::subtractOneDay($naturalEnd1);
+								}
+								$awardsByType[$type][$baseNumber1]->setVariable("end", $end1);
+								$setEnd = true;
+							}
+							break;
+						}
+					}
+					if (!$setEnd && !$grant1->getVariable("end")) {
+						$start1 = $grant1->getVariable("start");
+						$yearspan = self::findYearSpan($grant1->getVariable("type"), $this->pid);
+						$awardsByType[$type][$baseNumber1]->setVariable("end", self::addYears($start1, $yearspan));
+					}
+				}
+			}
+		}
 
 		# 10. done - move into final data structure
-        $typeAssignments = [
-            "summary" => "compiledGrants",
-            "deduped" => "dedupedGrants",
-        ];
-        foreach ($typeAssignments as $type => $variable) {
-            $ary = [];
-            foreach ($awardsByType[$type] as $baseNumber => $grant) {
-                if (self::getShowDebug()) { Application::log("10. Adding to $type {$grant->getBaseNumber()}"); }
-                $ary[] = $grant;
-            }
-            $this->$variable = $ary;
-        }
+		$typeAssignments = [
+			"summary" => "compiledGrants",
+			"deduped" => "dedupedGrants",
+		];
+		foreach ($typeAssignments as $type => $variable) {
+			$ary = [];
+			foreach ($awardsByType[$type] as $baseNumber => $grant) {
+				if (self::getShowDebug()) {
+					Application::log("10. Adding to $type {$grant->getBaseNumber()}");
+				}
+				$ary[] = $grant;
+			}
+			$this->$variable = $ary;
+		}
 
 		$this->calculate['order'] = self::makeOrder($this->compiledGrants);
 	}
 
 	private static function setGrantTypeIfSelfReported(&$grantToBeUsed, $grantToBeRemoved) {
-	    if ($grantToBeUsed->isSelfReported() && !$grantToBeRemoved->isSelfReported()) {
-	        $type = $grantToBeRemoved->getVariable("type");
-            if (self::getShowDebug()) { Application::log("Transferring grant type for ".$grantToBeUsed->getNumber()." to ".$type); }
-            $grantToBeUsed->setVariable("type", $type);
-        } else {
-            if (self::getShowDebug()) { Application::log("Not transferring grant type for ".$grantToBeUsed->getNumber()." because used=".$grantToBeUsed->getVariable("source")." and removed=".$grantToBeRemoved->getVariable("source")); }
-        }
-    }
+		if ($grantToBeUsed->isSelfReported() && !$grantToBeRemoved->isSelfReported()) {
+			$type = $grantToBeRemoved->getVariable("type");
+			if (self::getShowDebug()) {
+				Application::log("Transferring grant type for ".$grantToBeUsed->getNumber()." to ".$type);
+			}
+			$grantToBeUsed->setVariable("type", $type);
+		} else {
+			if (self::getShowDebug()) {
+				Application::log("Not transferring grant type for ".$grantToBeUsed->getNumber()." because used=".$grantToBeUsed->getVariable("source")." and removed=".$grantToBeRemoved->getVariable("source"));
+			}
+		}
+	}
 
 	private static function deepCopyGrants($awardsByBaseAwardNumber) {
-        $newAwards = [];
-        foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
-            if (get_class($grant) == "Vanderbilt\\CareerDevLibrary\\Grant") {
-                $newAwards[$baseNumber] = clone $grant;
-            }
-        }
-        return $newAwards;
-    }
+		$newAwards = [];
+		foreach ($awardsByBaseAwardNumber as $baseNumber => $grant) {
+			if (get_class($grant) == "Vanderbilt\\CareerDevLibrary\\Grant") {
+				$newAwards[$baseNumber] = clone $grant;
+			}
+		}
+		return $newAwards;
+	}
 
 	private static function addYears($date, $yearspan) {
 		if ($date) {
@@ -1522,11 +1609,11 @@ class Grants {
 			foreach ($grantsBySource["coeus"] as $grant) {
 				$startTs = strtotime($grant->getVariable("start"));
 				if ($startTs < $startTsOfRePORTER) {
-					return TRUE;
+					return true;
 				}
 			}
 		}
-		return FALSE;
+		return false;
 	}
 
 	private static function subtractOneDay($date) {
@@ -1542,58 +1629,64 @@ class Grants {
 	}
 
 	public function compileAndCombineGrantsForFinancial() {
-		$this->compileGrantsForFinancial(TRUE);
+		$this->compileGrantsForFinancial(true);
 	}
 
 	# grants is an array of class Grant, not an instance of class Grants
 	# grants should have the same base award number
 	private static function combineGrants($grants) {
 		if (count($grants ?: []) == 0) {
-			return NULL;
-		} else if (count($grants) == 1) {
-		    $myGrant = $grants[0];
-		    $myGrant->setVariable("num_grants_combined", 1);
+			return null;
+		} elseif (count($grants) == 1) {
+			$myGrant = $grants[0];
+			$myGrant->setVariable("num_grants_combined", 1);
 			return $myGrant;
 		} else {
 			$basisGrant = $grants[0];
-            for ($i = 0; $i < count($grants); $i++) {
-                if ($grants[$i]->getVariable("type") != "N/A") {
-                    $basisGrant = $grants[$i];
-                    break;
-                }
-            }
-			if (self::getShowDebug()) { Application::log("Using basisGrant: ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." from ".$basisGrant->getVariable("source")." with $".$basisGrant->getVariable("budget")." ".$basisGrant->getVariable("start")); }
-            $areAllGrantsNA = TRUE;
-            for ($i = 0; $i < count($grants); $i++) {
-                if ($grants[$i]->getVariable("type") != "N/A") {
-                    $areAllGrantsNA = FALSE;
-                    break;
-                }
-            }
 			for ($i = 0; $i < count($grants); $i++) {
-				if (self::getShowDebug()) { Application::log("combineGrants $i ".$grants[$i]->getNumber().": ".$grants[$i]->getVariable("type")." from ".$grants[$i]->getVariable("source")." ".$grants[$i]->getVariable("start")); }
+				if ($grants[$i]->getVariable("type") != "N/A") {
+					$basisGrant = $grants[$i];
+					break;
+				}
+			}
+			if (self::getShowDebug()) {
+				Application::log("Using basisGrant: ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." from ".$basisGrant->getVariable("source")." with $".$basisGrant->getVariable("budget")." ".$basisGrant->getVariable("start"));
+			}
+			$areAllGrantsNA = true;
+			for ($i = 0; $i < count($grants); $i++) {
+				if ($grants[$i]->getVariable("type") != "N/A") {
+					$areAllGrantsNA = false;
+					break;
+				}
+			}
+			for ($i = 0; $i < count($grants); $i++) {
+				if (self::getShowDebug()) {
+					Application::log("combineGrants $i ".$grants[$i]->getNumber().": ".$grants[$i]->getVariable("type")." from ".$grants[$i]->getVariable("source")." ".$grants[$i]->getVariable("start"));
+				}
 				$currGrant = $grants[$i];
 				if (
-                    (
-                        (
-                            !$areAllGrantsNA
-                            && ($currGrant->getVariable("type") != "N/A")
-                        )
-                        || $areAllGrantsNA
-                    )
-                    && !$currGrant->getVariable("takeover")
-                ) {
+					(
+						(
+							!$areAllGrantsNA
+							&& ($currGrant->getVariable("type") != "N/A")
+						)
+						|| $areAllGrantsNA
+					)
+					&& !$currGrant->getVariable("takeover")
+				) {
 					# use first grant that is not N/A as basis or is not a takeover
-                    # (unless all grants are N/A, in which case we combine them)
+					# (unless all grants are N/A, in which case we combine them)
 					# deMorgan's law remixed
 					if (
-                        (
-                            ($basisGrant->getVariable("type") == "N/A")
-                            && !$areAllGrantsNA
-                        )
-                        || $basisGrant->getVariable("takeover")
-                    ) {
-						if (self::getShowDebug()) { Application::log("Setting grant to $i"); }
+						(
+							($basisGrant->getVariable("type") == "N/A")
+							&& !$areAllGrantsNA
+						)
+						|| $basisGrant->getVariable("takeover")
+					) {
+						if (self::getShowDebug()) {
+							Application::log("Setting grant to $i");
+						}
 						$basisGrant = $currGrant;
 						$basisGrant->setNumber($basisGrant->getBaseNumber());
 					}
@@ -1607,93 +1700,105 @@ class Grants {
 
 					$currEndTs = strtotime($currGrant->getVariable("end"));
 					$grantEndTs = strtotime($basisGrant->getVariable("end"));
-                    if (in_array($basisGrant->getVariable("source"), self::SPREADSHEET_SOURCES)) {
-                        $basisGrant->setVariable("end", self::makeDate($currEndTs));
-                    } else if (in_array($currGrant->getVariable("source"), self::SPREADSHEET_SOURCES)) {
-                        $basisGrant->setVariable("end", self::makeDate($grantEndTs));
-                    } else if ($currEndTs > $grantEndTs) {
+					if (in_array($basisGrant->getVariable("source"), self::SPREADSHEET_SOURCES)) {
+						$basisGrant->setVariable("end", self::makeDate($currEndTs));
+					} elseif (in_array($currGrant->getVariable("source"), self::SPREADSHEET_SOURCES)) {
+						$basisGrant->setVariable("end", self::makeDate($grantEndTs));
+					} elseif ($currEndTs > $grantEndTs) {
 						$basisGrant->setVariable("end", self::makeDate($currEndTs));
 					}
 
 					# only combine moneys if sources are the same; e.g., cannot combine money from coeus and reporter
 					if (
-                        ($currGrant->getVariable("source") == $basisGrant->getVariable("source"))
-                        && ($currGrant->getNumber() != $basisGrant->getNumber())
-                    ) {
+						($currGrant->getVariable("source") == $basisGrant->getVariable("source"))
+						&& ($currGrant->getNumber() != $basisGrant->getNumber())
+					) {
 						$currDirectBudget = is_numeric($currGrant->getVariable("direct_budget")) ? $currGrant->getVariable("direct_budget") : 0;
 						$grantDirectBudget = is_numeric($basisGrant->getVariable("direct_budget")) ? $basisGrant->getVariable("direct_budget") : 0;
 						$basisGrant->setVariable("direct_budget", Grant::convertToMoney($grantDirectBudget + $currDirectBudget));
 
 						$currBudget = is_numeric($currGrant->getVariable("budget")) ? $currGrant->getVariable("budget") : 0;
 						$grantBudget = is_numeric($basisGrant->getVariable("budget")) ? $basisGrant->getVariable("budget") : 0;
-						if (self::getShowDebug()) { Application::log("combineGrants: ".$basisGrant->getBaseNumber()." (".$currGrant->getNumber()." from ".$currGrant->getVariable("source").") Adding ".$currBudget." to ".$grantBudget." = ".Grant::convertToMoney($grantBudget + $currBudget)); }
+						if (self::getShowDebug()) {
+							Application::log("combineGrants: ".$basisGrant->getBaseNumber()." (".$currGrant->getNumber()." from ".$currGrant->getVariable("source").") Adding ".$currBudget." to ".$grantBudget." = ".Grant::convertToMoney($grantBudget + $currBudget));
+						}
 						$basisGrant->setVariable("budget", Grant::convertToMoney($grantBudget + $currBudget));
 					}
 				}
 			}
 
 			if ($basisGrant->isSelfReported()) {
-                self::copyBudgetsIfBlank($basisGrant, $grants);
-                self::copyTitleIfBlank($basisGrant, $grants);
-            }
-            $basisGrant->setVariable("num_grants_combined", count($grants ?: []));
+				self::copyBudgetsIfBlank($basisGrant, $grants);
+				self::copyTitleIfBlank($basisGrant, $grants);
+			}
+			$basisGrant->setVariable("num_grants_combined", count($grants ?: []));
 
-            if (self::getShowDebug()) { Application::log("Returning basisGrant ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." ".$basisGrant->getVariable("start")." - ".$basisGrant->getVariable("end")); }
+			if (self::getShowDebug()) {
+				Application::log("Returning basisGrant ".$basisGrant->getNumber()." ".$basisGrant->getVariable("type")." ".$basisGrant->getVariable("start")." - ".$basisGrant->getVariable("end"));
+			}
 			return $basisGrant;
 		}
 	}
 
 	private static function copyBudgetsIfBlank(&$basisGrant, $grants) {
-        $zeros = ["", 0, "0", "$0"];
-        if (in_array($basisGrant->getVariable("direct_budget"), $zeros) && in_array($basisGrant->getVariable("budget"), $zeros)) {
-            for ($i = 1; $i < count($grants ?: []); $i++) {
-                $currGrant = $grants[$i];
-                $directBudget = $currGrant->getVariable("direct_budget");
-                $totalBudget = $currGrant->getVariable("budget");
-                if ($directBudget || $totalBudget) {
-                    $basisGrant->setVariable("direct_budget", $directBudget);
-                    if (self::getShowDebug()) { Application::log("Setting direct budget of ".$basisGrant->getNumber()." to ".$directBudget." from ".$currGrant->getNumber()); }
-                    $basisGrant->setVariable("budget", $totalBudget);
-                    if (self::getShowDebug()) { Application::log("Setting total budget of ".$basisGrant->getNumber()." to ".$totalBudget." from ".$currGrant->getNumber()); }
-                    break;
-                }
-            }
-        }
-    }
+		$zeros = ["", 0, "0", "$0"];
+		if (in_array($basisGrant->getVariable("direct_budget"), $zeros) && in_array($basisGrant->getVariable("budget"), $zeros)) {
+			for ($i = 1; $i < count($grants ?: []); $i++) {
+				$currGrant = $grants[$i];
+				$directBudget = $currGrant->getVariable("direct_budget");
+				$totalBudget = $currGrant->getVariable("budget");
+				if ($directBudget || $totalBudget) {
+					$basisGrant->setVariable("direct_budget", $directBudget);
+					if (self::getShowDebug()) {
+						Application::log("Setting direct budget of ".$basisGrant->getNumber()." to ".$directBudget." from ".$currGrant->getNumber());
+					}
+					$basisGrant->setVariable("budget", $totalBudget);
+					if (self::getShowDebug()) {
+						Application::log("Setting total budget of ".$basisGrant->getNumber()." to ".$totalBudget." from ".$currGrant->getNumber());
+					}
+					break;
+				}
+			}
+		}
+	}
 
-    private static function copyTitleIfBlank(&$basisGrant, $grants) {
-        if (strlen($basisGrant->getVariable("title")) < self::$MIN_TITLE_CHARS) {
-            for ($i = 1; $i < count($grants ?: []); $i++) {
-                $currGrant = $grants[$i];
-                $title = $currGrant->getVariable("title");
-                if (strlen($title) >= self::$MIN_TITLE_CHARS) {
-                    $basisGrant->setVariable("title", $title);
-                    if (self::getShowDebug()) { Application::log("Setting title of ".$basisGrant->getNumber()." to ".$title." from ".$currGrant->getNumber()); }
-                    break;
-                }
-                if (($title != "") && ($basisGrant->getVariable("title") == "")) {
-                    $basisGrant->setVariable("title", $title);
-                    if (self::getShowDebug()) { Application::log("Temporarily setting title of ".$basisGrant->getNumber()." to ".$title." from ".$currGrant->getNumber()); }
-                    # no break because less than self::$MIN_TITLE_CHARS => examine more titles
-                }
-            }
-        }
-    }
+	private static function copyTitleIfBlank(&$basisGrant, $grants) {
+		if (strlen($basisGrant->getVariable("title")) < self::$MIN_TITLE_CHARS) {
+			for ($i = 1; $i < count($grants ?: []); $i++) {
+				$currGrant = $grants[$i];
+				$title = $currGrant->getVariable("title");
+				if (strlen($title) >= self::$MIN_TITLE_CHARS) {
+					$basisGrant->setVariable("title", $title);
+					if (self::getShowDebug()) {
+						Application::log("Setting title of ".$basisGrant->getNumber()." to ".$title." from ".$currGrant->getNumber());
+					}
+					break;
+				}
+				if (($title != "") && ($basisGrant->getVariable("title") == "")) {
+					$basisGrant->setVariable("title", $title);
+					if (self::getShowDebug()) {
+						Application::log("Temporarily setting title of ".$basisGrant->getNumber()." to ".$title." from ".$currGrant->getNumber());
+					}
+					# no break because less than self::$MIN_TITLE_CHARS => examine more titles
+				}
+			}
+		}
+	}
 
 	public static function makeOrder($order) {
-		$transformed = array();
+		$transformed = [];
 		foreach ($order as $grant) {
 			$transformed[] = self::makeArray($grant);
 		}
 		return $transformed;
 	}
 
-    public static function getNewmanSources() {
-        return ["demographics", "data", "sheet2", "nonrespondents", "kl2", "new_2017"];
-    }
+	public static function getNewmanSources() {
+		return ["demographics", "data", "sheet2", "nonrespondents", "kl2", "new_2017"];
+	}
 
 	public static function makeListOfAwards($listOfAwards) {
-		$transformed = array();
+		$transformed = [];
 		foreach ($listOfAwards as $awardNo => $grant) {
 			$transformed[$awardNo] = self::makeArray($grant);
 		}
@@ -1718,16 +1823,16 @@ class Grants {
 				"support_year",
 				"other_suffixes",
 				"link",
-                "abstract",
-                "abstracts",
-                "subproject",
-                "sponsor_type",
+				"abstract",
+				"abstracts",
+				"subproject",
+				"sponsor_type",
 				];
 		$transformed = [];
 		foreach ($specs as $var => $value) {
 			if (isset($translate[$var])) {
 				$transformed[$translate[$var]] = $value;
-			} else if (!in_array($var, $omit)) {
+			} elseif (!in_array($var, $omit)) {
 				$transformed[$var] = $value;
 			}
 		}
@@ -1738,7 +1843,7 @@ class Grants {
 		$this->setupTests();
 		$this->compileGrants();
 		$orderCompiled = $this->calculate['order'];
-		$badNames = array("start", "end", "type");
+		$badNames = ["start", "end", "type"];
 
 		$i = 0;
 		foreach ($orderCompiled as $specs) {
@@ -1754,7 +1859,7 @@ class Grants {
 		$this->setupTests();
 		$this->compileGrants();
 		$listOfAwardsCompiled = $this->calculate['list_of_awards'];
-		$badNames = array("start", "end", "type");
+		$badNames = ["start", "end", "type"];
 
 		foreach ($listOfAwardsCompiled as $awardNo => $specs) {
 			foreach ($specs as $var => $value) {
@@ -1765,13 +1870,13 @@ class Grants {
 	}
 
 	public function dataWranglerToGrant($award) {
-		$translate = array(
+		$translate = [
 					"start_date" => "start",
 					"end_date" => "end",
 					"project_start_date" => "project_start",
 					"project_end_date" => "project_end",
 					"redcap_type" => "type",
-					);
+					];
 		$grant = new Grant($this->lexicalTranslator);
 		foreach ($award as $key => $value) {
 			if (isset($translate[$key])) {
@@ -1787,46 +1892,46 @@ class Grants {
 		return $grant;
 	}
 
-    public function setupAbstracts(&$grant) {
-        $sponsorNo = $grant->getBaseNumber();
-        $abstracts = [];
-        foreach ($this->rows as $row) {
-            if ($row['redcap_repeat_instrument'] == "nih_reporter") {
-                $reporterBaseAwardNo = Grant::translateToBaseAwardNumber($row['nih_project_num']);
-                if ($reporterBaseAwardNo == $sponsorNo) {
-                    $abstract = $row['nih_abstract_text'];
-                    if ($abstract && $row['nih_project_start_date']) {
-                        $ts = strtotime($row['nih_project_start_date']);
-                        $abstracts[$ts] = $abstract;
-                    }
-                }
-            } else if ($row['redcap_repeat_instrument'] == "exporter") {
-                $exporterBaseAwardNo = Grant::translateToBaseAwardNumber($row['exporter_full_project_num']);
-                if ($exporterBaseAwardNo == $sponsorNo) {
-                    $abstract = $row['exporter_abstract'];
-                    if ($abstract && $row['exporter_budget_start']) {
-                        $ts = strtotime($row['exporter_budget_start']);
-                        $abstracts[$ts] = $abstract;
-                    }
-                }
-            }
-        }
-        $grant->setVariable("abstracts", array_unique(array_values($abstracts)));   // latest abstract first
-        if (count($abstracts) > 0) {
-            krsort($abstracts);
-            foreach ($abstracts as $ts => $abstract) {
-                $grant->setVariable("abstract", $abstract);
-                return $abstract;
-            }
-        }
-        return "";
-    }
+	public function setupAbstracts(&$grant) {
+		$sponsorNo = $grant->getBaseNumber();
+		$abstracts = [];
+		foreach ($this->rows as $row) {
+			if ($row['redcap_repeat_instrument'] == "nih_reporter") {
+				$reporterBaseAwardNo = Grant::translateToBaseAwardNumber($row['nih_project_num']);
+				if ($reporterBaseAwardNo == $sponsorNo) {
+					$abstract = $row['nih_abstract_text'];
+					if ($abstract && $row['nih_project_start_date']) {
+						$ts = strtotime($row['nih_project_start_date']);
+						$abstracts[$ts] = $abstract;
+					}
+				}
+			} elseif ($row['redcap_repeat_instrument'] == "exporter") {
+				$exporterBaseAwardNo = Grant::translateToBaseAwardNumber($row['exporter_full_project_num']);
+				if ($exporterBaseAwardNo == $sponsorNo) {
+					$abstract = $row['exporter_abstract'];
+					if ($abstract && $row['exporter_budget_start']) {
+						$ts = strtotime($row['exporter_budget_start']);
+						$abstracts[$ts] = $abstract;
+					}
+				}
+			}
+		}
+		$grant->setVariable("abstracts", array_unique(array_values($abstracts)));   // latest abstract first
+		if (count($abstracts) > 0) {
+			krsort($abstracts);
+			foreach ($abstracts as $ts => $abstract) {
+				$grant->setVariable("abstract", $abstract);
+				return $abstract;
+			}
+		}
+		return "";
+	}
 	public function getSummaryVariables_test($tester) {
 		$this->setupTests();
 		$this->compileGrants();
 		$ary = $this->getSummaryVariables($this->rows);
 
-		$fields = array(
+		$fields = [
 				'summary_ever_internal_k',
 				'summary_ever_individual_k_or_equiv',
 				'summary_ever_k12_kl2',
@@ -1840,7 +1945,7 @@ class Grants {
 				'summary_ever_last_external_k_to_r01_equiv',
 				'summary_ever_first_any_k_to_r01_equiv',
 				'summary_ever_last_any_k_to_r01_equiv',
-				);
+				];
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			$fields[] = 'summary_award_type_' . $i;
 		}
@@ -1852,30 +1957,30 @@ class Grants {
 
 	public function getSummaryVariables($rows) {
 		$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
-        $ary = array();
+		$ary = [];
 		$ary['summary_ever_internal_k'] = 0;
 		$ary['summary_ever_individual_k_or_equiv'] = 0;
 		$ary['summary_ever_k12_kl2'] = 0;
 		$ary['summary_ever_r01_or_equiv'] = 0;
 
-        if (in_array("summary_t_start", $metadataFields) && in_array("summary_t_end", $metadataFields)) {
-            $ary['summary_t_start'] = "";
-            $ary['summary_t_end'] = "";
-        }
-        $ary['summary_first_external_k'] = "";
+		if (in_array("summary_t_start", $metadataFields) && in_array("summary_t_end", $metadataFields)) {
+			$ary['summary_t_start'] = "";
+			$ary['summary_t_end'] = "";
+		}
+		$ary['summary_first_external_k'] = "";
 		$ary['summary_first_any_k'] = "";
 		$ary['summary_last_any_k'] = "";
 		$ary['summary_first_r01'] = "";
 		$ary['summary_first_r01_or_equiv'] = "";
-        $ary['summary_first_any_k_source'] = "";
-        $ary['summary_last_any_k_source'] = "";
-        $ary['summary_first_r01_source'] = "";
-        $ary['summary_first_r01_or_equiv_source'] = "";
-        $ary['summary_first_any_k_sourcetype'] = "";
-        $ary['summary_last_any_k_sourcetype'] = "";
-        $ary['summary_first_r01_sourcetype'] = "";
-        $ary['summary_first_r01_or_equiv_sourcetype'] = "";
-        $ary['summary_first_r01_or_equiv_type'] = "";
+		$ary['summary_first_any_k_source'] = "";
+		$ary['summary_last_any_k_source'] = "";
+		$ary['summary_first_r01_source'] = "";
+		$ary['summary_first_r01_or_equiv_source'] = "";
+		$ary['summary_first_any_k_sourcetype'] = "";
+		$ary['summary_last_any_k_sourcetype'] = "";
+		$ary['summary_first_r01_sourcetype'] = "";
+		$ary['summary_first_r01_or_equiv_sourcetype'] = "";
+		$ary['summary_first_r01_or_equiv_type'] = "";
 
 		$overrideFirstR01 = "";
 		$overrideFirstR01OrEquiv = "";
@@ -1892,9 +1997,9 @@ class Grants {
 		if ((count($grants ?: []) == 0) && !$this->getFlagStatus()) {
 			$grants = $this->getGrants("native");
 		}
-        foreach ($grants as $grant) {
+		foreach ($grants as $grant) {
 			$t = $grant->getVariable("type");
-            $role = $grant->getVariable("role");
+			$role = $grant->getVariable("role");
 			if ($overrideFirstR01) {
 				$ary['summary_first_r01_or_equiv'] = $overrideFirstR01;
 				$ary['summary_first_r01_or_equiv_source'] = "manual";
@@ -1903,7 +2008,7 @@ class Grants {
 				$ary['summary_first_r01_source'] = "manual";
 				$ary['summary_first_r01_sourcetype'] = "2";
 				$ary['summary_ever_r01_or_equiv'] = 1;
-			} else if ($overrideFirstR01OrEquiv) {
+			} elseif ($overrideFirstR01OrEquiv) {
 				$ary['summary_first_r01_or_equiv'] = $overrideFirstR01OrEquiv;
 				$ary['summary_first_r01_or_equiv_source'] = "manual";
 				$ary['summary_first_r01_or_equiv_sourcetype'] = "2";
@@ -1911,11 +2016,11 @@ class Grants {
 			}
 			if ($t == "Internal K") {
 				$ary['summary_ever_internal_k'] = 1;
-			} else if ($t == "K12/KL2") {
+			} elseif ($t == "K12/KL2") {
 				$ary['summary_ever_k12_kl2'] = 1;
-			} else if (($t == "Individual K") || ($t == "K Equivalent")) {
+			} elseif (($t == "Individual K") || ($t == "K Equivalent")) {
 				$ary['summary_ever_individual_k_or_equiv'] = 1;
-			} else if ($t == "R01") {
+			} elseif ($t == "R01") {
 				if ($ary['summary_first_r01'] == "") {
 					$ary['summary_first_r01'] = $grant->getVariable("start");
 					$ary['summary_first_r01_source'] = $grant->getVariable("source");
@@ -1929,7 +2034,7 @@ class Grants {
 					$ary['summary_first_r01_or_equiv_sourcetype'] = $grant->getSourceType();
 				}
 				$ary['summary_ever_r01_or_equiv'] = 1;
-			} else if ($t == "R01 Equivalent") {
+			} elseif ($t == "R01 Equivalent") {
 				if ($ary['summary_first_r01_or_equiv'] == "") {
 					$ary['summary_first_r01_or_equiv'] = $grant->getVariable("start");
 					$ary['summary_first_r01_or_equiv_type'] = $awardTypeConversion[$t];
@@ -1939,8 +2044,8 @@ class Grants {
 				$ary['summary_ever_r01_or_equiv'] = 1;
 			}
 
-			$externalKs = array("Individual K", "K Equivalent");
-			$Ks = array("Internal K", "K12/KL2", "Individual K", "K Equivalent");
+			$externalKs = ["Individual K", "K Equivalent"];
+			$Ks = ["Internal K", "K12/KL2", "Individual K", "K Equivalent"];
 			if (in_array($t, $externalKs) && !$ary['summary_first_external_k']) {
 				$ary['summary_first_external_k'] = $grant->getVariable("start");
 				$ary['summary_first_external_k_source'] = $grant->getVariable("source");
@@ -1961,46 +2066,46 @@ class Grants {
 				$ary['summary_last_any_k_source'] = $grant->getVariable("source");
 				$ary['summary_last_any_k_sourcetype'] = $grant->getSourceType();
 			}
-            if (in_array($role, ["Trainee", "General Trainee", "Pre-doctoral Trainee", "Post-doctoral Trainee"])) {
-                $priorTStart = $ary['summary_t_start'] ?? "";
-                $priorTEnd = $ary['summary_t_end'] ?? "";
-                if (
-                    $grant->getVariable("start")
-                    && (
-                        ($priorTStart === "")
-                        || DateManagement::dateCompare($priorTStart, ">", $grant->getVariable("start"))
-                    )
-                ) {
-                    $ary['summary_t_start'] = $grant->getVariable("start");
-                    $ary['summary_t_start_source'] = $grant->getVariable("source");
-                    $ary['summary_t_start_sourcetype'] = $grant->getSourceType();
-                } else if ($priorTStart === "") {
-                    $ary['summary_t_start'] = "";
-                    $ary['summary_t_start_source'] = "";
-                    $ary['summary_t_start_sourcetype'] = "";
-                }
-                if (
-                    $grant->getVariable("end")
-                    && (
-                        ($priorTEnd === "")
-                        || DateManagement::dateCompare($priorTEnd, "<", $grant->getVariable("end"))
-                    )
-                ) {
-                    $ary['summary_t_end'] = $grant->getVariable("end");
-                    $ary['summary_t_end_source'] = $grant->getVariable("source");
-                    $ary['summary_t_end_sourcetype'] = $grant->getSourceType();
-                } else if ($priorTEnd === "") {
-                    $ary['summary_t_end'] = "";
-                    $ary['summary_t_end_source'] = "";
-                    $ary['summary_t_end_sourcetype'] = "";
-                }
-            }
+			if (in_array($role, ["Trainee", "General Trainee", "Pre-doctoral Trainee", "Post-doctoral Trainee"])) {
+				$priorTStart = $ary['summary_t_start'] ?? "";
+				$priorTEnd = $ary['summary_t_end'] ?? "";
+				if (
+					$grant->getVariable("start")
+					&& (
+						($priorTStart === "")
+						|| DateManagement::dateCompare($priorTStart, ">", $grant->getVariable("start"))
+					)
+				) {
+					$ary['summary_t_start'] = $grant->getVariable("start");
+					$ary['summary_t_start_source'] = $grant->getVariable("source");
+					$ary['summary_t_start_sourcetype'] = $grant->getSourceType();
+				} elseif ($priorTStart === "") {
+					$ary['summary_t_start'] = "";
+					$ary['summary_t_start_source'] = "";
+					$ary['summary_t_start_sourcetype'] = "";
+				}
+				if (
+					$grant->getVariable("end")
+					&& (
+						($priorTEnd === "")
+						|| DateManagement::dateCompare($priorTEnd, "<", $grant->getVariable("end"))
+					)
+				) {
+					$ary['summary_t_end'] = $grant->getVariable("end");
+					$ary['summary_t_end_source'] = $grant->getVariable("source");
+					$ary['summary_t_end_sourcetype'] = $grant->getSourceType();
+				} elseif ($priorTEnd === "") {
+					$ary['summary_t_end'] = "";
+					$ary['summary_t_end_source'] = "";
+					$ary['summary_t_end_sourcetype'] = "";
+				}
+			}
 		}
 		$i = 1;
 		$awardTypeConversion = Grant::getAwardTypes();
 		foreach ($grants as $grant) {
-            $ary['summary_award_type_'.$i] = $awardTypeConversion[$grant->getVariable("type")];
-            $ary['summary_award_end_date_'.$i] = $grant->getVariable("end");
+			$ary['summary_award_type_'.$i] = $awardTypeConversion[$grant->getVariable("type")];
+			$ary['summary_award_end_date_'.$i] = $grant->getVariable("end");
 			$i++;
 		}
 		$ary['summary_ever_external_k_to_r01_equiv'] = self::converted($ary, "first_external", $this->pid);
@@ -2011,50 +2116,50 @@ class Grants {
 	}
 
 	private static function findLastEndDate($type, $normativeRow) {
-	    $validTypes = [];
-        if (in_array($type, ["3", "4", "Individual K", "External K", "K Equivalent"])) {
-            $validTypes = [3, 4];
-        } else if (in_array($type, ["2", "K12/KL2", "K12KL2"])) {
-            $validTypes = [2];
-        } else if (in_array($type, ["1", "Internal K"])) {
-            $validTypes = [1];
-        }
-        $lastEndDate = "";
-        for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
-            if (
-                isset($normativeRow['summary_award_type_'.$i])
-                && $normativeRow['summary_award_type_'.$i]
-                && $normativeRow['summary_award_end_date_'.$i]
-                && in_array($normativeRow['summary_award_type_'.$i], $validTypes)
-                && (
-                    !$lastEndDate
-                    || REDCapManagement::dateCompare($lastEndDate, "<", $normativeRow['summary_award_end_date_'.$i])
-                )
-            ) {
-                $lastEndDate = $normativeRow['summary_award_end_date_'.$i];
-            }
-        }
-        return $lastEndDate;
-    }
+		$validTypes = [];
+		if (in_array($type, ["3", "4", "Individual K", "External K", "K Equivalent"])) {
+			$validTypes = [3, 4];
+		} elseif (in_array($type, ["2", "K12/KL2", "K12KL2"])) {
+			$validTypes = [2];
+		} elseif (in_array($type, ["1", "Internal K"])) {
+			$validTypes = [1];
+		}
+		$lastEndDate = "";
+		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
+			if (
+				isset($normativeRow['summary_award_type_'.$i])
+				&& $normativeRow['summary_award_type_'.$i]
+				&& $normativeRow['summary_award_end_date_'.$i]
+				&& in_array($normativeRow['summary_award_type_'.$i], $validTypes)
+				&& (
+					!$lastEndDate
+					|| REDCapManagement::dateCompare($lastEndDate, "<", $normativeRow['summary_award_end_date_'.$i])
+				)
+			) {
+				$lastEndDate = $normativeRow['summary_award_end_date_'.$i];
+			}
+		}
+		return $lastEndDate;
+	}
 
 	private static function findYearSpan($type, $pid) {
 		if (($type == "3") || ($type == "4") || ($type == "Individual K") || ($type == "External K") || ($type == "K Equivalent")) {
 			return Application::getIndividualKLength($pid);
-		} else if (($type == "2") || ($type == "K12/KL2") || ($type == "K12KL2")) {
+		} elseif (($type == "2") || ($type == "K12/KL2") || ($type == "K12KL2")) {
 			return Application::getK12KL2Length($pid);
-		} else if (($type == "1") || ($type == "Internal K")) {
+		} elseif (($type == "1") || ($type == "Internal K")) {
 			return Application::getInternalKLength($pid);
 		}
 		return 0;
 	}
 
-    public static function datediff($d1, $d2, $measurement) {
-        return REDCapManagement::datediff($d1, $d2, $measurement);
-    }
+	public static function datediff($d1, $d2, $measurement) {
+		return REDCapManagement::datediff($d1, $d2, $measurement);
+	}
 
-    private static function getLastKType($row) {
-		$kTypes = array(1, 2, 3, 4);
-		$lastK = FALSE;
+	private static function getLastKType($row) {
+		$kTypes = [1, 2, 3, 4];
+		$lastK = false;
 		for ($i = 1; $i <= self::$MAX_GRANTS; $i++) {
 			if (isset($row['summary_award_type_'.$i]) && in_array($row['summary_award_type_'.$i], $kTypes)) {
 				$lastK = $row['summary_award_type_'.$i];
@@ -2089,7 +2194,7 @@ class Grants {
 				$prefix = "first";
 			}
 			if (isset($row['summary_'.$prefix.'_external_k']) && isset($row['summary_'.$prefix.'_any_k'])
-                && ($row['summary_'.$prefix.'_external_k'] == $row['summary_'.$prefix.'_any_k'])) {
+				&& ($row['summary_'.$prefix.'_external_k'] == $row['summary_'.$prefix.'_any_k'])) {
 				$intendedYearSpan = self::findYearSpan("External K", $pid);
 				if (self::datediff($row['summary_'.$typeOfK.'_k'], $row['summary_first_r01_or_equiv'], "y") <= $intendedYearSpan) {
 					$value = 1;
@@ -2105,25 +2210,27 @@ class Grants {
 					$value = 2;
 				}
 			}
-		} else if (isset($row['summary_'.$typeOfK.'_k']) && $row['summary_'.$typeOfK.'_k']) {
+		} elseif (isset($row['summary_'.$typeOfK.'_k']) && $row['summary_'.$typeOfK.'_k']) {
 			if (preg_match('/last_/', $typeOfK)) {
 				$prefix = "last";
 			} else {
 				$prefix = "first";
 			}
 			$diffToToday = self::datediff($row['summary_'.$typeOfK.'_k'], $today, "y");
-			if (self::getShowDebug()) { Application::log($typeOfK.": ".$diffToToday); }
+			if (self::getShowDebug()) {
+				Application::log($typeOfK.": ".$diffToToday);
+			}
 			if (isset($row["summary_".$prefix."_external_k"]) && isset($row["summary_".$prefix."_any_k"])
-			    && ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"])) {
+				&& ($row["summary_".$prefix."_external_k"] == $row["summary_".$prefix."_any_k"])) {
 				$intendedYearSpan = self::findYearSpan("External K", $pid);
 				$endDate = self::findLastEndDate("External K", $row);
 				if (
-				    ($diffToToday <= $intendedYearSpan)
-                    || (
-                        $endDate
-                        && REDCapManagement::dateCompare($endDate, ">=", $today)
-                    )
-                ) {
+					($diffToToday <= $intendedYearSpan)
+					|| (
+						$endDate
+						&& REDCapManagement::dateCompare($endDate, ">=", $today)
+					)
+				) {
 					$value = 3;
 				} else {
 					$value = 4;
@@ -2131,14 +2238,14 @@ class Grants {
 			} else {
 				$kType = self::getLastKType($row);
 				$intendedYearSpan = self::findYearSpan($kType, $pid);
-                $endDate = self::findLastEndDate($kType, $row);
-                if (
-                    ($diffToToday <= $intendedYearSpan)
-                    || (
-                        $endDate
-                        && REDCapManagement::dateCompare($endDate, ">=", $today)
-                    )
-                ) {
+				$endDate = self::findLastEndDate($kType, $row);
+				if (
+					($diffToToday <= $intendedYearSpan)
+					|| (
+						$endDate
+						&& REDCapManagement::dateCompare($endDate, ">=", $today)
+					)
+				) {
 					$value = 3;
 				} else {
 					$value = 4;
@@ -2160,7 +2267,7 @@ class Grants {
 		if (!$row['summary_first_r01_or_equiv']) {
 			return $row;
 		}
-		$kTypes = array(1, 2, 3, 4);
+		$kTypes = [1, 2, 3, 4];
 		$oneDay = 24 * 3600;
 
 		$r01 = strtotime($row['summary_first_r01_or_equiv']);
@@ -2176,153 +2283,155 @@ class Grants {
 				$startKTs = strtotime($row['summary_award_date_'.$i]);
 				if (is_numeric($yearLength)) {
 					$adjustedStartKTs = $startKTs - $oneDay;
-					$endKDateFromYearLength = (date("Y", $adjustedStartKTs) + $yearLength).date("-m-d", $adjustedStartKTs); 
+					$endKDateFromYearLength = (date("Y", $adjustedStartKTs) + $yearLength).date("-m-d", $adjustedStartKTs);
 				} else {
 					# not adjusting for leap years
 					$endKDateFromYearLength = date("Y-m-d", $startKTs + $yearLength * 365 * $oneDay);
 				}
 				$endKTsFromYearLength = $endKDateFromYearLength ? strtotime($endKDateFromYearLength) : time();
-				if ($endKTsFromYearLength < $endKTsFromR01) { 
+				if ($endKTsFromYearLength < $endKTsFromR01) {
 					$row['summary_award_end_date_'.$i] = $endKDateFromYearLength;
 				} else {
 					$row['summary_award_end_date_'.$i] = $endKDateFromR01;
 				}
-                DateManagement::correctLeapYear($row['summary_award_end_date_'.$i]);
+				DateManagement::correctLeapYear($row['summary_award_end_date_'.$i]);
 			}
 		}
 		return $row;
 	}
 
 	private static function translateSourcesIntoSourceOrder($field, $value) {
-	    if (preg_match("/_source/", $field) && !preg_match("/sourcetype/", $field)) {
-            $sourceOrder = self::getSourceOrder();
-            if (in_array($value, $sourceOrder)) {
-                if ($value == "coeus2") {
-                    return "coeus";
-                }
-            }
-        }
-	    return $value;
-    }
+		if (preg_match("/_source/", $field) && !preg_match("/sourcetype/", $field)) {
+			$sourceOrder = self::getSourceOrder();
+			if (in_array($value, $sourceOrder)) {
+				if ($value == "coeus2") {
+					return "coeus";
+				}
+			}
+		}
+		return $value;
+	}
 
-    # update the instances if the original data points have changed locations in REDCap
-    private function updateGrantLocationsForCalculatedVariables() {
-        $newOrder = [];
-        foreach ($this->calculate["order"] as $grantSpecs) {
-            $this->updateGrantFromNativeGrants($grantSpecs);
-            $newOrder[] = $grantSpecs;
-        }
+	# update the instances if the original data points have changed locations in REDCap
+	private function updateGrantLocationsForCalculatedVariables() {
+		$newOrder = [];
+		foreach ($this->calculate["order"] as $grantSpecs) {
+			$this->updateGrantFromNativeGrants($grantSpecs);
+			$newOrder[] = $grantSpecs;
+		}
 
-        $newListOfAwards = [];
-        foreach ($this->calculate["list_of_awards"] as $code => $grantSpecs) {
-            $this->updateGrantFromNativeGrants($grantSpecs);
-            $newListOfAwards[$code] = $grantSpecs;
-        }
+		$newListOfAwards = [];
+		foreach ($this->calculate["list_of_awards"] as $code => $grantSpecs) {
+			$this->updateGrantFromNativeGrants($grantSpecs);
+			$newListOfAwards[$code] = $grantSpecs;
+		}
 
-        $newToImport = [];
-        foreach ($this->calculate["to_import"] as $code => $ary) {
-            $action = $ary[0];
-            $grantSpecs = $ary[1];
-            $this->updateGrantFromNativeGrants($grantSpecs);
-            $newToImport[$code] = [
-                $action,
-                $grantSpecs,
-            ];
-        }
+		$newToImport = [];
+		foreach ($this->calculate["to_import"] as $code => $ary) {
+			$action = $ary[0];
+			$grantSpecs = $ary[1];
+			$this->updateGrantFromNativeGrants($grantSpecs);
+			$newToImport[$code] = [
+				$action,
+				$grantSpecs,
+			];
+		}
 
-        $this->calculate["order"] = $newOrder;
-        $this->calculate["list_of_awards"] = $newListOfAwards;
-        $this->calculate["to_import"] = $newToImport;
-    }
+		$this->calculate["order"] = $newOrder;
+		$this->calculate["list_of_awards"] = $newListOfAwards;
+		$this->calculate["to_import"] = $newToImport;
+	}
 
-    private function updateGrantFromNativeGrants(&$grantSpecs) {
-        $awardNo = $grantSpecs["sponsor_award_no"];
-        if (in_array($awardNo, ["", "000"])) {
-            return;
-        }
-        $source = $grantSpecs["source"];
-        foreach ($this->nativeGrants as $grant) {
-            if (($awardNo == $grant->getNumber()) && ($source == $grant->getVariable("source"))) {
-                $grantSpecs["instance"] = $grant->getVariable("instance");
-                $grantSpecs["url"] = $grant->getVariable("url");
-                return;
-            }
-        }
-    }
+	private function updateGrantFromNativeGrants(&$grantSpecs) {
+		$awardNo = $grantSpecs["sponsor_award_no"];
+		if (in_array($awardNo, ["", "000"])) {
+			return;
+		}
+		$source = $grantSpecs["source"];
+		foreach ($this->nativeGrants as $grant) {
+			if (($awardNo == $grant->getNumber()) && ($source == $grant->getVariable("source"))) {
+				$grantSpecs["instance"] = $grant->getVariable("instance");
+				$grantSpecs["url"] = $grant->getVariable("url");
+				return;
+			}
+		}
+	}
 
 	public function makeUploadRow() {
 		if ($this->token && $this->server && $this->metadata) {
-            $this->updateGrantLocationsForCalculatedVariables();
-		    $metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
-			$uploadRow = array(
+			$this->updateGrantLocationsForCalculatedVariables();
+			$metadataFields = REDCapManagement::getFieldsFromMetadata($this->metadata);
+			$uploadRow = [
 						"record_id" => $this->recordId,
 						"redcap_repeat_instrument" => "",
 						"redcap_repeat_instance" => "",
-						);
+						];
 			if (in_array("summary_grant_count", $metadataFields)) {
-			    $uploadRow["summary_grant_count"] = $this->getCount("compiled");
-            }
+				$uploadRow["summary_grant_count"] = $this->getCount("compiled");
+			}
 			if (in_array("summary_grant_count_total", $metadataFields)) {
 				$uploadRow["summary_grant_count_total"] = $this->getCount("all");
 			}
-            if (in_array("summary_total_budgets", $metadataFields)) {
-                $uploadRow["summary_total_budgets"] = $this->getTotalDollars("compiled");
-            }
+			if (in_array("summary_total_budgets", $metadataFields)) {
+				$uploadRow["summary_total_budgets"] = $this->getTotalDollars("compiled");
+			}
 			$i = 1;
 			foreach ($this->compiledGrants as $grant) {
 				if ($i <= self::$MAX_GRANTS) {
 					$v = $grant->getREDCapVariables($i);
-					if (self::getShowDebug()) { Application::log("Grant $i: ".json_encode($v)); }
+					if (self::getShowDebug()) {
+						Application::log("Grant $i: ".json_encode($v));
+					}
 					foreach ($v as $key => $value) {
-					    if (preg_match("/_budget_/", $key) && ($value == 0)) {
-					        # NIH RePORTER has 0 for total budget; Federal RePORTER has 0 for direct budget
-                            $baseAwardNo = $grant->getBaseAwardNumber();
-                            if (preg_match("/_direct_budget_/", $key)) {
-                                $otherInstrument = "nih_reporter";
-                                $otherField = "direct_budget";
-                            } else if (preg_match("/_total_budget_/", $key)) {
-                                $otherInstrument = "reporter";
-                                $otherField = "budget";
-                            } else {
-                                throw new \Exception("Could not find budget entry for $key");
-                            }
-                            # combine all values together
-                            $value2 = 0;
-                            foreach ($this->getGrants($otherInstrument) as $grant2) {
-                                $baseAwardNo2 = $grant2->getBaseAwardNumber();
-                                if ($baseAwardNo == $baseAwardNo2) {
-                                    $v2 = $grant2->getVariable($otherField);
-                                    if ($v2) {
-                                        $value2 += $v2;
-                                    }
-                                }
-                            }
-                            $value = $value2;
-                        }
-                        $value = self::translateSourcesIntoSourceOrder($key, $value);
+						if (preg_match("/_budget_/", $key) && ($value == 0)) {
+							# NIH RePORTER has 0 for total budget; Federal RePORTER has 0 for direct budget
+							$baseAwardNo = $grant->getBaseAwardNumber();
+							if (preg_match("/_direct_budget_/", $key)) {
+								$otherInstrument = "nih_reporter";
+								$otherField = "direct_budget";
+							} elseif (preg_match("/_total_budget_/", $key)) {
+								$otherInstrument = "reporter";
+								$otherField = "budget";
+							} else {
+								throw new \Exception("Could not find budget entry for $key");
+							}
+							# combine all values together
+							$value2 = 0;
+							foreach ($this->getGrants($otherInstrument) as $grant2) {
+								$baseAwardNo2 = $grant2->getBaseAwardNumber();
+								if ($baseAwardNo == $baseAwardNo2) {
+									$v2 = $grant2->getVariable($otherField);
+									if ($v2) {
+										$value2 += $v2;
+									}
+								}
+							}
+							$value = $value2;
+						}
+						$value = self::translateSourcesIntoSourceOrder($key, $value);
 						if (in_array($key, $metadataFields)) {
-                            DateManagement::correctLeapYear($value);
-                            if (DateManagement::isDate($value) && !DateManagement::hasTime($value)) {
-                                $value = DateManagement::toYMD($value);
-                            }
+							DateManagement::correctLeapYear($value);
+							if (DateManagement::isDate($value) && !DateManagement::hasTime($value)) {
+								$value = DateManagement::toYMD($value);
+							}
 							$uploadRow[$key] = $value;
 						} else {
 							Application::log($key." not found in metadata, but in compiledGrants");
-                            # Need to warn silently because of upgrade issues
+							# Need to warn silently because of upgrade issues
 							// throw new \Exception($key." not found in metadata, but in compiledGrants");
 						}
 					}
 					$i++;
 				} else {
 					# warn
-					Application::log("WARNING ".$i.": Discarding grant for ".$this->recordId); 
+					Application::log("WARNING ".$i.": Discarding grant for ".$this->recordId);
 				}
 			}
 			$blankGrant = new Grant($this->lexicalTranslator);
 			for ($grant_i = $i; $grant_i <= self::$MAX_GRANTS; $grant_i++) {
 				$v = $blankGrant->getREDCapVariables($grant_i);
 				foreach ($v as $key => $value) {
-                    $value = self::translateSourcesIntoSourceOrder($key, $value);
+					$value = self::translateSourcesIntoSourceOrder($key, $value);
 					if (in_array($key, $metadataFields)) {
 						$uploadRow[$key] = $value;
 					}
@@ -2331,7 +2440,7 @@ class Grants {
 			$v = $this->getSummaryVariables($this->rows);
 			foreach ($v as $key => $value) {
 				if (in_array($key, $metadataFields)) {
-                    $value = self::translateSourcesIntoSourceOrder($key, $value);
+					$value = self::translateSourcesIntoSourceOrder($key, $value);
 					$uploadRow[$key] = $value;
 				} else {
 					Application::log($key." ($value) not found in metadata, but in summary variables");
@@ -2350,7 +2459,7 @@ class Grants {
 			return $uploadRow;
 
 		}
-		return array();
+		return [];
 	}
 
 	public function uploadGrants() {
@@ -2366,7 +2475,7 @@ class Grants {
 		$n = rand(0, count($records) - 1);
 		$record = $records[$n];
 
-		$redcapData = Download::records($this->token, $this->server, array($record));
+		$redcapData = Download::records($this->token, $this->server, [$record]);
 		$this->setRows($redcapData);
 		return $record;
 	}
@@ -2395,10 +2504,10 @@ class Grants {
 	# unit test - normative row exists
 	public function normativeRowExists_test($tester) {
 		$this->setupTests();
-		$normativeRowFound = FALSE;
+		$normativeRowFound = false;
 		foreach ($this->rows as $row) {
 			if (($row['redcap_repeat_instrument'] == "") && ($row['redcap_repeat_instance'] == "")) {
-				$normativeRowFound = TRUE;
+				$normativeRowFound = true;
 			}
 		}
 		$tester->assertTrue($normativeRowFound);
@@ -2407,7 +2516,7 @@ class Grants {
 	# unit test - normative row contains first and last name
 	public function normativeRowHasNames_test($tester) {
 		$this->setupTests();
-		$normativeRow = array();
+		$normativeRow = [];
 		foreach ($this->rows as $row) {
 			if (($row['redcap_repeat_instrument'] == "") && ($row['redcap_repeat_instance'] == "")) {
 				$normativeRow = $row;
@@ -2437,19 +2546,19 @@ class Grants {
 		return Download::metadata($token, $server);
 	}
 
-    public static function setShowDebug($b) {
-        self::$showDebug = $b;
-    }
+	public static function setShowDebug($b) {
+		self::$showDebug = $b;
+	}
 
-    public static function getShowDebug() {
-	    if (isset($_GET['test'])) {
-	        self::setShowDebug(TRUE);
-        }
-        return self::$showDebug;
-    }
+	public static function getShowDebug() {
+		if (isset($_GET['test'])) {
+			self::setShowDebug(true);
+		}
+		return self::$showDebug;
+	}
 
-    private $flaggedGrants = [];
-    private $metadata;
+	private $flaggedGrants = [];
+	private $metadata;
 	private $lexicalTranslator;
 	private $rows;
 	private $recordId;
@@ -2457,15 +2566,14 @@ class Grants {
 	private $nativeGrants = [];
 	private $compiledGrants = [];
 	private $priorGrants = [];
-    private $dedupedGrants = [];
-    private $dedupedGrantSubmissions = [];
+	private $dedupedGrants = [];
+	private $dedupedGrantSubmissions = [];
 	private $grantSubmissions = [];
 	private $token;
 	private $server;
-    private $pid;
+	private $pid;
 	private $calculate;
 	private $changes;
-	private static $showDebug = FALSE;
+	private static $showDebug = false;
 	private $sourcesToExclude = [];
 }
-
