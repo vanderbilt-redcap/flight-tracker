@@ -12,9 +12,9 @@ if ($token == $info['prod']['token']) {
 	}
 }
 
-$repeatableForms = array("custom_grant" => "custom", "coeus" => "coeus", "summary_grants" => "summary_grants", "reporter" => "reporter");
+$repeatableForms = ["custom_grant" => "custom", "coeus" => "coeus", "summary_grants" => "summary_grants", "reporter" => "reporter"];
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -25,7 +25,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -47,12 +47,12 @@ fclose($fp);
 
 $redcapData = json_decode($output, true);
 echo "Downloaded ".count($redcapData)." rows\n";
-$plainData = array();
-$repeatableData = array();
+$plainData = [];
+$repeatableData = [];
 foreach ($repeatableForms as $form => $prefix) {
-	$repeatableData[$form] = array();
+	$repeatableData[$form] = [];
 }
-$recordIds = array();
+$recordIds = [];
 foreach ($redcapData as $row) {
 	if (isset($repeatableData[$row['redcap_repeat_instrument']])) {
 		$repeatableData[$row['redcap_repeat_instrument']][] = $row;
@@ -65,12 +65,12 @@ foreach ($redcapData as $row) {
 }
 unset($redcapData);
 
-$data = array(
+$data = [
 	'token' => $token,
 	'action' => 'delete',
 	'content' => 'record',
 	'records' => $recordIds
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -83,10 +83,11 @@ curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 $output = curl_exec($ch);
-echo "Deleted ".count($recordIds)." records: $output\n";;
+echo "Deleted ".count($recordIds)." records: $output\n";
+;
 curl_close($ch);
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -96,7 +97,7 @@ $data = array(
 	'data' => json_encode($plainData),
 	'returnContent' => 'count',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -118,8 +119,8 @@ unset($plainData);
 
 foreach ($repeatableForms as $form => $prefix) {
 	$blankRowCount = 0;
-	$blankRowRecords = array();
-	$upload = array();
+	$blankRowRecords = [];
+	$upload = [];
 	foreach ($repeatableData[$form] as $row) {
 		$allBlank = true;
 		foreach ($row as $field => $value) {
@@ -140,7 +141,7 @@ foreach ($repeatableForms as $form => $prefix) {
 	}
 	echo "For form $form, $blankRowCount rows and ".count($blankRowRecords)." records.\n";
 	echo "Uploading ".count($upload)." rows\n";
-	$data = array(
+	$data = [
 		'token' => $token,
 		'content' => 'record',
 		'format' => 'json',
@@ -150,7 +151,7 @@ foreach ($repeatableForms as $form => $prefix) {
 		'data' => json_encode($upload),
 		'returnContent' => 'count',
 		'returnFormat' => 'json'
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $server);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

@@ -27,104 +27,98 @@ use PhpOffice\PhpWord\Style\Chart as ChartStyle;
  */
 class Chart extends AbstractElement
 {
-    /**
-     * Is part of collection.
-     *
-     * @var bool
-     */
-    protected $collectionRelation = true;
+	/**
+	 * Is part of collection.
+	 *
+	 * @var bool
+	 */
+	protected $collectionRelation = true;
 
-    /**
-     * Type.
-     *
-     * @var string
-     */
-    private $type = 'pie';
+	/**
+	 * Type.
+	 *
+	 * @var string
+	 */
+	private $type = 'pie';
 
-    /**
-     * Series.
-     *
-     * @var array
-     */
-    private $series = [];
+	/**
+	 * Series.
+	 *
+	 * @var array
+	 */
+	private $series = [];
 
-    /**
-     * Chart style.
-     *
-     * @var ?ChartStyle
-     */
-    private $style;
+	/**
+	 * Chart style.
+	 *
+	 * @var ?ChartStyle
+	 */
+	private $style;
 
-    /**
-     * Create new instance.
-     *
-     * @param string $type
-     * @param array $categories
-     * @param array $values
-     * @param array $style
-     * @param null|mixed $seriesName
-     */
-    public function __construct($type, $categories, $values, $style = null, $seriesName = null)
-    {
-        $this->setType($type);
-        $this->addSeries($categories, $values, $seriesName);
-        $this->style = $this->setNewStyle(new ChartStyle(), $style, true);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param string $type
+	 * @param array $categories
+	 * @param array $values
+	 * @param array $style
+	 * @param null|mixed $seriesName
+	 */
+	public function __construct($type, $categories, $values, $style = null, $seriesName = null) {
+		$this->setType($type);
+		$this->addSeries($categories, $values, $seriesName);
+		$this->style = $this->setNewStyle(new ChartStyle(), $style, true);
+	}
 
-    /**
-     * Get type.
-     *
-     * @return string
-     */
-    public function getType()
-    {
-        return $this->type;
-    }
+	/**
+	 * Get type.
+	 *
+	 * @return string
+	 */
+	public function getType() {
+		return $this->type;
+	}
 
-    /**
-     * Set type.
-     *
-     * @param string $value
-     */
-    public function setType($value): void
-    {
-        $enum = ['pie', 'doughnut', 'line', 'bar', 'stacked_bar', 'percent_stacked_bar', 'column', 'stacked_column', 'percent_stacked_column', 'area', 'radar', 'scatter'];
-        $this->type = $this->setEnumVal($value, $enum, 'pie');
-    }
+	/**
+	 * Set type.
+	 *
+	 * @param string $value
+	 */
+	public function setType($value): void {
+		$enum = ['pie', 'doughnut', 'line', 'bar', 'stacked_bar', 'percent_stacked_bar', 'column', 'stacked_column', 'percent_stacked_column', 'area', 'radar', 'scatter'];
+		$this->type = $this->setEnumVal($value, $enum, 'pie');
+	}
 
-    /**
-     * Add series.
-     *
-     * @param array $categories
-     * @param array $values
-     * @param null|mixed $name
-     */
-    public function addSeries($categories, $values, $name = null): void
-    {
-        $this->series[] = [
-            'categories' => $categories,
-            'values' => $values,
-            'name' => $name,
-        ];
-    }
+	/**
+	 * Add series.
+	 *
+	 * @param array $categories
+	 * @param array $values
+	 * @param null|mixed $name
+	 */
+	public function addSeries($categories, $values, $name = null): void {
+		$this->series[] = [
+			'categories' => $categories,
+			'values' => $values,
+			'name' => $name,
+		];
+	}
 
-    /**
-     * Get series.
-     *
-     * @return array
-     */
-    public function getSeries()
-    {
-        return $this->series;
-    }
+	/**
+	 * Get series.
+	 *
+	 * @return array
+	 */
+	public function getSeries() {
+		return $this->series;
+	}
 
-    /**
-     * Get chart style.
-     *
-     * @return ?ChartStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get chart style.
+	 *
+	 * @return ?ChartStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 }

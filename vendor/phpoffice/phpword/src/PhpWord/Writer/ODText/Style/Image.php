@@ -25,26 +25,25 @@ namespace PhpOffice\PhpWord\Writer\ODText\Style;
  */
 class Image extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        /** @var \PhpOffice\PhpWord\Style\Image $style Type hint */
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Image) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		/** @var \PhpOffice\PhpWord\Style\Image $style Type hint */
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Image) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('style:style');
-        $xmlWriter->writeAttribute('style:name', $style->getStyleName());
-        $xmlWriter->writeAttribute('style:family', 'graphic');
-        $xmlWriter->writeAttribute('style:parent-style-name', 'Graphics');
-        $xmlWriter->startElement('style:graphic-properties');
-        $xmlWriter->writeAttribute('style:vertical-pos', 'top');
-        $xmlWriter->writeAttribute('style:vertical-rel', 'baseline');
-        $xmlWriter->endElement(); // style:graphic-properties
-        $xmlWriter->endElement(); // style:style
-    }
+		$xmlWriter->startElement('style:style');
+		$xmlWriter->writeAttribute('style:name', $style->getStyleName());
+		$xmlWriter->writeAttribute('style:family', 'graphic');
+		$xmlWriter->writeAttribute('style:parent-style-name', 'Graphics');
+		$xmlWriter->startElement('style:graphic-properties');
+		$xmlWriter->writeAttribute('style:vertical-pos', 'top');
+		$xmlWriter->writeAttribute('style:vertical-rel', 'baseline');
+		$xmlWriter->endElement(); // style:graphic-properties
+		$xmlWriter->endElement(); // style:style
+	}
 }

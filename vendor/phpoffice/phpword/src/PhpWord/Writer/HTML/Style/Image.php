@@ -25,24 +25,23 @@ namespace PhpOffice\PhpWord\Writer\HTML\Style;
  */
 class Image extends AbstractStyle
 {
-    /**
-     * Write style.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Image) {
-            return '';
-        }
-        $css = [];
+	/**
+	 * Write style.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Image) {
+			return '';
+		}
+		$css = [];
 
-        $width = $style->getWidth();
-        $height = $style->getHeight();
-        $css['width'] = $this->getValueIf(is_numeric($width), $width . 'px');
-        $css['height'] = $this->getValueIf(is_numeric($height), $height . 'px');
+		$width = $style->getWidth();
+		$height = $style->getHeight();
+		$css['width'] = $this->getValueIf(is_numeric($width), $width . 'px');
+		$css['height'] = $this->getValueIf(is_numeric($height), $height . 'px');
 
-        return $this->assembleCss($css);
-    }
+		return $this->assembleCss($css);
+	}
 }

@@ -27,26 +27,25 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 class Link extends Text
 {
-    /**
-     * Write link.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        if (!$this->element instanceof \PhpOffice\PhpWord\Element\Link) {
-            return '';
-        }
+	/**
+	 * Write link.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		if (!$this->element instanceof \PhpOffice\PhpWord\Element\Link) {
+			return '';
+		}
 
-        $prefix = $this->element->isInternal() ? '#' : '';
-        $content = $this->writeOpening();
-        $content .= "<a href=\"{$prefix}"
-            . $this->parentWriter->escapeHTML($this->element->getSource())
-            . '">'
-            . $this->parentWriter->escapeHTML($this->element->getText())
-            . '</a>';
-        $content .= $this->writeClosing();
+		$prefix = $this->element->isInternal() ? '#' : '';
+		$content = $this->writeOpening();
+		$content .= "<a href=\"{$prefix}"
+			. $this->parentWriter->escapeHTML($this->element->getSource())
+			. '">'
+			. $this->parentWriter->escapeHTML($this->element->getText())
+			. '</a>';
+		$content .= $this->writeClosing();
 
-        return $content;
-    }
+		return $content;
+	}
 }

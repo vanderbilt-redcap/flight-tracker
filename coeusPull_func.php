@@ -2,7 +2,7 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\COEUSConnection;
+use Vanderbilt\CareerDevLibrary\COEUSConnection;
 
 require_once(dirname(__FILE__)."/small_base.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
@@ -26,4 +26,3 @@ function pullCoeus($token, $server, $pid) {
 	error_log(count($data['investigators'])." investigators downloaded");
 	error_log(count($data['awards'])." awards downloaded");
 }
-

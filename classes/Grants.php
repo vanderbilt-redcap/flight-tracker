@@ -1318,15 +1318,6 @@ class Grants
 			return $awards['compiledGrants'];
 		}
 
-		# exclude certain names
-		$exclude = [
-				new Name("Harold", "L", "Moses"),
-				new Name("Richard", "", "Hoover"),
-				new Name("E", "Michelle", "Southard-Smith"),
-				new Name("C", "M", "Stein"),
-				new Name("John", "", "Wilson"),
-				];
-
 		# 0. Initialize
 		$this->changes = [];	// the changes requested by the Grant Wrangler
 		$sourceOrder = self::getSourceOrder();
@@ -1336,13 +1327,6 @@ class Grants
 		foreach ($this->nativeGrants as $grant) {
 			$person = $grant->getVariable("person_name");
 			$filterOut = false;
-			if ($person) {
-				foreach ($exclude as $name) {
-					if ($name->isMatch($person)) {
-						$filterOut = true;
-					}
-				}
-			}
 
 			if (in_array($grant->getVariable("source"), $this->sourcesToExclude)) {
 				$filterOut = true;

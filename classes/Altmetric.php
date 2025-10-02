@@ -4,16 +4,17 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Altmetric {
-    const THRESHOLD_SCORE = 100;
-	const ALTMETRICS_ENABLED = false;
+class Altmetric
+{
+	public const THRESHOLD_SCORE = 100;
+	public const ALTMETRICS_ENABLED = false;
 
-    public function __construct($doi, $pid) {
-        $this->doi = $doi;
-        $this->data = self::getData($doi, $pid);
-    }
+	public function __construct($doi, $pid) {
+		$this->doi = $doi;
+		$this->data = self::getData($doi, $pid);
+	}
 
-    private static function getData($doi, $pid) {
+	private static function getData($doi, $pid) {
 		if (self::isActive()) {
 			$url = "https://api.altmetric.com/v1/doi/".$doi;
 			list($resp, $json) = REDCapManagement::downloadURL($url, $pid);
@@ -25,9 +26,9 @@ class Altmetric {
 			return $data;
 		}
 		return [];
-    }
+	}
 
-    public static function makeClickText($thisLink) {
+	public static function makeClickText($thisLink) {
 		if (self::isActive()) {
 			if (isset($_GET['altmetrics'])) {
 				$url = str_replace("&altmetrics", "", $thisLink);
@@ -40,14 +41,14 @@ class Altmetric {
 			return "<div class='centered'><a href='$url' title='$title'>Turn $clickStatus Altmetrics</a></div><div class='centered max-width smaller'>$title</div>";
 		}
 		return '';
-    }
+	}
 
-    public function getVariable($var) {
+	public function getVariable($var) {
 		if (self::isActive()) {
 			if (isset($this->data[$var])) {
 				if ($var == "images") {
 					return strval($this->data[$var]["small"]);
-				} else if (preg_match("/^context_/", $var)) {
+				} elseif (preg_match("/^context_/", $var)) {
 					$var = str_replace("higher_than", "higherthan", $var);
 					$nodes = explode("_", $var);
 					if ((count($nodes) == 3) && isset($this->data[$nodes[0]][$nodes[1]])) {
@@ -61,18 +62,17 @@ class Altmetric {
 				}
 			}
 		}
-        return "";
-    }
+		return "";
+	}
 
-    public function hasData() {
-        return $this->data && !empty($this->data);
-    }
+	public function hasData() {
+		return $this->data && !empty($this->data);
+	}
 
 	public static function isActive() {
 		return self::ALTMETRICS_ENABLED;
 	}
 
-    protected $doi;
-    protected $data;
+	protected $doi;
+	protected $data;
 }
-

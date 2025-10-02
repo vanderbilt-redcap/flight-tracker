@@ -27,29 +27,28 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 class Title extends AbstractElement
 {
-    /**
-     * Write heading.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        if (!$this->element instanceof \PhpOffice\PhpWord\Element\Title) {
-            return '';
-        }
+	/**
+	 * Write heading.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		if (!$this->element instanceof \PhpOffice\PhpWord\Element\Title) {
+			return '';
+		}
 
-        $tag = 'h' . $this->element->getDepth();
+		$tag = 'h' . $this->element->getDepth();
 
-        $text = $this->element->getText();
-        if (is_string($text)) {
-            $text = $this->parentWriter->escapeHTML($text);
-        } else {
-            $writer = new Container($this->parentWriter, $text);
-            $text = $writer->write();
-        }
+		$text = $this->element->getText();
+		if (is_string($text)) {
+			$text = $this->parentWriter->escapeHTML($text);
+		} else {
+			$writer = new Container($this->parentWriter, $text);
+			$text = $writer->write();
+		}
 
-        $content = "<{$tag}>{$text}</{$tag}>" . PHP_EOL;
+		$content = "<{$tag}>{$text}</{$tag}>" . PHP_EOL;
 
-        return $content;
-    }
+		return $content;
+	}
 }

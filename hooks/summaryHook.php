@@ -2,7 +2,6 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-
 # a part of a hook
 # puts in colored background in reports for erroneus entries
 

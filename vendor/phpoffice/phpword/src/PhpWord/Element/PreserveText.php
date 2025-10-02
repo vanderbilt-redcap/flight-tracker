@@ -27,73 +27,69 @@ use PhpOffice\PhpWord\Style\Paragraph;
  */
 class PreserveText extends AbstractElement
 {
-    /**
-     * Text content.
-     *
-     * @var null|array|string
-     */
-    private $text;
+	/**
+	 * Text content.
+	 *
+	 * @var null|array|string
+	 */
+	private $text;
 
-    /**
-     * Text style.
-     *
-     * @var null|Font|string
-     */
-    private $fontStyle;
+	/**
+	 * Text style.
+	 *
+	 * @var null|Font|string
+	 */
+	private $fontStyle;
 
-    /**
-     * Paragraph style.
-     *
-     * @var null|Paragraph|string
-     */
-    private $paragraphStyle;
+	/**
+	 * Paragraph style.
+	 *
+	 * @var null|Paragraph|string
+	 */
+	private $paragraphStyle;
 
-    /**
-     * Create a new Preserve Text Element.
-     *
-     * @param string $text
-     * @param mixed $fontStyle
-     * @param mixed $paragraphStyle
-     */
-    public function __construct($text = null, $fontStyle = null, $paragraphStyle = null)
-    {
-        $this->fontStyle = $this->setNewStyle(new Font('text'), $fontStyle);
-        $this->paragraphStyle = $this->setNewStyle(new Paragraph(), $paragraphStyle);
+	/**
+	 * Create a new Preserve Text Element.
+	 *
+	 * @param string $text
+	 * @param mixed $fontStyle
+	 * @param mixed $paragraphStyle
+	 */
+	public function __construct($text = null, $fontStyle = null, $paragraphStyle = null) {
+		$this->fontStyle = $this->setNewStyle(new Font('text'), $fontStyle);
+		$this->paragraphStyle = $this->setNewStyle(new Paragraph(), $paragraphStyle);
 
-        $this->text = SharedText::toUTF8($text);
-        $matches = preg_split('/({.*?})/', $this->text ?? '', -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
-        if (isset($matches[0])) {
-            $this->text = $matches;
-        }
-    }
+		$this->text = SharedText::toUTF8($text);
+		$matches = preg_split('/({.*?})/', $this->text ?? '', -1, PREG_SPLIT_DELIM_CAPTURE | PREG_SPLIT_NO_EMPTY);
+		if (isset($matches[0])) {
+			$this->text = $matches;
+		}
+	}
 
-    /**
-     * Get Text style.
-     *
-     * @return null|Font|string
-     */
-    public function getFontStyle()
-    {
-        return $this->fontStyle;
-    }
+	/**
+	 * Get Text style.
+	 *
+	 * @return null|Font|string
+	 */
+	public function getFontStyle() {
+		return $this->fontStyle;
+	}
 
-    /**
-     * Get Paragraph style.
-     *
-     * @return null|Paragraph|string
-     */
-    public function getParagraphStyle()
-    {
-        return $this->paragraphStyle;
-    }
+	/**
+	 * Get Paragraph style.
+	 *
+	 * @return null|Paragraph|string
+	 */
+	public function getParagraphStyle() {
+		return $this->paragraphStyle;
+	}
 
-    /**
-     * Get Text content.
-     *
-     * @return null|array|string
-     */
-    public function getText()
-    {
-        return $this->text;
-    }
+	/**
+	 * Get Text content.
+	 *
+	 * @return null|array|string
+	 */
+	public function getText() {
+		return $this->text;
+	}
 }

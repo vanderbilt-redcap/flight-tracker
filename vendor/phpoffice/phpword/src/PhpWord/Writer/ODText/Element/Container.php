@@ -27,15 +27,15 @@ use PhpOffice\PhpWord\Writer\Word2007\Element\Container as Word2007Container;
  */
 class Container extends Word2007Container
 {
-    /**
-     * Namespace; Can't use __NAMESPACE__ in inherited class (ODText).
-     *
-     * @var string
-     */
-    protected $namespace = 'PhpOffice\\PhpWord\\Writer\\ODText\\Element';
+	/**
+	 * Namespace; Can't use __NAMESPACE__ in inherited class (ODText).
+	 *
+	 * @var string
+	 */
+	protected $namespace = 'PhpOffice\\PhpWord\\Writer\\ODText\\Element';
 
-    /**
-     * @var array<string>
-     */
-    protected $containerWithoutP = ['TextRun', 'Footnote', 'Endnote'];
+	/**
+	 * @var array<string>
+	 */
+	protected $containerWithoutP = ['TextRun', 'Footnote', 'Endnote'];
 }

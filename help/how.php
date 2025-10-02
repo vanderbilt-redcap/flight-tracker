@@ -1,6 +1,6 @@
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
+use Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../CareerDevHelp.php");

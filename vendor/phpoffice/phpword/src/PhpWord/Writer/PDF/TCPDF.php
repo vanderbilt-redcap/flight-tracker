@@ -33,93 +33,90 @@ use TCPDF as TCPDFBase;
  */
 class TCPDF extends AbstractRenderer implements WriterInterface
 {
-    /**
-     * Name of renderer include file.
-     *
-     * @var string
-     */
-    protected $includeFile = 'tcpdf.php';
+	/**
+	 * Name of renderer include file.
+	 *
+	 * @var string
+	 */
+	protected $includeFile = 'tcpdf.php';
 
-    /**
-     * Gets the implementation of external PDF library that should be used.
-     *
-     * @param string $orientation Page orientation
-     * @param string $unit Unit measure
-     * @param string $paperSize Paper size
-     *
-     * @return TCPDFBase implementation
-     */
-    protected function createExternalWriterInstance($orientation, $unit, $paperSize)
-    {
-        $instance = new TCPDFBase($orientation, $unit, $paperSize);
+	/**
+	 * Gets the implementation of external PDF library that should be used.
+	 *
+	 * @param string $orientation Page orientation
+	 * @param string $unit Unit measure
+	 * @param string $paperSize Paper size
+	 *
+	 * @return TCPDFBase implementation
+	 */
+	protected function createExternalWriterInstance($orientation, $unit, $paperSize) {
+		$instance = new TCPDFBase($orientation, $unit, $paperSize);
 
-        if ($this->getFont()) {
-            $instance->setFont($this->getFont(), $instance->getFontStyle(), $instance->getFontSizePt());
-        }
+		if ($this->getFont()) {
+			$instance->setFont($this->getFont(), $instance->getFontStyle(), $instance->getFontSizePt());
+		}
 
-        return $instance;
-    }
+		return $instance;
+	}
 
-    /**
-     * Overwriteable function to allow user to extend TCPDF.
-     * There should always be an AddPage call, preceded or followed
-     *   by code to customize TCPDF configuration.
-     * The customization below sets vertical spacing
-     *   between paragaraphs when the user has
-     *   explicitly set those values to numeric in default style.
-     */
-    protected function prepareToWrite(TCPDFBase $pdf): void
-    {
-        $pdf->AddPage();
-        $customStyles = Style::getStyles();
-        $normal = $customStyles['Normal'] ?? null;
-        if ($normal instanceof Style\Paragraph) {
-            $before = $normal->getSpaceBefore();
-            $after = $normal->getSpaceAfter();
-            if (is_numeric($before) && is_numeric($after)) {
-                $height = $normal->getLineHeight() ?? '';
-                $pdf->setHtmlVSpace([
-                    'p' => [
-                        ['n' => $before, 'h' => $height],
-                        ['n' => $after, 'h' => $height],
-                    ],
-                ]);
-            }
-        }
-    }
+	/**
+	 * Overwriteable function to allow user to extend TCPDF.
+	 * There should always be an AddPage call, preceded or followed
+	 *   by code to customize TCPDF configuration.
+	 * The customization below sets vertical spacing
+	 *   between paragaraphs when the user has
+	 *   explicitly set those values to numeric in default style.
+	 */
+	protected function prepareToWrite(TCPDFBase $pdf): void {
+		$pdf->AddPage();
+		$customStyles = Style::getStyles();
+		$normal = $customStyles['Normal'] ?? null;
+		if ($normal instanceof Style\Paragraph) {
+			$before = $normal->getSpaceBefore();
+			$after = $normal->getSpaceAfter();
+			if (is_numeric($before) && is_numeric($after)) {
+				$height = $normal->getLineHeight() ?? '';
+				$pdf->setHtmlVSpace([
+					'p' => [
+						['n' => $before, 'h' => $height],
+						['n' => $after, 'h' => $height],
+					],
+				]);
+			}
+		}
+	}
 
-    /**
-     * Save PhpWord to file.
-     */
-    public function save(string $filename): void
-    {
-        $fileHandle = parent::prepareForSave($filename);
+	/**
+	 * Save PhpWord to file.
+	 */
+	public function save(string $filename): void {
+		$fileHandle = parent::prepareForSave($filename);
 
-        //  PDF settings
-        $paperSize = strtoupper(Settings::getDefaultPaper());
-        $orientation = 'P';
+		//  PDF settings
+		$paperSize = strtoupper(Settings::getDefaultPaper());
+		$orientation = 'P';
 
-        // Create PDF
-        $pdf = $this->createExternalWriterInstance($orientation, 'pt', $paperSize);
-        $pdf->setFontSubsetting(false);
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-        $pdf->SetFont($this->getFont());
-        $this->prepareToWrite($pdf);
-        $pdf->writeHTML($this->getContent());
+		// Create PDF
+		$pdf = $this->createExternalWriterInstance($orientation, 'pt', $paperSize);
+		$pdf->setFontSubsetting(false);
+		$pdf->setPrintHeader(false);
+		$pdf->setPrintFooter(false);
+		$pdf->SetFont($this->getFont());
+		$this->prepareToWrite($pdf);
+		$pdf->writeHTML($this->getContent());
 
-        // Write document properties
-        $phpWord = $this->getPhpWord();
-        $docProps = $phpWord->getDocInfo();
-        $pdf->SetTitle($docProps->getTitle());
-        $pdf->SetAuthor($docProps->getCreator());
-        $pdf->SetSubject($docProps->getSubject());
-        $pdf->SetKeywords($docProps->getKeywords());
-        $pdf->SetCreator($docProps->getCreator());
+		// Write document properties
+		$phpWord = $this->getPhpWord();
+		$docProps = $phpWord->getDocInfo();
+		$pdf->SetTitle($docProps->getTitle());
+		$pdf->SetAuthor($docProps->getCreator());
+		$pdf->SetSubject($docProps->getSubject());
+		$pdf->SetKeywords($docProps->getKeywords());
+		$pdf->SetCreator($docProps->getCreator());
 
-        //  Write to file
-        fwrite($fileHandle, $pdf->Output($filename, 'S'));
+		//  Write to file
+		fwrite($fileHandle, $pdf->Output($filename, 'S'));
 
-        parent::restoreStateAfterSave($fileHandle);
-    }
+		parent::restoreStateAfterSave($fileHandle);
+	}
 }

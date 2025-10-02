@@ -23,39 +23,36 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Element;
  */
 class ParagraphAlignment
 {
-    private $name = 'w:jc';
+	private $name = 'w:jc';
 
-    private $attributes = [];
+	private $attributes = [];
 
-    /**
-     * @since 0.13.0
-     *
-     * @param string $value Any value provided by Jc simple type
-     *
-     * @see \PhpOffice\PhpWord\SimpleType\Jc For the allowed values of $value parameter.
-     */
-    final public function __construct($value)
-    {
-        $this->attributes['w:val'] = $value;
-    }
+	/**
+	 * @since 0.13.0
+	 *
+	 * @param string $value Any value provided by Jc simple type
+	 *
+	 * @see \PhpOffice\PhpWord\SimpleType\Jc For the allowed values of $value parameter.
+	 */
+	final public function __construct($value) {
+		$this->attributes['w:val'] = $value;
+	}
 
-    /**
-     * @since 0.13.0
-     *
-     * @return string
-     */
-    final public function getName()
-    {
-        return $this->name;
-    }
+	/**
+	 * @since 0.13.0
+	 *
+	 * @return string
+	 */
+	final public function getName() {
+		return $this->name;
+	}
 
-    /**
-     * @since 0.13.0
-     *
-     * @return string[]
-     */
-    final public function getAttributes()
-    {
-        return $this->attributes;
-    }
+	/**
+	 * @since 0.13.0
+	 *
+	 * @return string[]
+	 */
+	final public function getAttributes() {
+		return $this->attributes;
+	}
 }

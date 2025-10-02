@@ -27,43 +27,40 @@ use PhpOffice\PhpWord\Writer\AbstractWriter;
  */
 abstract class AbstractPart
 {
-    /**
-     * @var \PhpOffice\PhpWord\Writer\RTF
-     */
-    private $parentWriter;
+	/**
+	 * @var \PhpOffice\PhpWord\Writer\RTF
+	 */
+	private $parentWriter;
 
-    /**
-     * @var \PhpOffice\PhpWord\Escaper\EscaperInterface
-     */
-    protected $escaper;
+	/**
+	 * @var \PhpOffice\PhpWord\Escaper\EscaperInterface
+	 */
+	protected $escaper;
 
-    public function __construct()
-    {
-        $this->escaper = new Rtf();
-    }
+	public function __construct() {
+		$this->escaper = new Rtf();
+	}
 
-    /**
-     * @return string
-     */
-    abstract public function write();
+	/**
+	 * @return string
+	 */
+	abstract public function write();
 
-    /**
-     * @param \PhpOffice\PhpWord\Writer\RTF $writer
-     */
-    public function setParentWriter(?AbstractWriter $writer = null): void
-    {
-        $this->parentWriter = $writer;
-    }
+	/**
+	 * @param \PhpOffice\PhpWord\Writer\RTF $writer
+	 */
+	public function setParentWriter(?AbstractWriter $writer = null): void {
+		$this->parentWriter = $writer;
+	}
 
-    /**
-     * @return \PhpOffice\PhpWord\Writer\RTF
-     */
-    public function getParentWriter()
-    {
-        if ($this->parentWriter !== null) {
-            return $this->parentWriter;
-        }
+	/**
+	 * @return \PhpOffice\PhpWord\Writer\RTF
+	 */
+	public function getParentWriter() {
+		if ($this->parentWriter !== null) {
+			return $this->parentWriter;
+		}
 
-        throw new Exception('No parent WriterInterface assigned.');
-    }
+		throw new Exception('No parent WriterInterface assigned.');
+	}
 }

@@ -4,11 +4,11 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use Vanderbilt\CareerDevLibrary\DateManagement;
-use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\Grant;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Grants;
+use Vanderbilt\CareerDevLibrary\Grant;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 # This is the hook used for the scholars' followup survey. It is referenced in the hooks file.
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -32,17 +32,17 @@ $metadata = Download::metadata($token, $server);
 $allFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 $fields = ["record_id"];
 foreach ($allFields as $field) {
-    if (
-        preg_match("/^check_/", $field)
-        || preg_match("/^followup_/", $field)
-        || preg_match("/^summary_/", $field)
-        || preg_match("/^vfrs_/", $field)
-        || preg_match("/^identifier_/", $field)
-        || preg_match("/^init_import_/", $field)
-        || preg_match("/^newman_/", $field)
-    ) {
-        $fields[] = $field;
-    }
+	if (
+		preg_match("/^check_/", $field)
+		|| preg_match("/^followup_/", $field)
+		|| preg_match("/^summary_/", $field)
+		|| preg_match("/^vfrs_/", $field)
+		|| preg_match("/^identifier_/", $field)
+		|| preg_match("/^init_import_/", $field)
+		|| preg_match("/^newman_/", $field)
+	) {
+		$fields[] = $field;
+	}
 }
 $grantFields = REDCapManagement::getAllGrantFields($metadata);
 $fields = array_unique(array_merge($fields, $grantFields));
@@ -58,29 +58,29 @@ $grants->compileGrants();
 # returns "" when data is not there
 function findInFollowup($fields) {
 	global $data;
-    return REDCapManagement::findInData($data, $fields);
+	return REDCapManagement::findInData($data, $fields);
 }
 
 function getLastSurveyUpdate($token, $server, $recordId) {
-    $lastUpdateFields = ["check_date", "followup_date"];
-    $fields = array_merge(["record_id"], $lastUpdateFields);
-    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-    $latestDate = "";
-    foreach ($redcapData as $row) {
-        foreach ($lastUpdateFields as $field) {
-            if ($row[$field]) {
-                if (!$latestDate) {
-                    $latestDate = $row[$field];
-                } else {
-                    $ts = strtotime($row[$field]);
-                    if ($ts > strtotime($latestDate)) {
-                        $latestDate = $row[$field];
-                    }
-                }
-            }
-        }
-    }
-    return $latestDate ? DateManagement::YMD2LongDate($latestDate) : "";
+	$lastUpdateFields = ["check_date", "followup_date"];
+	$fields = array_merge(["record_id"], $lastUpdateFields);
+	$redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+	$latestDate = "";
+	foreach ($redcapData as $row) {
+		foreach ($lastUpdateFields as $field) {
+			if ($row[$field]) {
+				if (!$latestDate) {
+					$latestDate = $row[$field];
+				} else {
+					$ts = strtotime($row[$field]);
+					if ($ts > strtotime($latestDate)) {
+						$latestDate = $row[$field];
+					}
+				}
+			}
+		}
+	}
+	return $latestDate ? DateManagement::YMD2LongDate($latestDate) : "";
 }
 
 ?>
@@ -106,19 +106,19 @@ $(document).ready(function() {
 	presetValue('followup_primary_dept', '<?php echo findInFollowup(['followup_primary_dept', 'summary_primary_dept', 'check_primary_dept', 'init_import_primary_dept', "mstp_current_position_dept_institution"]); ?>');
 	presetValue('followup_academic_rank', '<?php
 	$vfrs = findInFollowup('vfrs_current_appointment');
-	if ($vfrs != '') {
-		$translate = array(
-					1 => 3,
-					2 => 4,
-					3 => 3,
-					4 => 5,
-					5 => 8,
-					);
-		echo $translate[$vfrs];
-	} else {
-		echo findInFollowup(array('followup_academic_rank', 'check_academic_rank', 'init_import_academic_rank'));
-	}
-    ?>');
+if ($vfrs != '') {
+	$translate = [
+				1 => 3,
+				2 => 4,
+				3 => 3,
+				4 => 5,
+				5 => 8,
+				];
+	echo $translate[$vfrs];
+} else {
+	echo findInFollowup(['followup_academic_rank', 'check_academic_rank', 'init_import_academic_rank']);
+}
+?>');
     presetValue('followup_division', '<?php echo findInFollowup(['followup_division', 'check_division', 'init_import_division', 'identifier_starting_division']); ?>');
     presetValue('followup_alumni_assoc1', '<?php echo findInFollowup(['followup_alumni_assoc1', 'check_alumni_assoc1', 'init_import_alumni_assoc1']); ?>');
     presetValue('followup_alumni_assoc2', '<?php echo findInFollowup(['followup_alumni_assoc2', 'check_alumni_assoc2', 'init_import_alumni_assoc2']); ?>');
@@ -151,7 +151,7 @@ function filterSponsorNumber($name) {
 function getTenureStatus($value) {
 	# VFRS: 1, Non-tenure track | 2, Tenure track
 	# Followup: 1, Not Tenure-track | 2, Tenure-track | 3, Tenured
-	switch($value) {
+	switch ($value) {
 		case 1:
 			return 1;
 		case 2:
@@ -160,63 +160,63 @@ function getTenureStatus($value) {
 	return "";
 }
 
-	$priorDate = (date("Y") - 1).date("-m-d");
-	$priorTs = strtotime($priorDate);
-	$j = 1;
-	foreach ($grants->getGrants("all_pis") as $grant) {
-		$beginDate = $grant->getVariable("start");
-		$endDate = $grant->getVariable("end");
-		if (($j <= Grants::$MAX_GRANTS) && (($beginDate && strtotime($beginDate) >= $priorTs) || ($endDate && strtotime($endDate) >= $priorTs))) {
-			if ($j == 1) {
-				echo "	presetValue('followup_grant0_another', '1');\n";
-			}
-			echo "	presetValue('followup_grant{$j}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
-			if ($endDate) {
-				echo "	presetValue('followup_grant{$j}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
-			}
-			echo "	presetValue('followup_grant{$j}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
-			echo "	presetValue('followup_grant{$j}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
-			echo "	presetValue('followup_grant{$j}_org', '".$grant->getVariable("sponsor")."');\n";
-			echo "	presetValue('followup_grant{$j}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
-			echo "	presetValue('followup_grant{$j}_role', '1');\n";
-			if (($j < Grants::$MAX_GRANTS) && ($j < $grants->getNumberOfGrants("compiled"))) {
-				echo "	presetValue('followup_grant{$j}_another', '1');\n";
-			}
-			$j++;
+$priorDate = (date("Y") - 1).date("-m-d");
+$priorTs = strtotime($priorDate);
+$j = 1;
+foreach ($grants->getGrants("all_pis") as $grant) {
+	$beginDate = $grant->getVariable("start");
+	$endDate = $grant->getVariable("end");
+	if (($j <= Grants::$MAX_GRANTS) && (($beginDate && strtotime($beginDate) >= $priorTs) || ($endDate && strtotime($endDate) >= $priorTs))) {
+		if ($j == 1) {
+			echo "	presetValue('followup_grant0_another', '1');\n";
 		}
+		echo "	presetValue('followup_grant{$j}_start', '".REDCapManagement::YMD2MDY($grant->getVariable("start"))."');\n";
+		if ($endDate) {
+			echo "	presetValue('followup_grant{$j}_end', '".REDCapManagement::YMD2MDY($grant->getVariable("end"))."');\n";
+		}
+		echo "	presetValue('followup_grant{$j}_number', '".filterSponsorNumber($grant->getBaseNumber())."');\n";
+		echo "	presetValue('followup_grant{$j}_title', '".preg_replace("/'/", "\\'", $grant->getVariable("title"))."');\n";
+		echo "	presetValue('followup_grant{$j}_org', '".$grant->getVariable("sponsor")."');\n";
+		echo "	presetValue('followup_grant{$j}_costs', '".Grant::convertToMoney($grant->getVariable("direct_budget"))."');\n";
+		echo "	presetValue('followup_grant{$j}_role', '1');\n";
+		if (($j < Grants::$MAX_GRANTS) && ($j < $grants->getNumberOfGrants("compiled"))) {
+			echo "	presetValue('followup_grant{$j}_another', '1');\n";
+		}
+		$j++;
 	}
-	# make .*_d-tr td background
-	# also .*_d\d+
+}
+# make .*_d-tr td background
+# also .*_d\d+
 ?>
 	presetValue('followup_institution', '<?php
-            $value = findInFollowup(['check_institution', 'init_import_institution']);
-            if (($value === "") && ($mstpValue = findInFollowup('mstp_current_position_dept_institution'))) {
-                $value = '5';
-                echo "$value');\npresetValue('followup_institution_oth', '$mstpValue";
-            } else if ($value === "") {
-                $value = '1';
-                echo $value;
-            } else if ($value == 5) {
-                echo "$value')\npresetValue('followup_institution_oth', '".(findInFollowup(['check_institution_oth', 'init_import_institution_oth']) ?: '1');
-            } else {
-                echo $value;
-            }
-        ?>');
+			$value = findInFollowup(['check_institution', 'init_import_institution']);
+if (($value === "") && ($mstpValue = findInFollowup('mstp_current_position_dept_institution'))) {
+	$value = '5';
+	echo "$value');\npresetValue('followup_institution_oth', '$mstpValue";
+} elseif ($value === "") {
+	$value = '1';
+	echo $value;
+} elseif ($value == 5) {
+	echo "$value')\npresetValue('followup_institution_oth', '".(findInFollowup(['check_institution_oth', 'init_import_institution_oth']) ?: '1');
+} else {
+	echo $value;
+}
+?>');
 	<?php
-    ?>
-    presetValue('followup_job_title', '<?php echo (findInFollowup(['check_job_title', 'init_import_job_title', 'mstp_career_type_current_position_title']) ?: '1'); ?>');
+?>
+    presetValue('followup_job_title', '<?php echo(findInFollowup(['check_job_title', 'init_import_job_title', 'mstp_career_type_current_position_title']) ?: '1'); ?>');
     presetValue('followup_job_category', '<?php echo findInFollowup(['check_job_category', 'init_import_job_category']) ?: '1' ?>');
     presetValue('followup_academic_rank', '<?php echo findInFollowup(['check_academic_rank', 'init_import_academic_rank']); ?>');
     presetValue('followup_academic_rank_dt', '<?php echo REDCapManagement::YMD2MDY(findInFollowup(['vfrs_current_appointment', 'check_academic_rank_dt', 'init_import_academic_rank_dt'])); ?>');
     presetValue('followup_left_institution', '<?php echo REDCapManagement::YMD2MDY(findInFollowup(['check_left_institution', 'init_import_left_institution'])); ?>');
 	presetValue('followup_tenure_status', '<?php
-        $status = getTenureStatus(findInFollowup('vfrs_tenure'));
-        if ($status) {
-            echo $status;
-        } else {
-            echo findInFollowup(['check_tenure_status', 'init_import_tenure_status']);
-        }
-        ?>');
+	$status = getTenureStatus(findInFollowup('vfrs_tenure'));
+if ($status) {
+	echo $status;
+} else {
+	echo findInFollowup(['check_tenure_status', 'init_import_tenure_status']);
+}
+?>');
 
 	doBranching();
 	$('[name="followup_name_first"]').blur();

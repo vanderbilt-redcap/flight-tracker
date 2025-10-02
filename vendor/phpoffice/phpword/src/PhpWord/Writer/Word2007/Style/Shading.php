@@ -25,21 +25,20 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class Shading extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Shading) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Shading) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('w:shd');
-        $xmlWriter->writeAttributeIf(null !== $style->getPattern(), 'w:val', $style->getPattern());
-        $xmlWriter->writeAttributeIf(null !== $style->getColor(), 'w:color', $style->getColor());
-        $xmlWriter->writeAttributeIf(null !== $style->getFill(), 'w:fill', $style->getFill());
-        $xmlWriter->endElement();
-    }
+		$xmlWriter->startElement('w:shd');
+		$xmlWriter->writeAttributeIf(null !== $style->getPattern(), 'w:val', $style->getPattern());
+		$xmlWriter->writeAttributeIf(null !== $style->getColor(), 'w:color', $style->getColor());
+		$xmlWriter->writeAttributeIf(null !== $style->getFill(), 'w:fill', $style->getFill());
+		$xmlWriter->endElement();
+	}
 }

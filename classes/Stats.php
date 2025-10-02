@@ -6,271 +6,271 @@ namespace Vanderbilt\CareerDevLibrary;
 # Adapted from https://www.geeksforgeeks.org/program-implement-t-test/
 class Stats
 {
-    public function __construct($arr) {
-        $this->arr = $arr;
-    }
+	public function __construct($arr) {
+		$this->arr = $arr;
+	}
 
-    public function getMu() {
-        return $this->mean();
-    }
+	public function getMu() {
+		return $this->mean();
+	}
 
-    public function getSigma() {
-        return $this->standardDeviation();
-    }
+	public function getSigma() {
+		return $this->standardDeviation();
+	}
 
-    public function median() {
-        $n = $this->getN();
-        $arr = $this->arr;
-        asort($arr, SORT_NUMERIC);
-        if ($n == 1) {
-            return $arr[0];
-        } else if ($n > 1) {
-            if ($n % 2 == 0) {
-                return $arr[$n / 2];
-            } else {
-                return ($arr[floor($n / 2)] + $arr[ceil($n / 2)]) / 2;
-            }
-        } else {
-            return self::NAN;
-        }
-    }
+	public function median() {
+		$n = $this->getN();
+		$arr = $this->arr;
+		asort($arr, SORT_NUMERIC);
+		if ($n == 1) {
+			return $arr[0];
+		} elseif ($n > 1) {
+			if ($n % 2 == 0) {
+				return $arr[$n / 2];
+			} else {
+				return ($arr[floor($n / 2)] + $arr[ceil($n / 2)]) / 2;
+			}
+		} else {
+			return self::NAN;
+		}
+	}
 
-    public function mode() {
-        $n = $this->getN();
-        $arr = $this->arr;
-        asort($arr, SORT_NUMERIC);
-        if ($n > 0) {
-            $counts = [];
-            foreach ($arr as $item) {
-                if (!isset($counts[$item])) {
-                    $counts[$item] = 0;
-                }
-                $counts[$item]++;
-            }
-            $countValues = array_values($counts);
-            if (!empty($countValues) && REDCapManagement::isArrayNumeric($countValues)) {
-                $max = max($countValues);
-            } else {
-                $max = 0;
-            }
-            $maxItems = [];
-            foreach ($counts as $item => $count) {
-                if ($count == $max) {
-                    $maxItems[] = $item;
-                }
-            }
-            return $maxItems;
-        } else {
-            return self::NAN;
-        }
-    }
+	public function mode() {
+		$n = $this->getN();
+		$arr = $this->arr;
+		asort($arr, SORT_NUMERIC);
+		if ($n > 0) {
+			$counts = [];
+			foreach ($arr as $item) {
+				if (!isset($counts[$item])) {
+					$counts[$item] = 0;
+				}
+				$counts[$item]++;
+			}
+			$countValues = array_values($counts);
+			if (!empty($countValues) && REDCapManagement::isArrayNumeric($countValues)) {
+				$max = max($countValues);
+			} else {
+				$max = 0;
+			}
+			$maxItems = [];
+			foreach ($counts as $item => $count) {
+				if ($count == $max) {
+					$maxItems[] = $item;
+				}
+			}
+			return $maxItems;
+		} else {
+			return self::NAN;
+		}
+	}
 
-    public function mean() {
-        $n = $this->getN();
-        if ($n == 0) {
-            return self::NAN;
-        }
-        $sum = 0;
-        for ($i = 0; $i < $n; $i++) {
-            $sum = $sum + $this->arr[$i];
-        }
-        return $sum / $n;
-    }
+	public function mean() {
+		$n = $this->getN();
+		if ($n == 0) {
+			return self::NAN;
+		}
+		$sum = 0;
+		for ($i = 0; $i < $n; $i++) {
+			$sum = $sum + $this->arr[$i];
+		}
+		return $sum / $n;
+	}
 
-    public function getN() {
-        return count($this->arr);
-    }
+	public function getN() {
+		return count($this->arr);
+	}
 
-    public function sum() {
-        return $this->total();
-    }
+	public function sum() {
+		return $this->total();
+	}
 
-    public function total() {
-        return array_sum($this->arr);
-    }
+	public function total() {
+		return array_sum($this->arr);
+	}
 
-    public function stddev() {
-        return $this->standardDeviation();
-    }
+	public function stddev() {
+		return $this->standardDeviation();
+	}
 
-    // Function to find standard deviation of given array.
-    public function standardDeviation() {
-        $n = $this->getN();
-        if (in_array($n, [0, 1])) {
-            return self::NAN;
-        }
-        $mu = $this->mean();
-        if ($mu == self::NAN) {
-            return self::NAN;
-        }
-        $sum = 0;
-        for ($i = 0; $i < $n; $i++) {
-            $sum = $sum + ($this->arr[$i] - $mu) * ($this->arr[$i] - $mu);
-        }
-        return sqrt($sum / ($n - 1));
-    }
+	// Function to find standard deviation of given array.
+	public function standardDeviation() {
+		$n = $this->getN();
+		if (in_array($n, [0, 1])) {
+			return self::NAN;
+		}
+		$mu = $this->mean();
+		if ($mu == self::NAN) {
+			return self::NAN;
+		}
+		$sum = 0;
+		for ($i = 0; $i < $n; $i++) {
+			$sum = $sum + ($this->arr[$i] - $mu) * ($this->arr[$i] - $mu);
+		}
+		return sqrt($sum / ($n - 1));
+	}
 
-    // Unimplemented
-    public static function pairedTTest($stats) {
-        return self::NAN;
-    }
+	// Unimplemented
+	public static function pairedTTest($stats) {
+		return self::NAN;
+	}
 
-    // Function to find t-test of two set of statistical data.
-    public function tTest($comparison) {
-        $t = $this->unpairedTTest($comparison);
-        return $t;
-    }
+	// Function to find t-test of two set of statistical data.
+	public function tTest($comparison) {
+		$t = $this->unpairedTTest($comparison);
+		return $t;
+	}
 
-    public function getDegreesOfFreedom() {
-        return $this->getN() - 1;
-    }
+	public function getDegreesOfFreedom() {
+		return $this->getN() - 1;
+	}
 
-    public function getValues() {
-        return $this->arr;
-    }
+	public function getValues() {
+		return $this->arr;
+	}
 
-    public function getPercentile(int $percentile): float {
-        $total = count($this->arr);
-        $arr = $this->arr;
-        sort($arr, SORT_NUMERIC);
-        if ($percentile == 100) {
-            return $arr[count($arr) - 1];
-        }
-        $iFrac = $percentile * $total / 100;
-        $i1 = (int) floor($iFrac);
-        if ($i1 == count($arr) - 1) {
-            return $arr[$i1];
-        }
-        $i2 = (int) floor($iFrac + 1);
-        $frac1 = 1 - ($iFrac - $i1);
-        $frac2 = 1 - $frac1;
-        return $arr[$i1] * $frac1 + $arr[$i2] * $frac2;
-    }
+	public function getPercentile(int $percentile): float {
+		$total = count($this->arr);
+		$arr = $this->arr;
+		sort($arr, SORT_NUMERIC);
+		if ($percentile == 100) {
+			return $arr[count($arr) - 1];
+		}
+		$iFrac = $percentile * $total / 100;
+		$i1 = (int) floor($iFrac);
+		if ($i1 == count($arr) - 1) {
+			return $arr[$i1];
+		}
+		$i2 = (int) floor($iFrac + 1);
+		$frac1 = 1 - ($iFrac - $i1);
+		$frac2 = 1 - $frac1;
+		return $arr[$i1] * $frac1 + $arr[$i2] * $frac2;
+	}
 
-        public function getQuartile($quartile) {
-        if (!is_int($quartile)) {
-            return FALSE;
-        }
-        if (($quartile < 0) || ($quartile > 4)) {
-            return FALSE;
-        }
-        if (REDCapManagement::isAssoc($this->arr)) {
-            return FALSE;
-        }
+	public function getQuartile($quartile) {
+		if (!is_int($quartile)) {
+			return false;
+		}
+		if (($quartile < 0) || ($quartile > 4)) {
+			return false;
+		}
+		if (REDCapManagement::isAssoc($this->arr)) {
+			return false;
+		}
 
-        sort($this->arr, SORT_NUMERIC);
-        $size = count($this->arr);
-        switch($quartile) {
-            case 0:
-                return $this->arr[0];
-            case 1:
-                $ary2 = [];
-                for ($i = 0; $i < $size / 2; $i++) {
-                    $ary2[] = $this->arr[$i];
-                }
-                $stats2 = new Stats($ary2);
-                return $stats2->median();
-            case 2:
-                return $this->median();
-            case 3:
-                $ary2 = array();
-                for ($i = (int) ceil($size / 2); $i < $size; $i++) {
-                    $ary2[] = $this->arr[$i];
-                }
-                $stats2 = new Stats($ary2);
-                return $stats2->median();
-            case 4:
-                return $this->arr[$size - 1];
-        }
-    }
+		sort($this->arr, SORT_NUMERIC);
+		$size = count($this->arr);
+		switch ($quartile) {
+			case 0:
+				return $this->arr[0];
+			case 1:
+				$ary2 = [];
+				for ($i = 0; $i < $size / 2; $i++) {
+					$ary2[] = $this->arr[$i];
+				}
+				$stats2 = new Stats($ary2);
+				return $stats2->median();
+			case 2:
+				return $this->median();
+			case 3:
+				$ary2 = [];
+				for ($i = (int) ceil($size / 2); $i < $size; $i++) {
+					$ary2[] = $this->arr[$i];
+				}
+				$stats2 = new Stats($ary2);
+				return $stats2->median();
+			case 4:
+				return $this->arr[$size - 1];
+		}
+	}
 
 
-    public function unpairedTTest($comparison) {
-        if (get_class($comparison) != "Vanderbilt\CareerDevLibrary\Stats") {
-            return self::NAN;
-        }
-        $n = $this->getN();
-        $m = $comparison->getN();
-        if ($n == 0) {
-            return self::NAN;
-        }
-        if ($m == 0) {
-            return self::NAN;
-        }
+	public function unpairedTTest($comparison) {
+		if (get_class($comparison) != "Vanderbilt\CareerDevLibrary\Stats") {
+			return self::NAN;
+		}
+		$n = $this->getN();
+		$m = $comparison->getN();
+		if ($n == 0) {
+			return self::NAN;
+		}
+		if ($m == 0) {
+			return self::NAN;
+		}
 
-        $mean1 = $this->mean();
-        $mean2 = $comparison->mean();
-        $sd1 = $this->standardDeviation();
-        $sd2 = $comparison->standardDeviation();
-        if (in_array(self::NAN, [$mean1, $mean2, $sd1, $sd2])) {
-            return self::NAN;
-        }
+		$mean1 = $this->mean();
+		$mean2 = $comparison->mean();
+		$sd1 = $this->standardDeviation();
+		$sd2 = $comparison->standardDeviation();
+		if (in_array(self::NAN, [$mean1, $mean2, $sd1, $sd2])) {
+			return self::NAN;
+		}
 
-        // Formula to find t-test of two set of data.
-        $t_test = ($mean1 - $mean2) / sqrt(($sd1 * $sd1) / $n + ($sd2 * $sd2) / $m);
-        return $t_test;
-    }
+		// Formula to find t-test of two set of data.
+		$t_test = ($mean1 - $mean2) / sqrt(($sd1 * $sd1) / $n + ($sd2 * $sd2) / $m);
+		return $t_test;
+	}
 
-    public function z($x) {
-        if ($this->getN() == 0) {
-            return self::NAN;
-        }
-        return ($x - $this->mean()) / $this->standardDeviation();
-    }
+	public function z($x) {
+		if ($this->getN() == 0) {
+			return self::NAN;
+		}
+		return ($x - $this->mean()) / $this->standardDeviation();
+	}
 
-    public static function convertStandardPercentsToZ($percent) {
-        if ($percent == 70) {
-            return 1.04;
-        } else if ($percent == 75) {
-            return 1.15;
-        } else if ($percent == 80) {
-            return 1.282;
-        } else if ($percent == 85) {
-            return 1.440;
-        } else if ($percent == 90) {
-            return 1.645;
-        } else if ($percent == 92) {
-            return 1.75;
-        } else if ($percent == 95) {
-            return 1.960;
-        } else if ($percent == 96) {
-            return 2.05;
-        } else if ($percent == 98) {
-            return 2.33;
-        } else if ($percent == 99) {
-            return 2.576;
-        } else if ($percent == "99.5") {
-            return 2.807;
-        } else if ($percent == "99.9") {
-            return 3.291;
-        } else {
-            throw new \Exception("Percent $percent not supported!");
-        }
-    }
+	public static function convertStandardPercentsToZ($percent) {
+		if ($percent == 70) {
+			return 1.04;
+		} elseif ($percent == 75) {
+			return 1.15;
+		} elseif ($percent == 80) {
+			return 1.282;
+		} elseif ($percent == 85) {
+			return 1.440;
+		} elseif ($percent == 90) {
+			return 1.645;
+		} elseif ($percent == 92) {
+			return 1.75;
+		} elseif ($percent == 95) {
+			return 1.960;
+		} elseif ($percent == 96) {
+			return 2.05;
+		} elseif ($percent == 98) {
+			return 2.33;
+		} elseif ($percent == 99) {
+			return 2.576;
+		} elseif ($percent == "99.5") {
+			return 2.807;
+		} elseif ($percent == "99.9") {
+			return 3.291;
+		} else {
+			throw new \Exception("Percent $percent not supported!");
+		}
+	}
 
-    public function confidenceInterval($percent, $df = FALSE) {
-        $n = $this->getN();
-        if ($n == 0) {
-            return [self::NAN, self::NAN];
-        }
-        $mu = $this->mean();
-        $sigma = $this->standardDeviation();
-        if (in_array(self::NAN, [$mu, $sigma])) {
-            return [self::NAN, self::NAN];
-        }
-        if ($df) {
-            # T score
-            $z = CohortStudy::convertPercentToZ($percent, $df);
-        } else {
-            $z = self::convertStandardPercentsToZ($percent);
-        }
-        $ci = [];
-        $ci[0] = $mu - $z * $sigma / sqrt($n);
-        $ci[1] = $mu + $z * $sigma / sqrt($n);
-        return $ci;
-    }
+	public function confidenceInterval($percent, $df = false) {
+		$n = $this->getN();
+		if ($n == 0) {
+			return [self::NAN, self::NAN];
+		}
+		$mu = $this->mean();
+		$sigma = $this->standardDeviation();
+		if (in_array(self::NAN, [$mu, $sigma])) {
+			return [self::NAN, self::NAN];
+		}
+		if ($df) {
+			# T score
+			$z = CohortStudy::convertPercentToZ($percent, $df);
+		} else {
+			$z = self::convertStandardPercentsToZ($percent);
+		}
+		$ci = [];
+		$ci[0] = $mu - $z * $sigma / sqrt($n);
+		$ci[1] = $mu + $z * $sigma / sqrt($n);
+		return $ci;
+	}
 
-    protected $arr = [];
-    const NAN = "NaN";
-    public static $nan = self::NAN;
+	protected $arr = [];
+	public const NAN = "NaN";
+	public static $nan = self::NAN;
 }

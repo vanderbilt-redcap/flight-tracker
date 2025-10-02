@@ -28,104 +28,98 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 abstract class AbstractStyle
 {
-    /**
-     * Parent writer.
-     *
-     * @var HTML
-     */
-    private $parentWriter;
+	/**
+	 * Parent writer.
+	 *
+	 * @var HTML
+	 */
+	private $parentWriter;
 
-    /**
-     * Style.
-     *
-     * @var null|array|StyleAbstract
-     */
-    private $style;
+	/**
+	 * Style.
+	 *
+	 * @var null|array|StyleAbstract
+	 */
+	private $style;
 
-    /**
-     * Write style.
-     *
-     * @return mixed
-     */
-    abstract public function write();
+	/**
+	 * Write style.
+	 *
+	 * @return mixed
+	 */
+	abstract public function write();
 
-    /**
-     * Create new instance.
-     *
-     * @param array|StyleAbstract $style
-     */
-    public function __construct($style = null)
-    {
-        $this->style = $style;
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param array|StyleAbstract $style
+	 */
+	public function __construct($style = null) {
+		$this->style = $style;
+	}
 
-    /**
-     * Set parent writer.
-     *
-     * @param HTML $writer
-     */
-    public function setParentWriter($writer): void
-    {
-        $this->parentWriter = $writer;
-    }
+	/**
+	 * Set parent writer.
+	 *
+	 * @param HTML $writer
+	 */
+	public function setParentWriter($writer): void {
+		$this->parentWriter = $writer;
+	}
 
-    /**
-     * Get parent writer.
-     *
-     * @return HTML
-     */
-    public function getParentWriter()
-    {
-        return $this->parentWriter;
-    }
+	/**
+	 * Get parent writer.
+	 *
+	 * @return HTML
+	 */
+	public function getParentWriter() {
+		return $this->parentWriter;
+	}
 
-    /**
-     * Get style.
-     *
-     * @return null|array|string|StyleAbstract
-     */
-    public function getStyle()
-    {
-        if (!$this->style instanceof StyleAbstract && !is_array($this->style)) {
-            return '';
-        }
+	/**
+	 * Get style.
+	 *
+	 * @return null|array|string|StyleAbstract
+	 */
+	public function getStyle() {
+		if (!$this->style instanceof StyleAbstract && !is_array($this->style)) {
+			return '';
+		}
 
-        return $this->style;
-    }
+		return $this->style;
+	}
 
-    /**
-     * Takes array where of CSS properties / values and converts to CSS string.
-     *
-     * @param array $css
-     *
-     * @return string
-     */
-    protected function assembleCss($css)
-    {
-        $pairs = [];
-        $string = '';
-        foreach ($css as $key => $value) {
-            if ($value != '') {
-                $pairs[] = $key . ': ' . $value;
-            }
-        }
-        if (!empty($pairs)) {
-            $string = implode('; ', $pairs) . ';';
-        }
+	/**
+	 * Takes array where of CSS properties / values and converts to CSS string.
+	 *
+	 * @param array $css
+	 *
+	 * @return string
+	 */
+	protected function assembleCss($css) {
+		$pairs = [];
+		$string = '';
+		foreach ($css as $key => $value) {
+			if ($value != '') {
+				$pairs[] = $key . ': ' . $value;
+			}
+		}
+		if (!empty($pairs)) {
+			$string = implode('; ', $pairs) . ';';
+		}
 
-        return $string;
-    }
+		return $string;
+	}
 
-    /**
-     * Get value if ...
-     *
-     * @param null|bool $condition
-     * @param string $value
-     *
-     * @return string
-     */
-    protected function getValueIf($condition, $value)
-    {
-        return $condition == true ? $value : '';
-    }
+	/**
+	 * Get value if ...
+	 *
+	 * @param null|bool $condition
+	 * @param string $value
+	 *
+	 * @return string
+	 */
+	protected function getValueIf($condition, $value) {
+		return $condition == true ? $value : '';
+	}
 }

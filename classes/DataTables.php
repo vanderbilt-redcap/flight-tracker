@@ -4,31 +4,32 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class DataTables {
-    public static function makeIncludeHTML() {
-        $jsLink = Application::link("js/datatables.min.js");
-        $cssLink = Application::link("css/datatables.min.css");
+class DataTables
+{
+	public static function makeIncludeHTML() {
+		$jsLink = Application::link("js/datatables.min.js");
+		$cssLink = Application::link("css/datatables.min.css");
 
-        $html = "<script src='https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/8.11.8/sweetalert2.all.min.js'></script>";
-        $html .= "<script src='https://cdnjs.cloudflare.com/ajax/libs/spin.js/2.3.2/spin.min.js'></script>";
-        $html .= "<script src='https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.6/dist/loadingoverlay.min.js' integrity='sha384-L2MNADX6uJTVkbDNELTUeRjzdfJToVbpmubYJ2C74pwn8FHtJeXa+3RYkDRX43zQ' crossorigin='anonymous'></script>";
-        $html .= "<script src='$jsLink'></script>";
-        $html .= "<link rel='stylesheet' type='text/css' href=$cssLink'' />";
-        return $html;
-    }
+		$html = "<script src='https://cdnjs.cloudflare.com/ajax/libs/limonte-sweetalert2/8.11.8/sweetalert2.all.min.js'></script>";
+		$html .= "<script src='https://cdnjs.cloudflare.com/ajax/libs/spin.js/2.3.2/spin.min.js'></script>";
+		$html .= "<script src='https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.6/dist/loadingoverlay.min.js' integrity='sha384-L2MNADX6uJTVkbDNELTUeRjzdfJToVbpmubYJ2C74pwn8FHtJeXa+3RYkDRX43zQ' crossorigin='anonymous'></script>";
+		$html .= "<script src='$jsLink'></script>";
+		$html .= "<link rel='stylesheet' type='text/css' href=$cssLink'' />";
+		return $html;
+	}
 
-    public static function makeMainHTML($sourceRelativeLink, $module, $columns, $ordering = FALSE, $serverSide = FALSE) {
-        $sourceAbsoluteLink = Application::link($sourceRelativeLink);
-        $colsJSON = json_encode($columns);
-        $init = $module->initializeJavascriptModuleObject();
-        if (count($columns) >= 5) {
-            $wrapperStyle = "{ margin: 0 auto; }";
-        } else {
-            $wrapperStyle = "{ max-width: 900px; margin: 0 auto; }";
-        }
-        $orderingText = json_encode($ordering);
-        $serverSideText = json_encode($serverSide);
-        return "
+	public static function makeMainHTML($sourceRelativeLink, $module, $columns, $ordering = false, $serverSide = false) {
+		$sourceAbsoluteLink = Application::link($sourceRelativeLink);
+		$colsJSON = json_encode($columns);
+		$init = $module->initializeJavascriptModuleObject();
+		if (count($columns) >= 5) {
+			$wrapperStyle = "{ margin: 0 auto; }";
+		} else {
+			$wrapperStyle = "{ max-width: 900px; margin: 0 auto; }";
+		}
+		$orderingText = json_encode($ordering);
+		$serverSideText = json_encode($serverSide);
+		return "
 <div id='em-log-module-wrapper'>
     $init
 	<script>
@@ -220,5 +221,5 @@ class DataTables {
 
         })
         </script>";
-    }
+	}
 }

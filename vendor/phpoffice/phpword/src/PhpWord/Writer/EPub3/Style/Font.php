@@ -23,17 +23,16 @@ namespace PhpOffice\PhpWord\Writer\EPub3\Style;
  */
 class Font extends AbstractStyle
 {
-    /**
-     * Write style content.
-     */
-    public function write(): string
-    {
-        $content = 'body {';
-        $content .= 'font-family: "Times New Roman", Times, serif;';
-        $content .= 'font-size: 12pt;';
-        $content .= 'color: #000000;';
-        $content .= '}';
+	/**
+	 * Write style content.
+	 */
+	public function write(): string {
+		$content = 'body {';
+		$content .= 'font-family: "Times New Roman", Times, serif;';
+		$content .= 'font-size: 12pt;';
+		$content .= 'color: #000000;';
+		$content .= '}';
 
-        return $content;
-    }
+		return $content;
+	}
 }

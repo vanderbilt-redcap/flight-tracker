@@ -25,30 +25,28 @@ use PhpOffice\PhpWord\Style\Line as LineStyle;
  */
 class Line extends AbstractElement
 {
-    /**
-     * Line style.
-     *
-     * @var ?LineStyle
-     */
-    private $style;
+	/**
+	 * Line style.
+	 *
+	 * @var ?LineStyle
+	 */
+	private $style;
 
-    /**
-     * Create new line element.
-     *
-     * @param mixed $style
-     */
-    public function __construct($style = null)
-    {
-        $this->style = $this->setNewStyle(new LineStyle(), $style);
-    }
+	/**
+	 * Create new line element.
+	 *
+	 * @param mixed $style
+	 */
+	public function __construct($style = null) {
+		$this->style = $this->setNewStyle(new LineStyle(), $style);
+	}
 
-    /**
-     * Get line style.
-     *
-     * @return ?LineStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get line style.
+	 *
+	 * @return ?LineStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 }

@@ -21,57 +21,52 @@ namespace PhpOffice\PhpWord\Shared;
 
 class Css
 {
-    /**
-     * @var string
-     */
-    private $cssContent;
+	/**
+	 * @var string
+	 */
+	private $cssContent;
 
-    /**
-     * @var array<string, array<string, string>>
-     */
-    private $styles = [];
+	/**
+	 * @var array<string, array<string, string>>
+	 */
+	private $styles = [];
 
-    public function __construct(string $cssContent)
-    {
-        $this->cssContent = $cssContent;
-    }
+	public function __construct(string $cssContent) {
+		$this->cssContent = $cssContent;
+	}
 
-    public function process(): void
-    {
-        $cssContent = str_replace(["\r", "\n"], '', $this->cssContent);
-        preg_match_all('/(.+?)\s?\{\s?(.+?)\s?\}/', $cssContent, $cssExtracted);
-        // Check if there are x selectors and x rules
-        if (count($cssExtracted[1]) != count($cssExtracted[2])) {
-            return;
-        }
+	public function process(): void {
+		$cssContent = str_replace(["\r", "\n"], '', $this->cssContent);
+		preg_match_all('/(.+?)\s?\{\s?(.+?)\s?\}/', $cssContent, $cssExtracted);
+		// Check if there are x selectors and x rules
+		if (count($cssExtracted[1]) != count($cssExtracted[2])) {
+			return;
+		}
 
-        foreach ($cssExtracted[1] as $key => $selector) {
-            $rules = trim($cssExtracted[2][$key]);
-            $rules = explode(';', $rules);
-            foreach ($rules as $rule) {
-                if (empty($rule)) {
-                    continue;
-                }
-                [$key, $value] = explode(':', trim($rule));
-                $this->styles[$this->sanitize($selector)][$this->sanitize($key)] = $this->sanitize($value);
-            }
-        }
-    }
+		foreach ($cssExtracted[1] as $key => $selector) {
+			$rules = trim($cssExtracted[2][$key]);
+			$rules = explode(';', $rules);
+			foreach ($rules as $rule) {
+				if (empty($rule)) {
+					continue;
+				}
+				[$key, $value] = explode(':', trim($rule));
+				$this->styles[$this->sanitize($selector)][$this->sanitize($key)] = $this->sanitize($value);
+			}
+		}
+	}
 
-    public function getStyles(): array
-    {
-        return $this->styles;
-    }
+	public function getStyles(): array {
+		return $this->styles;
+	}
 
-    public function getStyle(string $selector): array
-    {
-        $selector = $this->sanitize($selector);
+	public function getStyle(string $selector): array {
+		$selector = $this->sanitize($selector);
 
-        return $this->styles[$selector] ?? [];
-    }
+		return $this->styles[$selector] ?? [];
+	}
 
-    private function sanitize(string $value): string
-    {
-        return addslashes(trim($value));
-    }
+	private function sanitize(string $value): string {
+		return addslashes(trim($value));
+	}
 }

@@ -25,22 +25,21 @@ namespace PhpOffice\PhpWord\Writer\HTML\Element;
  */
 class Bookmark extends Text
 {
-    /**
-     * Write bookmark.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        if (!$this->element instanceof \PhpOffice\PhpWord\Element\Bookmark) {
-            return '';
-        }
+	/**
+	 * Write bookmark.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		if (!$this->element instanceof \PhpOffice\PhpWord\Element\Bookmark) {
+			return '';
+		}
 
-        $content = '';
-        $content .= $this->writeOpening();
-        $content .= "<a name=\"{$this->element->getName()}\"/>";
-        $content .= $this->writeClosing();
+		$content = '';
+		$content .= $this->writeOpening();
+		$content .= "<a name=\"{$this->element->getName()}\"/>";
+		$content .= $this->writeClosing();
 
-        return $content;
-    }
+		return $content;
+	}
 }

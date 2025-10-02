@@ -25,62 +25,59 @@ use PhpOffice\PhpWord\Style\ListItem as ListItemStyle;
  */
 class ListItemRun extends TextRun
 {
-    /**
-     * @var string Container type
-     */
-    protected $container = 'ListItemRun';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'ListItemRun';
 
-    /**
-     * ListItem Style.
-     *
-     * @var ?ListItemStyle
-     */
-    private $style;
+	/**
+	 * ListItem Style.
+	 *
+	 * @var ?ListItemStyle
+	 */
+	private $style;
 
-    /**
-     * ListItem Depth.
-     *
-     * @var int
-     */
-    private $depth;
+	/**
+	 * ListItem Depth.
+	 *
+	 * @var int
+	 */
+	private $depth;
 
-    /**
-     * Create a new ListItem.
-     *
-     * @param int $depth
-     * @param null|array|string $listStyle
-     * @param mixed $paragraphStyle
-     */
-    public function __construct($depth = 0, $listStyle = null, $paragraphStyle = null)
-    {
-        $this->depth = $depth;
+	/**
+	 * Create a new ListItem.
+	 *
+	 * @param int $depth
+	 * @param null|array|string $listStyle
+	 * @param mixed $paragraphStyle
+	 */
+	public function __construct($depth = 0, $listStyle = null, $paragraphStyle = null) {
+		$this->depth = $depth;
 
-        // Version >= 0.10.0 will pass numbering style name. Older version will use old method
-        if (null !== $listStyle && is_string($listStyle)) {
-            $this->style = new ListItemStyle($listStyle);
-        } else {
-            $this->style = $this->setNewStyle(new ListItemStyle(), $listStyle, true);
-        }
-        parent::__construct($paragraphStyle);
-    }
+		// Version >= 0.10.0 will pass numbering style name. Older version will use old method
+		if (null !== $listStyle && is_string($listStyle)) {
+			$this->style = new ListItemStyle($listStyle);
+		} else {
+			$this->style = $this->setNewStyle(new ListItemStyle(), $listStyle, true);
+		}
+		parent::__construct($paragraphStyle);
+	}
 
-    /**
-     * Get ListItem style.
-     *
-     * @return ?ListItemStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get ListItem style.
+	 *
+	 * @return ?ListItemStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 
-    /**
-     * Get ListItem depth.
-     *
-     * @return int
-     */
-    public function getDepth()
-    {
-        return $this->depth;
-    }
+	/**
+	 * Get ListItem depth.
+	 *
+	 * @return int
+	 */
+	public function getDepth() {
+		return $this->depth;
+	}
 }

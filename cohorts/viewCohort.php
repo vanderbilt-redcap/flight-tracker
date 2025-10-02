@@ -1,12 +1,12 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\CohortConfig;
-use \Vanderbilt\CareerDevLibrary\Filter;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\CohortConfig;
+use Vanderbilt\CareerDevLibrary\Filter;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
@@ -15,7 +15,7 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 $requestedTitle = REDCapManagement::sanitize($_GET['title']);
 $mssg = "";
 if ($_GET['mssg']) {
-    $mssg = REDCapManagement::sanitize($mssg);
+	$mssg = REDCapManagement::sanitize($mssg);
 	$mssg = \Vanderbilt\FlightTrackerExternalModule\makeSafe($mssg);
 }
 
@@ -35,23 +35,23 @@ if ($requestedTitle) {
 
 	$cohortNames = $cohorts->getCohortNames();
 	if (in_array($requestedTitle, $cohortNames)) {
-		$config = $cohorts->getCohort($requestedTitle); 
+		$config = $cohorts->getCohort($requestedTitle);
 		echo "<h1>Cohort $requestedTitle</h1>\n";
 		echo $config->getHTML($metadata);
 
 		$filter = new Filter($token, $server, $metadata);
 		$records = $filter->getRecords($config);
 
-		$nameLinks = array();
+		$nameLinks = [];
 		foreach ($records as $recordId) {
 			$name = Links::makeRecordHomeLink($pid, $recordId, $names[$recordId]);
 			array_push($nameLinks, $name);
 		}
 
 		$columnSize = ceil(count($nameLinks) / $numCols);
-		$cols = array();
-		for($i=0; $i < $numCols; $i++) {
-			$cols[$i] = array();
+		$cols = [];
+		for ($i = 0; $i < $numCols; $i++) {
+			$cols[$i] = [];
 		}
 		$i = 0;
 		$numInCol = ceil(count($nameLinks) / count($cols));

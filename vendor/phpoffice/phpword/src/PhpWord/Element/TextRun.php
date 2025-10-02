@@ -25,73 +25,69 @@ use PhpOffice\PhpWord\Style\Paragraph;
  */
 class TextRun extends AbstractContainer
 {
-    /**
-     * @var string Container type
-     */
-    protected $container = 'TextRun';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'TextRun';
 
-    /**
-     * Paragraph style.
-     *
-     * @var Paragraph|string
-     */
-    protected $paragraphStyle;
+	/**
+	 * Paragraph style.
+	 *
+	 * @var Paragraph|string
+	 */
+	protected $paragraphStyle;
 
-    /**
-     * Create new instance.
-     *
-     * @param array|Paragraph|string $paragraphStyle
-     */
-    public function __construct($paragraphStyle = null)
-    {
-        $this->paragraphStyle = $this->setParagraphStyle($paragraphStyle);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param array|Paragraph|string $paragraphStyle
+	 */
+	public function __construct($paragraphStyle = null) {
+		$this->paragraphStyle = $this->setParagraphStyle($paragraphStyle);
+	}
 
-    /**
-     * Get Paragraph style.
-     *
-     * @return Paragraph|string
-     */
-    public function getParagraphStyle()
-    {
-        return $this->paragraphStyle;
-    }
+	/**
+	 * Get Paragraph style.
+	 *
+	 * @return Paragraph|string
+	 */
+	public function getParagraphStyle() {
+		return $this->paragraphStyle;
+	}
 
-    /**
-     * Set Paragraph style.
-     *
-     * @param array|Paragraph|string $style
-     *
-     * @return Paragraph|string
-     */
-    public function setParagraphStyle($style = null)
-    {
-        if (is_array($style)) {
-            $this->paragraphStyle = new Paragraph();
-            $this->paragraphStyle->setStyleByArray($style);
-        } elseif ($style instanceof Paragraph) {
-            $this->paragraphStyle = $style;
-        } elseif (null === $style) {
-            $this->paragraphStyle = new Paragraph();
-        } else {
-            $this->paragraphStyle = $style;
-        }
+	/**
+	 * Set Paragraph style.
+	 *
+	 * @param array|Paragraph|string $style
+	 *
+	 * @return Paragraph|string
+	 */
+	public function setParagraphStyle($style = null) {
+		if (is_array($style)) {
+			$this->paragraphStyle = new Paragraph();
+			$this->paragraphStyle->setStyleByArray($style);
+		} elseif ($style instanceof Paragraph) {
+			$this->paragraphStyle = $style;
+		} elseif (null === $style) {
+			$this->paragraphStyle = new Paragraph();
+		} else {
+			$this->paragraphStyle = $style;
+		}
 
-        return $this->paragraphStyle;
-    }
+		return $this->paragraphStyle;
+	}
 
-    public function getText(): string
-    {
-        $outstr = '';
-        foreach ($this->getElements() as $element) {
-            if ($element instanceof Text) {
-                $outstr .= $element->getText();
-            } elseif ($element instanceof Ruby) {
-                $outstr .= $element->getBaseTextRun()->getText() .
-                    ' (' . $element->getRubyTextRun()->getText() . ')';
-            }
-        }
+	public function getText(): string {
+		$outstr = '';
+		foreach ($this->getElements() as $element) {
+			if ($element instanceof Text) {
+				$outstr .= $element->getText();
+			} elseif ($element instanceof Ruby) {
+				$outstr .= $element->getBaseTextRun()->getText() .
+					' (' . $element->getRubyTextRun()->getText() . ')';
+			}
+		}
 
-        return $outstr;
-    }
+		return $outstr;
+	}
 }

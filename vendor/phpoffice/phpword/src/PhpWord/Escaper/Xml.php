@@ -25,8 +25,7 @@ namespace PhpOffice\PhpWord\Escaper;
  */
 class Xml extends AbstractEscaper
 {
-    protected function escapeSingleValue($input)
-    {
-        return (null !== $input) ? htmlspecialchars($input, ENT_QUOTES) : '';
-    }
+	protected function escapeSingleValue($input) {
+		return (null !== $input) ? htmlspecialchars($input, ENT_QUOTES) : '';
+	}
 }

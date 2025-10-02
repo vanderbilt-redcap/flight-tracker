@@ -25,36 +25,34 @@ use PhpOffice\PhpWord\Style\TextBox as TextBoxStyle;
  */
 class TextBox extends Frame
 {
-    /**
-     * Writer inner margin.
-     */
-    public function writeInnerMargin(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof TextBoxStyle || !$style->hasInnerMargins()) {
-            return;
-        }
+	/**
+	 * Writer inner margin.
+	 */
+	public function writeInnerMargin(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof TextBoxStyle || !$style->hasInnerMargins()) {
+			return;
+		}
 
-        $xmlWriter = $this->getXmlWriter();
-        $margins = implode(', ', $style->getInnerMargin());
+		$xmlWriter = $this->getXmlWriter();
+		$margins = implode(', ', $style->getInnerMargin());
 
-        $xmlWriter->writeAttribute('inset', $margins);
-    }
+		$xmlWriter->writeAttribute('inset', $margins);
+	}
 
-    /**
-     * Writer border.
-     */
-    public function writeBorder(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof TextBoxStyle) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Writer border.
+	 */
+	public function writeBorder(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof TextBoxStyle) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('v:stroke');
-        $xmlWriter->writeAttributeIf($style->getBorderSize() !== null, 'weight', $style->getBorderSize() . 'pt');
-        $xmlWriter->writeAttributeIf($style->getBorderColor() !== null, 'color', $style->getBorderColor());
-        $xmlWriter->endElement(); // v:stroke
-    }
+		$xmlWriter->startElement('v:stroke');
+		$xmlWriter->writeAttributeIf($style->getBorderSize() !== null, 'weight', $style->getBorderSize() . 'pt');
+		$xmlWriter->writeAttributeIf($style->getBorderColor() !== null, 'color', $style->getBorderColor());
+		$xmlWriter->endElement(); // v:stroke
+	}
 }

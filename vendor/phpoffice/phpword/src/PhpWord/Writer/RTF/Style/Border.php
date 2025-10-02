@@ -25,100 +25,96 @@ namespace PhpOffice\PhpWord\Writer\RTF\Style;
  */
 class Border extends AbstractStyle
 {
-    /**
-     * Sizes.
-     *
-     * @var array
-     */
-    private $sizes = [];
+	/**
+	 * Sizes.
+	 *
+	 * @var array
+	 */
+	private $sizes = [];
 
-    /**
-     * Colors.
-     *
-     * @var array
-     */
-    private $colors = [];
+	/**
+	 * Colors.
+	 *
+	 * @var array
+	 */
+	private $colors = [];
 
-    /**
-     * Write style.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $content = '';
+	/**
+	 * Write style.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$content = '';
 
-        $sides = ['top', 'left', 'right', 'bottom'];
-        $sizeCount = count($this->sizes);
+		$sides = ['top', 'left', 'right', 'bottom'];
+		$sizeCount = count($this->sizes);
 
-        // Page border measure
-        // 8 = from text, infront off; 32 = from edge, infront on; 40 = from edge, infront off
-        $content .= '\pgbrdropt32';
+		// Page border measure
+		// 8 = from text, infront off; 32 = from edge, infront on; 40 = from edge, infront off
+		$content .= '\pgbrdropt32';
 
-        for ($i = 0; $i < $sizeCount; ++$i) {
-            if ($this->sizes[$i] !== null) {
-                $color = null;
-                if (isset($this->colors[$i])) {
-                    $color = $this->colors[$i];
-                }
-                $content .= $this->writeSide($sides[$i], $this->sizes[$i], $color);
-            }
-        }
+		for ($i = 0; $i < $sizeCount; ++$i) {
+			if ($this->sizes[$i] !== null) {
+				$color = null;
+				if (isset($this->colors[$i])) {
+					$color = $this->colors[$i];
+				}
+				$content .= $this->writeSide($sides[$i], $this->sizes[$i], $color);
+			}
+		}
 
-        return $content;
-    }
+		return $content;
+	}
 
-    /**
-     * Write side.
-     *
-     * @param string $side
-     * @param int $width
-     * @param string $color
-     *
-     * @return string
-     */
-    private function writeSide($side, $width, $color = '')
-    {
-        /** @var \PhpOffice\PhpWord\Writer\RTF $rtfWriter */
-        $rtfWriter = $this->getParentWriter();
-        $colorIndex = 0;
-        if ($rtfWriter !== null) {
-            $colorTable = $rtfWriter->getColorTable();
-            $index = array_search($color, $colorTable);
-            if ($index !== false && $colorIndex !== null) {
-                $colorIndex = $index + 1;
-            }
-        }
+	/**
+	 * Write side.
+	 *
+	 * @param string $side
+	 * @param int $width
+	 * @param string $color
+	 *
+	 * @return string
+	 */
+	private function writeSide($side, $width, $color = '') {
+		/** @var \PhpOffice\PhpWord\Writer\RTF $rtfWriter */
+		$rtfWriter = $this->getParentWriter();
+		$colorIndex = 0;
+		if ($rtfWriter !== null) {
+			$colorTable = $rtfWriter->getColorTable();
+			$index = array_search($color, $colorTable);
+			if ($index !== false && $colorIndex !== null) {
+				$colorIndex = $index + 1;
+			}
+		}
 
-        $content = '';
+		$content = '';
 
-        $content .= '\pgbrdr' . substr($side, 0, 1);
-        $content .= '\brdrs'; // Single-thickness border; @todo Get other type of border
-        $content .= '\brdrw' . round($width); // Width
-        $content .= '\brdrcf' . $colorIndex; // Color
-        $content .= '\brsp480'; // Space in twips between borders and the paragraph (24pt, following OOXML)
-        $content .= ' ';
+		$content .= '\pgbrdr' . substr($side, 0, 1);
+		$content .= '\brdrs'; // Single-thickness border; @todo Get other type of border
+		$content .= '\brdrw' . round($width); // Width
+		$content .= '\brdrcf' . $colorIndex; // Color
+		$content .= '\brsp480'; // Space in twips between borders and the paragraph (24pt, following OOXML)
+		$content .= ' ';
 
-        return $content;
-    }
+		return $content;
+	}
 
-    /**
-     * Set sizes.
-     *
-     * @param int[] $value
-     */
-    public function setSizes($value): void
-    {
-        $this->sizes = $value;
-    }
+	/**
+	 * Set sizes.
+	 *
+	 * @param int[] $value
+	 */
+	public function setSizes($value): void {
+		$this->sizes = $value;
+	}
 
-    /**
-     * Set colors.
-     *
-     * @param string[] $value
-     */
-    public function setColors($value): void
-    {
-        $this->colors = $value;
-    }
+	/**
+	 * Set colors.
+	 *
+	 * @param string[] $value
+	 */
+	public function setColors($value): void {
+		$this->colors = $value;
+	}
 }

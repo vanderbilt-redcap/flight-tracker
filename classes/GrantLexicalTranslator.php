@@ -1,39 +1,39 @@
 <?php
 
-
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
 # performs 1:1 case-insensitive comparisons
 
-class GrantLexicalTranslator {
+class GrantLexicalTranslator
+{
 	public function __construct($token, $server, $moduleOrMetadata, $pid = "") {
 		if (is_array($moduleOrMetadata)) {
-			$this->module = NULL;
+			$this->module = null;
 			$this->metadata = $moduleOrMetadata;
 		} else {
 			$this->module = $moduleOrMetadata;
-			$this->metadata = NULL;
+			$this->metadata = null;
 		}
 		$this->token = $token;
 		$this->server = $server;
 		$this->settingName = "lexical_translations";
-		$this->data = array();
+		$this->data = [];
 		$this->hijackedField = "identifier_last_name";
 		if ($this->module) {
-		    if ($this->module->PREFIX == "flight_tracker") {
-                $this->data = $this->module->getSystemSetting($this->settingName);
-            } else {
-                if (!$pid) {
-                    $pid = Application::getPID($this->token);
-                }
-		        $this->data = $this->module->getProjectSetting($this->settingName, $pid);
-            }
-		    if (!$this->data) {
-		        $this->data = [];
-            }
-		} else if ($this->metadata) {
+			if ($this->module->PREFIX == "flight_tracker") {
+				$this->data = $this->module->getSystemSetting($this->settingName);
+			} else {
+				if (!$pid) {
+					$pid = Application::getPID($this->token);
+				}
+				$this->data = $this->module->getProjectSetting($this->settingName, $pid);
+			}
+			if (!$this->data) {
+				$this->data = [];
+			}
+		} elseif ($this->metadata) {
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
 					$json = $row['field_annotation'];
@@ -53,7 +53,7 @@ class GrantLexicalTranslator {
 	public function loadData($data) {
 		$this->data = $data;
 		if ($this->metadata) {
-			$newMetadata = array();
+			$newMetadata = [];
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
 					$json = json_encode($data);
@@ -69,22 +69,22 @@ class GrantLexicalTranslator {
 	public function getCategory($awardNo) {
 		$awardNoLc = strtolower($awardNo);
 		if (is_array($this->data)) {
-            foreach ($this->data as $key => $value) {
-                if (strpos($awardNoLc, strtolower($key)) !== FALSE) {
-                    // Application::log("Returning $value ($key) for $awardNo");
-                    return $value;
-                }
-            }
-        } else if ($this->data) {
-		    Application::log("Warning: Invalid data ".$this->data);
-        } else {
-            Application::log("Warning: No lexical translator data ");
-        }
+			foreach ($this->data as $key => $value) {
+				if (strpos($awardNoLc, strtolower($key)) !== false) {
+					// Application::log("Returning $value ($key) for $awardNo");
+					return $value;
+				}
+			}
+		} elseif ($this->data) {
+			Application::log("Warning: Invalid data ".$this->data);
+		} else {
+			Application::log("Warning: No lexical translator data ");
+		}
 		// Application::log("Returning blank for $awardNo");
 		return "";
 	}
 
-	public function setCategory($awardNo, $type, $save = TRUE) {
+	public function setCategory($awardNo, $type, $save = true) {
 		if ($type && in_array($type, array_keys(Grant::getAwardTypes()))) {
 			$this->data[$awardNo] = $type;
 		} else {
@@ -97,13 +97,13 @@ class GrantLexicalTranslator {
 
 	private function writeData() {
 		if ($this->module) {
-		    if ($this->module->PREFIX == "flight_tracker") {
-                $this->module->setSystemSetting($this->settingName, $this->data);
-            } else {
-                $pid = Application::getPID($this->token);
-                $this->module->setProjectSetting($this->settingName, $this->data, $pid);
-            }
-		} else if ($this->metadata) {
+			if ($this->module->PREFIX == "flight_tracker") {
+				$this->module->setSystemSetting($this->settingName, $this->data);
+			} else {
+				$pid = Application::getPID($this->token);
+				$this->module->setProjectSetting($this->settingName, $this->data, $pid);
+			}
+		} elseif ($this->metadata) {
 			$feedback = Upload::metadata($this->metadata, $this->token, $this->server);
 		} else {
 			throw new \Exception("No module loaded. Could not write lexical-translation data!");
@@ -114,7 +114,7 @@ class GrantLexicalTranslator {
 		return str_replace("'", "\\'", $str);
 	}
 
-	public function deleteKey($key, $save = TRUE) {
+	public function deleteKey($key, $save = true) {
 		if (isset($this->data[$key])) {
 			unset($this->data[$key]);
 		}
@@ -123,7 +123,7 @@ class GrantLexicalTranslator {
 		}
 	}
 
-	private static function makeSelectBox($name, $selected = "", $delete = FALSE) {
+	private static function makeSelectBox($name, $selected = "", $delete = false) {
 		$types = array_keys(Grant::getAwardTypes());
 		$html = "";
 		$blank =  "SELECT";
@@ -150,7 +150,7 @@ class GrantLexicalTranslator {
 	}
 
 	public function setOrder($keys) {
-		$newData = array();
+		$newData = [];
 		foreach ($keys as $key) {
 			if (isset($this->data[$key])) {
 				$newData[$key] = $this->data[$key];
@@ -193,14 +193,14 @@ class GrantLexicalTranslator {
 		$page = Application::link("this");
 		$middle = "&nbsp;&nbsp;&rarr;&nbsp;&nbsp;";
 
-		$html .= "<p class='centered'>Each Award Number Parcel must contain a direct (case-insensitive) match to part of the Grant's award number.</p>\n"; 
+		$html .= "<p class='centered'>Each Award Number Parcel must contain a direct (case-insensitive) match to part of the Grant's award number.</p>\n";
 		$html .= "<form action='$page' method='POST'>\n";
 		$html .= Application::generateCSRFTokenHTML();
 		$html .= "<table style='margin: 0px auto 0px auto;'>\n";
 		$idx = 1;
 		foreach ($this->data as $key => $value) {
 			$html .= "<tr>\n";
-			$html .= "<td colspan='5' class='centered'><input type='hidden' value='".self::escape($key)."' name='existing_key$idx'>$key$middle".self::makeSelectBox("existing_value$idx", $value, TRUE)."</td>\n";
+			$html .= "<td colspan='5' class='centered'><input type='hidden' value='".self::escape($key)."' name='existing_key$idx'>$key$middle".self::makeSelectBox("existing_value$idx", $value, true)."</td>\n";
 			$html .= "</tr>\n";
 			$idx++;
 		}
@@ -221,31 +221,31 @@ class GrantLexicalTranslator {
 	}
 
 	public function parsePOST($post) {
-		$changes = FALSE;
+		$changes = false;
 		foreach ($post as $name => $postValue) {
-			$existing = FALSE;
+			$existing = false;
 			if (preg_match("/existing_/", $name)) {
-				$existing = TRUE;
+				$existing = true;
 			}
 			if (preg_match("/key\d+$/", $name)) {
 				$key = $postValue;
-				$valueKey = preg_replace("/key/", "value", $name); 
+				$valueKey = preg_replace("/key/", "value", $name);
 				if ($postValue && isset($post[$valueKey])) {
 					$value = Sanitizer::sanitize($post[$valueKey]);
 					if ($existing) {
 						if ($value) {
 							if ($value != $this->getCategory($key)) {
-								$this->setCategory($key, $value, FALSE);
-								$changes = TRUE;
+								$this->setCategory($key, $value, false);
+								$changes = true;
 							}
 						} else {
-							$this->deleteKey($key, FALSE);
-							$changes = TRUE;
+							$this->deleteKey($key, false);
+							$changes = true;
 						}
 					} else {
 						if ($value) {
-							$this->setCategory($key, $value, FALSE);
-							$changes = TRUE;
+							$this->setCategory($key, $value, false);
+							$changes = true;
 						} else {
 							# no $value => do nothing
 						}

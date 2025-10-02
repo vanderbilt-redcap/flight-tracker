@@ -28,138 +28,129 @@ use PhpOffice\PhpWord\SimpleType\LineSpacingRule;
  */
 class Spacing extends AbstractStyle
 {
-    /**
-     * Spacing above paragraph (twip).
-     *
-     * @var null|float|int
-     */
-    private $before;
+	/**
+	 * Spacing above paragraph (twip).
+	 *
+	 * @var null|float|int
+	 */
+	private $before;
 
-    /**
-     * Spacing below paragraph (twip).
-     *
-     * @var null|float|int
-     */
-    private $after;
+	/**
+	 * Spacing below paragraph (twip).
+	 *
+	 * @var null|float|int
+	 */
+	private $after;
 
-    /**
-     * Spacing between lines in paragraph (twip).
-     *
-     * @var null|float|int
-     */
-    private $line;
+	/**
+	 * Spacing between lines in paragraph (twip).
+	 *
+	 * @var null|float|int
+	 */
+	private $line;
 
-    /**
-     * Type of spacing between lines.
-     *
-     * @var string
-     */
-    private $lineRule = LineSpacingRule::AUTO;
+	/**
+	 * Type of spacing between lines.
+	 *
+	 * @var string
+	 */
+	private $lineRule = LineSpacingRule::AUTO;
 
-    /**
-     * Create a new instance.
-     *
-     * @param array $style
-     */
-    public function __construct($style = [])
-    {
-        $this->setStyleByArray($style);
-    }
+	/**
+	 * Create a new instance.
+	 *
+	 * @param array $style
+	 */
+	public function __construct($style = []) {
+		$this->setStyleByArray($style);
+	}
 
-    /**
-     * Get before.
-     *
-     * @return null|float|int
-     */
-    public function getBefore()
-    {
-        return $this->before;
-    }
+	/**
+	 * Get before.
+	 *
+	 * @return null|float|int
+	 */
+	public function getBefore() {
+		return $this->before;
+	}
 
-    /**
-     * Set before.
-     *
-     * @param null|float|int $value
-     *
-     * @return self
-     */
-    public function setBefore($value = null)
-    {
-        $this->before = $this->setNumericVal($value, $this->before);
+	/**
+	 * Set before.
+	 *
+	 * @param null|float|int $value
+	 *
+	 * @return self
+	 */
+	public function setBefore($value = null) {
+		$this->before = $this->setNumericVal($value, $this->before);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get after.
-     *
-     * @return null|float|int
-     */
-    public function getAfter()
-    {
-        return $this->after;
-    }
+	/**
+	 * Get after.
+	 *
+	 * @return null|float|int
+	 */
+	public function getAfter() {
+		return $this->after;
+	}
 
-    /**
-     * Set after.
-     *
-     * @param null|float|int $value
-     *
-     * @return self
-     */
-    public function setAfter($value = null)
-    {
-        $this->after = $this->setNumericVal($value, $this->after);
+	/**
+	 * Set after.
+	 *
+	 * @param null|float|int $value
+	 *
+	 * @return self
+	 */
+	public function setAfter($value = null) {
+		$this->after = $this->setNumericVal($value, $this->after);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get line.
-     *
-     * @return null|float|int
-     */
-    public function getLine()
-    {
-        return $this->line;
-    }
+	/**
+	 * Get line.
+	 *
+	 * @return null|float|int
+	 */
+	public function getLine() {
+		return $this->line;
+	}
 
-    /**
-     * Set distance.
-     *
-     * @param null|float|int $value
-     *
-     * @return self
-     */
-    public function setLine($value = null)
-    {
-        $this->line = $this->setNumericVal($value, $this->line);
+	/**
+	 * Set distance.
+	 *
+	 * @param null|float|int $value
+	 *
+	 * @return self
+	 */
+	public function setLine($value = null) {
+		$this->line = $this->setNumericVal($value, $this->line);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get line rule.
-     *
-     * @return string
-     */
-    public function getLineRule()
-    {
-        return $this->lineRule;
-    }
+	/**
+	 * Get line rule.
+	 *
+	 * @return string
+	 */
+	public function getLineRule() {
+		return $this->lineRule;
+	}
 
-    /**
-     * Set line rule.
-     *
-     * @param string $value
-     *
-     * @return self
-     */
-    public function setLineRule($value = null)
-    {
-        LineSpacingRule::validate($value);
-        $this->lineRule = $value;
+	/**
+	 * Set line rule.
+	 *
+	 * @param string $value
+	 *
+	 * @return self
+	 */
+	public function setLineRule($value = null) {
+		LineSpacingRule::validate($value);
+		$this->lineRule = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 }

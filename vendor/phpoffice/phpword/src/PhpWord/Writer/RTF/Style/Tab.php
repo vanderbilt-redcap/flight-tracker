@@ -25,26 +25,25 @@ namespace PhpOffice\PhpWord\Writer\RTF\Style;
  */
 class Tab extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write()
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Tab) {
-            return;
-        }
-        $tabs = [
-            \PhpOffice\PhpWord\Style\Tab::TAB_STOP_RIGHT => '\tqr',
-            \PhpOffice\PhpWord\Style\Tab::TAB_STOP_CENTER => '\tqc',
-            \PhpOffice\PhpWord\Style\Tab::TAB_STOP_DECIMAL => '\tqdec',
-        ];
-        $content = '';
-        if (isset($tabs[$style->getType()])) {
-            $content .= $tabs[$style->getType()];
-        }
-        $content .= '\tx' . round($style->getPosition());
+	/**
+	 * Write style.
+	 */
+	public function write() {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Tab) {
+			return;
+		}
+		$tabs = [
+			\PhpOffice\PhpWord\Style\Tab::TAB_STOP_RIGHT => '\tqr',
+			\PhpOffice\PhpWord\Style\Tab::TAB_STOP_CENTER => '\tqc',
+			\PhpOffice\PhpWord\Style\Tab::TAB_STOP_DECIMAL => '\tqdec',
+		];
+		$content = '';
+		if (isset($tabs[$style->getType()])) {
+			$content .= $tabs[$style->getType()];
+		}
+		$content .= '\tx' . round($style->getPosition());
 
-        return $content;
-    }
+		return $content;
+	}
 }

@@ -25,18 +25,17 @@ namespace PhpOffice\PhpWord\Element;
  */
 class Endnote extends Footnote
 {
-    /**
-     * @var string Container type
-     */
-    protected $container = 'Endnote';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'Endnote';
 
-    /**
-     * Create new instance.
-     *
-     * @param array|\PhpOffice\PhpWord\Style\Paragraph|string $paragraphStyle
-     */
-    public function __construct($paragraphStyle = null)
-    {
-        parent::__construct($paragraphStyle);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param array|\PhpOffice\PhpWord\Style\Paragraph|string $paragraphStyle
+	 */
+	public function __construct($paragraphStyle = null) {
+		parent::__construct($paragraphStyle);
+	}
 }

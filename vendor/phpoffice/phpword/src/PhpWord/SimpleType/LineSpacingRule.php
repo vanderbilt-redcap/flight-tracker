@@ -28,18 +28,18 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class LineSpacingRule extends AbstractEnum
 {
-    /**
-     * Automatically Determined Line Height.
-     */
-    const AUTO = 'auto';
+	/**
+	 * Automatically Determined Line Height.
+	 */
+	public const AUTO = 'auto';
 
-    /**
-     * Exact Line Height.
-     */
-    const EXACT = 'exact';
+	/**
+	 * Exact Line Height.
+	 */
+	public const EXACT = 'exact';
 
-    /**
-     * Minimum Line Height.
-     */
-    const AT_LEAST = 'atLeast';
+	/**
+	 * Minimum Line Height.
+	 */
+	public const AT_LEAST = 'atLeast';
 }

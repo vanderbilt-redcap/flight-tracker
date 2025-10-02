@@ -23,15 +23,14 @@ namespace PhpOffice\PhpWord\Writer\ODText\Element;
  */
 class PageBreak extends AbstractElement
 {
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('text:p');
-        $xmlWriter->writeAttribute('text:style-name', 'PB');
-        $xmlWriter->endElement();
-    }
+		$xmlWriter->startElement('text:p');
+		$xmlWriter->writeAttribute('text:style-name', 'PB');
+		$xmlWriter->endElement();
+	}
 }

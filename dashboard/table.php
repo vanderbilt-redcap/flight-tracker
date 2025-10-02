@@ -17,10 +17,9 @@ td.header { padding: 5px; }
 
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\Measurement;
-use \Vanderbilt\FlightTrackerExternalModule\DateMeasurement;
-use \Vanderbilt\FlightTrackerExternalModule\ObservedMeasurement;
-use \Vanderbilt\FlightTrackerExternalModule\MoneyMeasurement;
+use Vanderbilt\FlightTrackerExternalModule\Measurement;
+use Vanderbilt\FlightTrackerExternalModule\DateMeasurement;
+use Vanderbilt\FlightTrackerExternalModule\ObservedMeasurement;
+use Vanderbilt\FlightTrackerExternalModule\MoneyMeasurement;
 
 require_once(dirname(__FILE__)."/base.php");
-

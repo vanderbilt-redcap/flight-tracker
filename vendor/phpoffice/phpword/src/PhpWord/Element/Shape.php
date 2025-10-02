@@ -27,64 +27,60 @@ use PhpOffice\PhpWord\Style\Shape as ShapeStyle;
  */
 class Shape extends AbstractElement
 {
-    /**
-     * Shape type arc|curve|line|polyline|rect|oval.
-     *
-     * @var string
-     */
-    private $type;
+	/**
+	 * Shape type arc|curve|line|polyline|rect|oval.
+	 *
+	 * @var string
+	 */
+	private $type;
 
-    /**
-     * Shape style.
-     *
-     * @var ?ShapeStyle
-     */
-    private $style;
+	/**
+	 * Shape style.
+	 *
+	 * @var ?ShapeStyle
+	 */
+	private $style;
 
-    /**
-     * Create new instance.
-     *
-     * @param string $type
-     * @param mixed $style
-     */
-    public function __construct($type, $style = null)
-    {
-        $this->setType($type);
-        $this->style = $this->setNewStyle(new ShapeStyle(), $style);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param string $type
+	 * @param mixed $style
+	 */
+	public function __construct($type, $style = null) {
+		$this->setType($type);
+		$this->style = $this->setNewStyle(new ShapeStyle(), $style);
+	}
 
-    /**
-     * Get type.
-     *
-     * @return string
-     */
-    public function getType()
-    {
-        return $this->type;
-    }
+	/**
+	 * Get type.
+	 *
+	 * @return string
+	 */
+	public function getType() {
+		return $this->type;
+	}
 
-    /**
-     * Set pattern.
-     *
-     * @param string $value
-     *
-     * @return self
-     */
-    public function setType($value = null)
-    {
-        $enum = ['arc', 'curve', 'line', 'polyline', 'rect', 'oval'];
-        $this->type = $this->setEnumVal($value, $enum, null);
+	/**
+	 * Set pattern.
+	 *
+	 * @param string $value
+	 *
+	 * @return self
+	 */
+	public function setType($value = null) {
+		$enum = ['arc', 'curve', 'line', 'polyline', 'rect', 'oval'];
+		$this->type = $this->setEnumVal($value, $enum, null);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get shape style.
-     *
-     * @return ?ShapeStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get shape style.
+	 *
+	 * @return ?ShapeStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 }

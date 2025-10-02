@@ -1,10 +1,10 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\CohortConfig;
-use \Vanderbilt\CareerDevLibrary\Filter;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\CohortConfig;
+use Vanderbilt\CareerDevLibrary\Filter;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
@@ -30,8 +30,8 @@ if (empty($cohortNames)) {
 		echo "<option value='$title'>$title</option>\n";
 	}
 	echo "</select></p>\n";
-	
-?>
+
+	?>
 
 <script>
 $(document).ready(function() {

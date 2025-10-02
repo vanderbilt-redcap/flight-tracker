@@ -32,84 +32,82 @@ use PhpOffice\PhpWord\Writer\ODText\Part\AbstractPart;
  */
 class ODText extends AbstractWriter implements WriterInterface
 {
-    /**
-     * @var AbstractElement[]
-     */
-    protected $objects = [];
+	/**
+	 * @var AbstractElement[]
+	 */
+	protected $objects = [];
 
-    /**
-     * Create new ODText writer.
-     */
-    public function __construct(?PhpWord $phpWord = null)
-    {
-        // Assign PhpWord
-        $this->setPhpWord($phpWord);
+	/**
+	 * Create new ODText writer.
+	 */
+	public function __construct(?PhpWord $phpWord = null) {
+		// Assign PhpWord
+		$this->setPhpWord($phpWord);
 
-        // Create parts
-        $this->parts = [
-            'Mimetype' => 'mimetype',
-            'Content' => 'content.xml',
-            'Meta' => 'meta.xml',
-            'Styles' => 'styles.xml',
-            'Manifest' => 'META-INF/manifest.xml',
-        ];
-        foreach (array_keys($this->parts) as $partName) {
-            $partClass = static::class . '\\Part\\' . $partName;
-            if (class_exists($partClass)) {
-                /** @var AbstractPart $partObject Type hint */
-                $partObject = new $partClass();
-                $partObject->setParentWriter($this);
-                $this->writerParts[strtolower($partName)] = $partObject;
-            }
-        }
+		// Create parts
+		$this->parts = [
+			'Mimetype' => 'mimetype',
+			'Content' => 'content.xml',
+			'Meta' => 'meta.xml',
+			'Styles' => 'styles.xml',
+			'Manifest' => 'META-INF/manifest.xml',
+		];
+		foreach (array_keys($this->parts) as $partName) {
+			$partClass = static::class . '\\Part\\' . $partName;
+			if (class_exists($partClass)) {
+				/** @var AbstractPart $partObject Type hint */
+				$partObject = new $partClass();
+				$partObject->setParentWriter($this);
+				$this->writerParts[strtolower($partName)] = $partObject;
+			}
+		}
 
-        // Set package paths
-        $this->mediaPaths = ['image' => 'Pictures/'];
-    }
+		// Set package paths
+		$this->mediaPaths = ['image' => 'Pictures/'];
+	}
 
-    /**
-     * Save PhpWord to file.
-     */
-    public function save(string $filename): void
-    {
-        $filename = $this->getTempFile($filename);
-        $zip = $this->getZipArchive($filename);
+	/**
+	 * Save PhpWord to file.
+	 */
+	public function save(string $filename): void {
+		$filename = $this->getTempFile($filename);
+		$zip = $this->getZipArchive($filename);
 
-        // Add section media files
-        $sectionMedia = Media::getElements('section');
-        if (!empty($sectionMedia)) {
-            $this->addFilesToPackage($zip, $sectionMedia);
-        }
+		// Add section media files
+		$sectionMedia = Media::getElements('section');
+		if (!empty($sectionMedia)) {
+			$this->addFilesToPackage($zip, $sectionMedia);
+		}
 
-        // Write parts
-        foreach ($this->parts as $partName => $fileName) {
-            if ($fileName === '') {
-                continue;
-            }
-            $part = $this->getWriterPart($partName);
-            if (!$part instanceof AbstractPart) {
-                continue;
-            }
+		// Write parts
+		foreach ($this->parts as $partName => $fileName) {
+			if ($fileName === '') {
+				continue;
+			}
+			$part = $this->getWriterPart($partName);
+			if (!$part instanceof AbstractPart) {
+				continue;
+			}
 
-            $part->setObjects($this->objects);
+			$part->setObjects($this->objects);
 
-            $zip->addFromString($fileName, $part->write());
+			$zip->addFromString($fileName, $part->write());
 
-            $this->objects = $part->getObjects();
-        }
+			$this->objects = $part->getObjects();
+		}
 
-        // Write objects charts
-        if (!empty($this->objects)) {
-            $writer = new MathML();
-            foreach ($this->objects as $idxObject => $object) {
-                if ($object instanceof Formula) {
-                    $zip->addFromString('Formula' . $idxObject . '/content.xml', $writer->write($object->getMath()));
-                }
-            }
-        }
+		// Write objects charts
+		if (!empty($this->objects)) {
+			$writer = new MathML();
+			foreach ($this->objects as $idxObject => $object) {
+				if ($object instanceof Formula) {
+					$zip->addFromString('Formula' . $idxObject . '/content.xml', $writer->write($object->getMath()));
+				}
+			}
+		}
 
-        // Close zip archive and cleanup temp file
-        $zip->close();
-        $this->cleanupTempFile();
-    }
+		// Close zip archive and cleanup temp file
+		$zip->close();
+		$this->cleanupTempFile();
+	}
 }

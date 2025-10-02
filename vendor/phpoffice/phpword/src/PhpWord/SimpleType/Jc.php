@@ -32,36 +32,36 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class Jc extends AbstractEnum
 {
-    const START = 'start';
-    const CENTER = 'center';
-    const END = 'end';
-    const BOTH = 'both';
-    const MEDIUM_KASHIDA = 'mediumKashida';
-    const DISTRIBUTE = 'distribute';
-    const NUM_TAB = 'numTab';
-    const HIGH_KASHIDA = 'highKashida';
-    const LOW_KASHIDA = 'lowKashida';
-    const THAI_DISTRIBUTE = 'thaiDistribute';
+	public const START = 'start';
+	public const CENTER = 'center';
+	public const END = 'end';
+	public const BOTH = 'both';
+	public const MEDIUM_KASHIDA = 'mediumKashida';
+	public const DISTRIBUTE = 'distribute';
+	public const NUM_TAB = 'numTab';
+	public const HIGH_KASHIDA = 'highKashida';
+	public const LOW_KASHIDA = 'lowKashida';
+	public const THAI_DISTRIBUTE = 'thaiDistribute';
 
-    /**
-     * Kept for compatibility with 1st edition of ECMA-376 standard.
-     * Microsoft Word 2007 and WPS Writer 2016 still rely on it.
-     *
-     * @deprecated 0.13.0 For documents based on ISO/IEC 29500:2008 and later use `START` instead.
-     */
-    const LEFT = 'left';
-    /**
-     * Kept for compatibility with 1st edition of ECMA-376 standard.
-     * Microsoft Word 2007 and WPS Writer 2016 still rely on it.
-     *
-     * @deprecated 0.13.0 For documents based on ISO/IEC 29500:2008 and later use `END` instead.
-     */
-    const RIGHT = 'right';
-    /**
-     * Kept for compatibility with 1st edition of ECMA-376 standard.
-     * Microsoft Word 2007 and WPS Writer 2016 still rely on it.
-     *
-     * @deprecated 0.13.0 For documents based on ISO/IEC 29500:2008 and later use `BOTH` instead.
-     */
-    const JUSTIFY = 'justify';
+	/**
+	 * Kept for compatibility with 1st edition of ECMA-376 standard.
+	 * Microsoft Word 2007 and WPS Writer 2016 still rely on it.
+	 *
+	 * @deprecated 0.13.0 For documents based on ISO/IEC 29500:2008 and later use `START` instead.
+	 */
+	public const LEFT = 'left';
+	/**
+	 * Kept for compatibility with 1st edition of ECMA-376 standard.
+	 * Microsoft Word 2007 and WPS Writer 2016 still rely on it.
+	 *
+	 * @deprecated 0.13.0 For documents based on ISO/IEC 29500:2008 and later use `END` instead.
+	 */
+	public const RIGHT = 'right';
+	/**
+	 * Kept for compatibility with 1st edition of ECMA-376 standard.
+	 * Microsoft Word 2007 and WPS Writer 2016 still rely on it.
+	 *
+	 * @deprecated 0.13.0 For documents based on ISO/IEC 29500:2008 and later use `BOTH` instead.
+	 */
+	public const JUSTIFY = 'justify';
 }

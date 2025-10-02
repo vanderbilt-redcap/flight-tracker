@@ -3,25 +3,25 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\Patents;
-use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
-use \Vanderbilt\CareerDevLibrary\Portal;
-use \Vanderbilt\CareerDevLibrary\HonorsAwardsActivities;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Grants;
+use Vanderbilt\CareerDevLibrary\Patents;
+use Vanderbilt\CareerDevLibrary\Scholar;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Publications;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use Vanderbilt\CareerDevLibrary\Portal;
+use Vanderbilt\CareerDevLibrary\HonorsAwardsActivities;
 
 if (!empty($_POST)) {
-    require_once(__DIR__."/small_base.php");
-    require_once(__DIR__."/classes/Autoload.php");
-    $switches = new FeatureSwitches($token, $server, $pid);
-    $data = $switches->savePost($_POST);
-    echo json_encode($data);
-    exit;
+	require_once(__DIR__."/small_base.php");
+	require_once(__DIR__."/classes/Autoload.php");
+	$switches = new FeatureSwitches($token, $server, $pid);
+	$data = $switches->savePost($_POST);
+	echo json_encode($data);
+	exit;
 }
 
 require_once(__DIR__."/small_base.php");
@@ -29,9 +29,9 @@ require_once(__DIR__."/classes/Autoload.php");
 
 $recordIds = Download::recordIds($token, $server);
 if (!isset($_GET['record']) && (count($recordIds) > 0)) {
-    $record = $recordIds[0];
-    $thisUrl = Application::link("profile.php", $pid);
-    header("Location: $thisUrl&record=".urlencode($record));
+	$record = $recordIds[0];
+	$thisUrl = Application::link("profile.php", $pid);
+	header("Location: $thisUrl&record=".urlencode($record));
 }
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -39,11 +39,11 @@ if (isset($_GET['record']) && is_numeric($_GET['record'])) {
 	$record = REDCapManagement::getSanitizedRecord($_GET['record'], $recordIds);
 } else {
 	if (count($recordIds) > 0) {
-        $record = $recordIds[0];
-        $_GET['record'] = $record;
+		$record = $recordIds[0];
+		$_GET['record'] = $record;
 	} else {
-	    echo "<p class='centered'>No records stored.</p>";
-	    exit;
+		echo "<p class='centered'>No records stored.</p>";
+		exit;
 	}
 }
 
@@ -71,17 +71,17 @@ $switches = new FeatureSwitches($token, $server, $pid);
 $trainingStats = [];
 $trainingStartDate = REDCapManagement::findField($redcapData, $record, "summary_training_start");
 if ($trainingStartDate) {
-    $trainingStartTs = strtotime($trainingStartDate);
-    $trainingEndDate = REDCapManagement::findField($redcapData, $record, "summary_training_end");
-    if (!$trainingEndDate) {
-        $trainingEndTs = time();
-    } else {
-        $trainingEndTs = strtotime($trainingEndDate);
-    }
-    $citations = $pubs->getSortedCitationsInTimespan($trainingStartTs, $trainingEndTs);
-    $trainingStats["Number of Publications During Training"] = count($citations);
-    $trainingStats["Number of First-Author Publications During Training"] = Publications::getNumberFirstAuthor($citations, $pubs->getName());
-    $trainingStats["Number of Last-Author Publications During Training"] = Publications::getNumberLastAuthor($citations, $pubs->getName());
+	$trainingStartTs = strtotime($trainingStartDate);
+	$trainingEndDate = REDCapManagement::findField($redcapData, $record, "summary_training_end");
+	if (!$trainingEndDate) {
+		$trainingEndTs = time();
+	} else {
+		$trainingEndTs = strtotime($trainingEndDate);
+	}
+	$citations = $pubs->getSortedCitationsInTimespan($trainingStartTs, $trainingEndTs);
+	$trainingStats["Number of Publications During Training"] = count($citations);
+	$trainingStats["Number of First-Author Publications During Training"] = Publications::getNumberFirstAuthor($citations, $pubs->getName());
+	$trainingStats["Number of Last-Author Publications During Training"] = Publications::getNumberLastAuthor($citations, $pubs->getName());
 }
 
 $iCiteHIndex = REDCapManagement::findField($redcapData, $record, "summary_icite_h_index");
@@ -94,7 +94,7 @@ $HINorm = REDCapManagement::findField($redcapData, $record, "summary_hi_norm");
 $HIAnnual = REDCapManagement::findField($redcapData, $record, "summary_hi_annual");
 $gIndex = REDCapManagement::findField($redcapData, $record, "summary_g_index");
 
-$normativeRow = array();
+$normativeRow = [];
 foreach ($redcapData as $row) {
 	if ($row['redcap_repeat_instrument'] == "") {
 		$normativeRow = $row;
@@ -136,11 +136,11 @@ $numPatents = $patents->getCount();
 
 $mentorsWithArticles = [];
 foreach ($mentors as $mentor) {
-    if ($mentorArticles[$mentor] > 0) {
-        $mentorsWithArticles[] = $mentor." (".$mentorArticles[$mentor]." pubs)";
-    } else {
-        $mentorsWithArticles[] = $mentor;
-    }
+	if ($mentorArticles[$mentor] > 0) {
+		$mentorsWithArticles[] = $mentor." (".$mentorArticles[$mentor]." pubs)";
+	} else {
+		$mentorsWithArticles[] = $mentor;
+	}
 }
 
 $choices = DataDictionaryManagement::getChoices($metadata);
@@ -148,36 +148,36 @@ $metadataLabels = DataDictionaryManagement::getLabels($metadata);
 $optionalRows = [];
 $optionalSettings = REDCapManagement::getOptionalSettings();
 foreach (REDCapManagement::getOptionalFields() as $field) {
-    $numSettings = REDCapManagement::getOptionalFieldsNumber($field);
-    for ($i = 1; $i <= $numSettings; $i++) {
-        $field = REDCapManagement::getOptionalFieldSetting($field, $i);
-        if ($field && in_array($field, $metadataFields)) {
-            $setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
-            $label = $optionalSettings[$setting] ?? $metadataLabels[$field] ?? $field;
-            $value = REDCapManagement::findField($redcapData, $record, $field);
-            if (!is_array($value) && ($value || ($value === "0")) && isset($choices[$field][$value])) {
-                $value = $choices[$field][$value];
-            }
-            if ($label && $value) {
-                $optionalRows[] = [
-                    "label" => $label,
-                    "value" => $value,
-                ];
-            }
-        }
-    }
+	$numSettings = REDCapManagement::getOptionalFieldsNumber($field);
+	for ($i = 1; $i <= $numSettings; $i++) {
+		$field = REDCapManagement::getOptionalFieldSetting($field, $i);
+		if ($field && in_array($field, $metadataFields)) {
+			$setting = REDCapManagement::turnOptionalFieldIntoSetting($field);
+			$label = $optionalSettings[$setting] ?? $metadataLabels[$field] ?? $field;
+			$value = REDCapManagement::findField($redcapData, $record, $field);
+			if (!is_array($value) && ($value || ($value === "0")) && isset($choices[$field][$value])) {
+				$value = $choices[$field][$value];
+			}
+			if ($label && $value) {
+				$optionalRows[] = [
+					"label" => $label,
+					"value" => $value,
+				];
+			}
+		}
+	}
 }
 
 $optionalRowsHTML = "";
 for ($i = 0; $i < count($optionalRows); $i += 2) {
-    $optionalRowsHTML .= "<tr>";
-    $optionalRowsHTML .= "<td class='label profileHeader'>{$optionalRows[$i]['label']}:</td>";
-    $optionalRowsHTML .= "<td class='value profileHeader'>{$optionalRows[$i]['value']}</td>";
-    if ($i + 1 < count($optionalRows)) {
-        $optionalRowsHTML .= "<td class='label profileHeader'>{$optionalRows[$i+1]['label']}:</td>";
-        $optionalRowsHTML .= "<td class='value profileHeader'>{$optionalRows[$i+1]['value']}</td>";
-    }
-    $optionalRowsHTML .= "</tr>";
+	$optionalRowsHTML .= "<tr>";
+	$optionalRowsHTML .= "<td class='label profileHeader'>{$optionalRows[$i]['label']}:</td>";
+	$optionalRowsHTML .= "<td class='value profileHeader'>{$optionalRows[$i]['value']}</td>";
+	if ($i + 1 < count($optionalRows)) {
+		$optionalRowsHTML .= "<td class='label profileHeader'>{$optionalRows[$i + 1]['label']}:</td>";
+		$optionalRowsHTML .= "<td class='value profileHeader'>{$optionalRows[$i + 1]['value']}</td>";
+	}
+	$optionalRowsHTML .= "</tr>";
 }
 
 ?>
@@ -226,9 +226,9 @@ $(document).ready(function() {
 </script>
 
 <div class='subnav'>
-	<?= Links::makeProfileLink($pid, "View Profile for Next Record", $nextRecord, FALSE, "green") ?>
-	<?= Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, FALSE, "green") ?>
-	<?= Links::makePubWranglingLink($pid, "Publication Wrangler", $record, FALSE, "green") ?>
+	<?= Links::makeProfileLink($pid, "View Profile for Next Record", $nextRecord, false, "green") ?>
+	<?= Links::makeDataWranglingLink($pid, "Grant Wrangler", $record, false, "green") ?>
+	<?= Links::makePubWranglingLink($pid, "Publication Wrangler", $record, false, "green") ?>
 	<a class='blue'><?= getSelectRecordForProfile() ?></a>
 	<a class='blue'><?= getSearchForProfile() ?></a>
 </div>
@@ -236,18 +236,18 @@ $(document).ready(function() {
 <div id='content'>
 <h1><?= $name ?></h1>
     <?php
-        $lines = [];
-        if (Portal::isLive()) {
-            $scholarPortalUrl = Application::getScholarPortalLink()."&match=$pid:$record";
-            $lines[] = Links::makeLink($scholarPortalUrl, "Spoof This Scholar in the Scholar Portal for This Project Only")."<br/>Spoofing or mimicking a scholar allows you to see what they might see or to troubleshoot issues as they arise.";
-        }
-        if ($imgBase64) {
-            $lines[] = "<img src='$imgBase64' class='thumbnail' alt='Picture for $name' />";
-        }
-        if (!empty($lines)) {
-            echo "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
-        }
-    ?>
+		$lines = [];
+if (Portal::isLive()) {
+	$scholarPortalUrl = Application::getScholarPortalLink()."&match=$pid:$record";
+	$lines[] = Links::makeLink($scholarPortalUrl, "Spoof This Scholar in the Scholar Portal for This Project Only")."<br/>Spoofing or mimicking a scholar allows you to see what they might see or to troubleshoot issues as they arise.";
+}
+if ($imgBase64) {
+	$lines[] = "<img src='$imgBase64' class='thumbnail' alt='Picture for $name' />";
+}
+if (!empty($lines)) {
+	echo "<p class='centered max-width'>".implode("<br/>", $lines)."</p>";
+}
+?>
     <div style='margin: 0 auto; max-width: 600px; padding: 4px 0;' class='blueBorder translucentBG'>
         <?= $switches->makeHTML("record", $record) ?>
     </div>
@@ -310,7 +310,7 @@ if ($dollarsCompiledTotal) {
 
 $numMentorArticlesHTML = "";
 if (!empty($mentors)) {
-    $numMentorArticlesHTML = "<br>[Collaborating on ".REDCapManagement::pretty($numMentorArticles)." articles]";
+	$numMentorArticlesHTML = "<br>[Collaborating on ".REDCapManagement::pretty($numMentorArticles)." articles]";
 }
 ?>
 		<td class='label profileHeader'>Total Dollars<br>from Grants<br>(External Sources Only):</td>
@@ -328,45 +328,63 @@ if (!empty($mentors)) {
     </tr>
     <?php
 
-    $bibliometricScores = [];
-    if ($wosHIndex) { $bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", TRUE)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", TRUE)] = $wosHIndex; }
-    if ($scopusHIndex) { $bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", TRUE)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", TRUE)] = $scopusHIndex; };
-    if ($altmetricRange) { $bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", TRUE)." Scores"] = $altmetricRange; }
-    if ($avgRCR) { $bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", TRUE)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", TRUE)." Scores"] = $avgRCR; }
-    if ($iCiteHIndex) { $bibliometricScores["H-Index, calculated from iCite figures<br/>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", TRUE)] = $iCiteHIndex; }
-    if ($HI) { $bibliometricScores["HI, calculated from iCite figures<br/>(hIndex / [average number of authors in contributing pubs])"] = $HI; }
-    if ($HINorm) { $bibliometricScores["HI,norm, calculated from iCite figures<br/>(normalizes each H-Index input to [number of citations] / [number of co-authors])"] = $HINorm; }
-    if ($HIAnnual) { $bibliometricScores["HI,annual, calculated from iCite figures<br/>(HI,norm / [number of years of publications])"] = $HIAnnual; }
-    if ($gIndex) { $bibliometricScores["G-Index, calculated from iCite figures<br/>(the largest integer such that the most-cited g articles received together at least g^2 citations)"] = $gIndex; }
-    echo makeStatsHTML($trainingStats);
-    echo makeStatsHTML($bibliometricScores);
+	$bibliometricScores = [];
+if ($wosHIndex) {
+	$bibliometricScores[Links::makeLink("https://support.clarivate.com/ScientificandAcademicResearch/s/article/Web-of-Science-h-index-information?language=en_US", "H Index", true)." calculated<br>from ".Links::makeLink("https://www.webofknowledge.com/", "Web of Science", true)] = $wosHIndex;
+}
+if ($scopusHIndex) {
+	$bibliometricScores[Links::makeLink("https://blog.scopus.com/topics/h-index", "H Index", true)."<br>from".Links::makeLink("https://www.scopus.com/", "Scopus", true)] = $scopusHIndex;
+};
+if ($altmetricRange) {
+	$bibliometricScores["Range of ".Links::makeLink("https://www.altmetric.com/", "Altmetric", true)." Scores"] = $altmetricRange;
+}
+if ($avgRCR) {
+	$bibliometricScores["Average ".Links::makeLink("https://dpcpsi.nih.gov/sites/default/files/iCite%20fact%20sheet_0.pdf", "Relative Citation<br> Ratio", true)." from ".Links::makeLink("https://icite.od.nih.gov/", "iCite", true)." Scores"] = $avgRCR;
+}
+if ($iCiteHIndex) {
+	$bibliometricScores["H-Index, calculated from iCite figures<br/>from ".Links::makeLink("https://icite.od.nih.gov/", "iCite (NIH)", true)] = $iCiteHIndex;
+}
+if ($HI) {
+	$bibliometricScores["HI, calculated from iCite figures<br/>(hIndex / [average number of authors in contributing pubs])"] = $HI;
+}
+if ($HINorm) {
+	$bibliometricScores["HI,norm, calculated from iCite figures<br/>(normalizes each H-Index input to [number of citations] / [number of co-authors])"] = $HINorm;
+}
+if ($HIAnnual) {
+	$bibliometricScores["HI,annual, calculated from iCite figures<br/>(HI,norm / [number of years of publications])"] = $HIAnnual;
+}
+if ($gIndex) {
+	$bibliometricScores["G-Index, calculated from iCite figures<br/>(the largest integer such that the most-cited g articles received together at least g^2 citations)"] = $gIndex;
+}
+echo makeStatsHTML($trainingStats);
+echo makeStatsHTML($bibliometricScores);
 
-    echo "</table><br/><br/>";
+echo "</table><br/><br/>";
 
-    echo "<h2>Timelines</h2>";
-    require_once(__DIR__."/charts/timeline.php");
-    echo "<br/><br/>";
+echo "<h2>Timelines</h2>";
+require_once(__DIR__."/charts/timeline.php");
+echo "<br/><br/>";
 
-    echo "<h2>Publication Research Topic Timelines</h2>";
-    echo "<div class='centered max-width-1000' style='height: 500px; overflow-y: scroll; overflow-x: hidden; background-color: white;'>";
-    $_GET['hideHeaders'] = TRUE;
-    require_once(__DIR__."/charts/publicationSubjects.php");
-    echo "</div>";
+echo "<h2>Publication Research Topic Timelines</h2>";
+echo "<div class='centered max-width-1000' style='height: 500px; overflow-y: scroll; overflow-x: hidden; background-color: white;'>";
+$_GET['hideHeaders'] = true;
+require_once(__DIR__."/charts/publicationSubjects.php");
+echo "</div>";
 
-    echo "<h2>Reported Grant Funding (Total Dollars; PI/Co-PI only)</h2>";
-    require_once(__DIR__."/charts/scholarGrantFunding.php");
-    echo "<br/><br/>";
+echo "<h2>Reported Grant Funding (Total Dollars; PI/Co-PI only)</h2>";
+require_once(__DIR__."/charts/scholarGrantFunding.php");
+echo "<br/><br/>";
 
-    echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>";
-    echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe>";
-    echo "<br/><br/>";
+echo "<h2 class='nomargin'>Who is $name Publishing With?</h2>";
+echo "<iframe class='centered' style='height: 725px;' id='coauthorship' src='".Application::link("socialNetwork/collaboration.php")."&record=$record&field=record_id&cohort=all&headers=false&mentors=on'></iframe>";
+echo "<br/><br/>";
 
-    $honors = new HonorsAwardsActivities($redcapData, $pid, $record);
-    echo "<h2>Recorded Honors, Awards &amp; Activities</h2>";
-    echo $honors->getHTML();
-    echo "<br/><br/>";
+$honors = new HonorsAwardsActivities($redcapData, $pid, $record);
+echo "<h2>Recorded Honors, Awards &amp; Activities</h2>";
+echo $honors->getHTML();
+echo "<br/><br/>";
 
-    echo "</div>";
+echo "</div>";
 
 
 function getSearchForProfile() {
@@ -385,24 +403,24 @@ function printList($list) {
 }
 
 function makeStatsHTML($stats) {
-    $i = 0;
-    $html = "";
-    foreach ($stats as $label => $value) {
-        if ($i % 2 == 0) {
-            $html .= "<tr>\n";
-        }
-        $html .= "<td class='label profileHeader'>$label:</td>\n";
-        if (is_numeric($value)) {
-            $value = REDCapManagement::pretty($value);
-        }
-        $html .= "<td class='value profileHeader'>$value</td>\n";
-        if ($i % 2 == 1) {
-            $html .= "</tr>\n";
-        }
-        $i++;
-    }
-    if (count($stats) % 2 == 1) {
-        $html .= "</tr>\n";
-    }
-    return $html;
+	$i = 0;
+	$html = "";
+	foreach ($stats as $label => $value) {
+		if ($i % 2 == 0) {
+			$html .= "<tr>\n";
+		}
+		$html .= "<td class='label profileHeader'>$label:</td>\n";
+		if (is_numeric($value)) {
+			$value = REDCapManagement::pretty($value);
+		}
+		$html .= "<td class='value profileHeader'>$value</td>\n";
+		if ($i % 2 == 1) {
+			$html .= "</tr>\n";
+		}
+		$i++;
+	}
+	if (count($stats) % 2 == 1) {
+		$html .= "</tr>\n";
+	}
+	return $html;
 }

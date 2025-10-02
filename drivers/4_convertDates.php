@@ -1,9 +1,10 @@
 <?php
+
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$mdyfields = array(
+$mdyfields = [
 			"check_date_of_birth",
 			"check_academic_rank_dt",
 			"check_prev1_academic_rank_stdt",
@@ -46,8 +47,8 @@ $mdyfields = array(
 			"check_grant14_end",
 			"check_grant15_start",
 			"check_grant15_end",
-		);
-$fields = array(
+		];
+$fields = [
 		"newman_demographics_date_of_birth",
 		"newman_demographics_first_individual_k_date",
 		"newman_demographics_first_r_date",
@@ -63,12 +64,12 @@ $fields = array(
 		"vfrs_date_of_birth",
 		"coeus_project_start_date",
 		"coeus_project_end_date",
-		);
+		];
 
 $fields2 = $fields;
 $fields2[] = "record_id";
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -80,7 +81,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -96,12 +97,12 @@ $output = curl_exec($ch);
 curl_close($ch);
 $redcapData = json_decode($output, true);
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'metadata',
 	'format' => 'json',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -117,7 +118,7 @@ $output = curl_exec($ch);
 curl_close($ch);
 $metadata = json_decode($output, true);
 
-$metadataUpload = array();
+$metadataUpload = [];
 foreach ($metadata as $row) {
 	if (in_array($row['field_name'], $fields)) {
 		$row['text_validation_type_or_show_slider_number'] = "date_ymd";
@@ -128,13 +129,13 @@ foreach ($metadata as $row) {
 	$metadataUpload[] = $row;
 }
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'metadata',
 	'format' => 'json',
 	'data' => json_encode($metadataUpload),
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -171,7 +172,7 @@ function pad2Digits($str) {
 
 function interpretMonth($m) {
 	$m = strtolower($m);
-	$months = array(
+	$months = [
 			"jan" => "01",
 			"feb" => "02",
 			"mar" => "03",
@@ -184,14 +185,14 @@ function interpretMonth($m) {
 			"oct" => "10",
 			"nov" => "11",
 			"dec" => "12",
-			);
+			];
 	if (isset($months[$m])) {
 		return $months[$m];
 	}
 	return "01";
 }
 
-$results = array();
+$results = [];
 function convertDate2YMD($d, $field, $format, $name) {
 	global $results;
 
@@ -206,7 +207,7 @@ function convertDate2YMD($d, $field, $format, $name) {
 	$type1 = $format[0];
 	$type2 = $format[1];
 	$type3 = $format[2];
-	$typesYMD = array();
+	$typesYMD = [];
 	for ($i = 0; $i < 3; $i++) {
 		$typesYMD[$format[$i]] = $i;
 	}
@@ -215,7 +216,7 @@ function convertDate2YMD($d, $field, $format, $name) {
 	$d = preg_replace("/^\(/", "", $d);
 	$d = str_replace("\\/", "/", $d);
 	if (preg_match("/^\d+[\/\-]\d+[\/\-]\d\d\d\d$/", $d)) {
-		$matches = array();
+		$matches = [];
 		$splits = preg_split("/[\s;:,]+/", $d);
 		foreach ($splits as $s) {
 			if (preg_match("/^\d+[\/\-]\d+[\/\-]\d\d\d\d$/", $s)) {
@@ -228,8 +229,8 @@ function convertDate2YMD($d, $field, $format, $name) {
 		}
 		if (count($matches) > 1) {
 			# return earliest
-			$years = array();
-			$formattedDates = array();
+			$years = [];
+			$formattedDates = [];
 			$minYear = 2100;
 			$minDate = "01/01/2100";
 			foreach ($matches as $match) {
@@ -240,16 +241,16 @@ function convertDate2YMD($d, $field, $format, $name) {
 				if ($nodes[$typesYMD['y']] < $minYear) {
 					$minYear = $nodes[$typesYMD['y']];
 					$minDate = $date;
-				} else if ($nodes[2] == $minYear) {
+				} elseif ($nodes[2] == $minYear) {
 					$minNodes = preg_split("/[\/\-]/", $minDate);
 					if ((int) $nodes[$typesYMD['m']] < (int) $minNodes[$typesYMD['m']]) {
 						$minDate = $date;
-					} else if ((int) $nodes[$typesYMD['m']] == (int) $minNodes[$typesYMD['m']]) {
+					} elseif ((int) $nodes[$typesYMD['m']] == (int) $minNodes[$typesYMD['m']]) {
 						if ((int) $nodes[$typesYMD['d']] < (int) $minNodes[$typesYMD['d']]) {
 							$minDate = $date;
 						}
 					}
-				} 
+				}
 			}
 			echo "A ";
 			return $minDate;
@@ -323,7 +324,7 @@ function convertDate2YMD($d, $field, $format, $name) {
 }
 
 $i = 0;
-$format = array();
+$format = [];
 foreach ($redcapData[0] as $field => $value) {
 	if (in_array($field, $fields)) {
 		$numFound = 0;
@@ -352,7 +353,7 @@ foreach ($redcapData as $row) {
 			if ($date) {
 				// echo "Converted $value to $date\n";
 				if ($date == "2000-01-01") {
-					echo "ERROR: Look at {$row['record_id']} $value to $date\n"; 
+					echo "ERROR: Look at {$row['record_id']} $value to $date\n";
 				}
 			}
 			$redcapData[$i][$field] = $date;
@@ -363,7 +364,7 @@ foreach ($redcapData as $row) {
 
 echo count($redcapData)." rows\n";
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -372,7 +373,7 @@ $data = array(
 	'data' => json_encode($redcapData),
 	'returnContent' => 'count',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -387,5 +388,3 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 $output = curl_exec($ch);
 echo $output."\n";
 curl_close($ch);
-
-?>

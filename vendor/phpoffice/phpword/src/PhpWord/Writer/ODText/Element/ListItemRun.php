@@ -27,31 +27,30 @@ use PhpOffice\PhpWord\Element\ListItemRun as ListItemRunElement;
  */
 class ListItemRun extends AbstractElement
 {
-    /**
-     * Write list item element.
-     */
-    public function write(): void
-    {
-        $element = $this->getElement();
-        if (!$element instanceof ListItemRunElement) {
-            return;
-        }
-        $depth = $element->getDepth() + 1;
+	/**
+	 * Write list item element.
+	 */
+	public function write(): void {
+		$element = $this->getElement();
+		if (!$element instanceof ListItemRunElement) {
+			return;
+		}
+		$depth = $element->getDepth() + 1;
 
-        $xmlWriter = $this->getXmlWriter();
+		$xmlWriter = $this->getXmlWriter();
 
-        for ($iDepth = 1; $iDepth <= $depth; ++$iDepth) {
-            $xmlWriter->startElement('text:list');
-            $xmlWriter->writeAttribute('text:style-name', $element->getStyle()->getNumStyle());
-            $xmlWriter->startElement('text:list-item');
-        }
+		for ($iDepth = 1; $iDepth <= $depth; ++$iDepth) {
+			$xmlWriter->startElement('text:list');
+			$xmlWriter->writeAttribute('text:style-name', $element->getStyle()->getNumStyle());
+			$xmlWriter->startElement('text:list-item');
+		}
 
-        $containerWriter = new Container($xmlWriter, $element, false);
-        $containerWriter->write();
+		$containerWriter = new Container($xmlWriter, $element, false);
+		$containerWriter->write();
 
-        for ($iDepth = 1; $iDepth <= $depth; ++$iDepth) {
-            $xmlWriter->endElement(); // text:list-item
-            $xmlWriter->endElement(); // text:list
-        }
-    }
+		for ($iDepth = 1; $iDepth <= $depth; ++$iDepth) {
+			$xmlWriter->endElement(); // text:list-item
+			$xmlWriter->endElement(); // text:list
+		}
+	}
 }

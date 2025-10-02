@@ -2,17 +2,17 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\DateManagement;
-use \Vanderbilt\CareerDevLibrary\Grant;
-use \Vanderbilt\CareerDevLibrary\Grants;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\DateManagement;
+use Vanderbilt\CareerDevLibrary\Grant;
+use Vanderbilt\CareerDevLibrary\Grants;
 use Vanderbilt\CareerDevLibrary\NIHRePORTERGrantFactory;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\ExcludeList;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
-use \Vanderbilt\CareerDevLibrary\Publications;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\ExcludeList;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Publications;
 
 # provides a means to reassign categories, start/end dates, etc. for outside grants
 # to be run on web
@@ -29,14 +29,14 @@ if (isset($_GET['new']) && is_numeric($_GET['new'])) {
 
 $cookieName = ADVANCED_MODE."_$pid";
 if (isset($_POST['hideBubble']) && $_POST['hideBubble']) {
-    $oneWeek = 7 * 24 * 3600;
-    if (REDCapManagement::versionGreaterThanOrEqualTo(phpversion(), "7.3.0")) {
-        setcookie($cookieName, "1", ["expires" => time() + $oneWeek]);
-    } else {
-        setcookie($cookieName, "1", time() + $oneWeek);
-    }
-    echo "Done.";
-    exit();
+	$oneWeek = 7 * 24 * 3600;
+	if (REDCapManagement::versionGreaterThanOrEqualTo(phpversion(), "7.3.0")) {
+		setcookie($cookieName, "1", ["expires" => time() + $oneWeek]);
+	} else {
+		setcookie($cookieName, "1", time() + $oneWeek);
+	}
+	echo "Done.";
+	exit();
 }
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -59,19 +59,19 @@ $records = Download::recordIds($token, $server);
 $record = Sanitizer::getSanitizedRecord($_GET['record'] ?? 1, $records);
 
 $myFields = [
-    "record_id",
-    "summary_last_calculated",
-    "summary_calculate_order",
-    "summary_calculate_list_of_awards",
-    "summary_calculate_to_import",
-    "summary_calculate_flagged_grants",
-    "identifier_last_name",
-    "identifier_first_name",
+	"record_id",
+	"summary_last_calculated",
+	"summary_calculate_order",
+	"summary_calculate_list_of_awards",
+	"summary_calculate_to_import",
+	"summary_calculate_flagged_grants",
+	"identifier_last_name",
+	"identifier_first_name",
 ];
 
 $redcapData = Download::fieldsForRecords($token, $server, $myFields, [$record]);
 $flaggedGrantsJSON = REDCapManagement::findField($redcapData, $record, "summary_calculate_flagged_grants") ?: "[]";
-$flaggedGrants = json_decode($flaggedGrantsJSON, TRUE);
+$flaggedGrants = json_decode($flaggedGrantsJSON, true);
 $excludeList = new ExcludeList("Grants", $pid);
 
 function getTransformArray() {
@@ -116,7 +116,7 @@ function getTransformArray() {
 }
 
 function getAwardNumber($row) {
-	$awardFields = array( "coeus_sponsor_award_number", "custom_number", "reporter_projectnumber",);
+	$awardFields = [ "coeus_sponsor_award_number", "custom_number", "reporter_projectnumber",];
 	foreach ($row as $field => $value) {
 		if ($value && in_array($field, $awardFields)) {
 			return getBaseAwardNumber($value);
@@ -130,24 +130,24 @@ function getAwardNumber($row) {
 function getNextRecordWithNewData($currentRecord, $includeCurrentRecord) {
 	global $daysForNew, $token, $server;
 
-	$calculateFields = array(
+	$calculateFields = [
 				"record_id",
 				"summary_calculate_order",
 				"summary_calculate_list_of_awards",
 				"summary_calculate_to_import",
-				);
+				];
 	$grantAgeFields = getGrantAgeFields();
-    $metadataFields = Download::metadataFields($token, $server);
+	$metadataFields = Download::metadataFields($token, $server);
 
 	$myFields = $calculateFields;
-    $myFields[] = "identifier_first_name";
-    $myFields[] = "identifier_last_name";
-    foreach ($metadataFields as $field) {
-        if (preg_match("/_last_update$/", $field)) {
-            $myFields[] = $field;
-        }
-    }
-    $nihReporterFields = ['nih_project_start_date', 'nih_project_end_date', 'nih_award_notice_date'];
+	$myFields[] = "identifier_first_name";
+	$myFields[] = "identifier_last_name";
+	foreach ($metadataFields as $field) {
+		if (preg_match("/_last_update$/", $field)) {
+			$myFields[] = $field;
+		}
+	}
+	$nihReporterFields = ['nih_project_start_date', 'nih_project_end_date', 'nih_award_notice_date'];
 	$myFields = array_merge($myFields, $grantAgeFields, $nihReporterFields);
 
 	$records = Download::recordIds($token, $server);
@@ -166,7 +166,7 @@ function getNextRecordWithNewData($currentRecord, $includeCurrentRecord) {
 		$i++;
 	}
 	while ($i < count($records)) {
-		$pullRecords = array();
+		$pullRecords = [];
 		for ($j = $i; ($j < $i + $pullSize) && ($j < count($records)); $j++) {
 			$pullRecords[] = $records[$j];
 		}
@@ -182,10 +182,10 @@ function getNextRecordWithNewData($currentRecord, $includeCurrentRecord) {
 
 			if ($isEligibleRecord && ($row['redcap_repeat_instrument'] === "")) {
 				$normativeRow = $row;
-			} else if ($isEligibleRecord) {
+			} elseif ($isEligibleRecord) {
 				$minAgeUpdate = getMinAgeOfUpdate($row);
 				$minAgeGrant = getMinAgeOfGrants($row, $grantAgeFields);
-                if ((($minAgeUpdate <= $daysForNew) && ($minAgeGrant <= $daysForNew))
+				if ((($minAgeUpdate <= $daysForNew) && ($minAgeGrant <= $daysForNew))
 					&& ($normativeRow['record_id'] == $row['record_id'])) {
 					$listOfAwards = json_decode($normativeRow['summary_calculate_list_of_awards'], true);
 					foreach ($listOfAwards as $idx => $specs) {
@@ -217,7 +217,7 @@ function getAgeOfGrant($award) {
 
 # gets the minimum age of all grants in the current row
 # returns number of days since the most recent update
-function getMinAgeOfGrants($row, $grantAgeFields = array()) {
+function getMinAgeOfGrants($row, $grantAgeFields = []) {
 	if (empty($grantAgeFields)) {
 		$grantAgeFields = getGrantAgeFields();
 	}
@@ -231,14 +231,14 @@ function getMinAgeOfGrants($row, $grantAgeFields = array()) {
 			}
 		}
 	}
-    if ($row['nih_project_start_date'] && $row['nih_project_end_date'] && $row['nih_award_notice_date']) {
-        list($startDate, $endDate) = NIHRePORTERGrantFactory::calculateBudgetDates($row['nih_project_start_date'], $row['nih_project_end_date'], $row['nih_award_notice_date']);
-        $ts = strtotime($endDate);
-        $daysOld = floor((time() - $ts) / (24 * 3600)) + 1;
-        if ($daysOld < $minDays) {
-            $minDays = $daysOld;
-        }
-    }
+	if ($row['nih_project_start_date'] && $row['nih_project_end_date'] && $row['nih_award_notice_date']) {
+		list($startDate, $endDate) = NIHRePORTERGrantFactory::calculateBudgetDates($row['nih_project_start_date'], $row['nih_project_end_date'], $row['nih_award_notice_date']);
+		$ts = strtotime($endDate);
+		$daysOld = floor((time() - $ts) / (24 * 3600)) + 1;
+		if ($daysOld < $minDays) {
+			$minDays = $daysOld;
+		}
+	}
 	return $minDays;
 }
 
@@ -260,12 +260,12 @@ function getMinAgeOfUpdate($row) {
 
 function getGrantAgeFields() {
 	return [
-        "coeus_budget_end_date",
-        "reporter_budgetenddate",
-        "exporter_budget_end",
-        'nsf_expdate',
-        'ies_end',
-    ];
+		"coeus_budget_end_date",
+		"reporter_budgetenddate",
+		"exporter_budget_end",
+		'nsf_expdate',
+		'ies_end',
+	];
 }
 
 function isOkToShow($ary, $idxOfCurrentAward, $listOfAwards) {
@@ -307,128 +307,134 @@ function generateAwardIndex($awardno, $sponsor) {
 }
 
 function transformAward($ary, $i, $pid, $flaggedGrants = []) {
-    $selectName = "redcap_type_".$i;
-    $tbuttons = makeStatusButtons($i, $ary);
-    $elems = [];
-    $startName = preg_replace("/redcap_type/", "start_date", $selectName);
-    $endName = preg_replace("/redcap_type/", "end_date", $selectName);
-    $projectStartName = preg_replace("/redcap_type/", "project_start_date", $selectName);
-    $projectEndName = preg_replace("/redcap_type/", "project_end_date", $selectName);
+	$selectName = "redcap_type_".$i;
+	$tbuttons = makeStatusButtons($i, $ary);
+	$elems = [];
+	$startName = preg_replace("/redcap_type/", "start_date", $selectName);
+	$endName = preg_replace("/redcap_type/", "end_date", $selectName);
+	$projectStartName = preg_replace("/redcap_type/", "project_start_date", $selectName);
+	$projectEndName = preg_replace("/redcap_type/", "project_end_date", $selectName);
 	$awardTypes = Grant::getAwardTypes();
-    $source = $ary['source'] ?? "";
-    $awardNo = $ary['sponsor_award_no'] ?? "";
-    $startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='' />";
-    $enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='' />";
-    $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='' />";
-    $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='' />";
+	$source = $ary['source'] ?? "";
+	$awardNo = $ary['sponsor_award_no'] ?? "";
+	$startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='' />";
+	$enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='' />";
+	$project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='' />";
+	$project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='' />";
 	$tablenum = 0;
 	$doclass = "class_empty";
-    $class_baseaward = "";
-    $backgroundClass = "small_padding";
+	$class_baseaward = "";
+	$backgroundClass = "small_padding";
 
-    $d_ck_original_award_number = "";
-    $d_ck_base_award_no = "";
-    $d_direct_budget = BLANK_VALUE;
-    $d_budget_total = BLANK_VALUE;
-    $d_direct_sponsor_type = "";
-    $d_direct_sponsor_name = "";
-    $d_prime_sponsor_type = "";
-    $d_prime_sponsor_name = "";
-    $d_sponsor_award_no = "";
-    $d_title = "";
-    $piName = "";
-    $telem = "";
-    $flagsOn = Grants::areFlagsOn($pid);
-    if ($flagsOn) {
-        $fontAwesomeFlag = "<i class='far fa-flag'></i>";
-    } else {
-        $fontAwesomeFlag = "";
-    }
+	$d_ck_original_award_number = "";
+	$d_ck_base_award_no = "";
+	$d_direct_budget = BLANK_VALUE;
+	$d_budget_total = BLANK_VALUE;
+	$d_direct_sponsor_type = "";
+	$d_direct_sponsor_name = "";
+	$d_prime_sponsor_type = "";
+	$d_prime_sponsor_name = "";
+	$d_sponsor_award_no = "";
+	$d_title = "";
+	$piName = "";
+	$telem = "";
+	$flagsOn = Grants::areFlagsOn($pid);
+	if ($flagsOn) {
+		$fontAwesomeFlag = "<i class='far fa-flag'></i>";
+	} else {
+		$fontAwesomeFlag = "";
+	}
 
-    foreach ($ary as $key => $value) {
+	foreach ($ary as $key => $value) {
 		if ($key == "redcap_type") {
-            list($doclass, $ftype) = getClassAndFType($value);
-            if ($selectName) {
-                $telem = "<select id='$selectName' onchange='toggleChange(\"$value\", $(this), $i, $(this).closest(\"table\").attr(\"class\"), \"$source\", \"$awardNo\");' style='font-size: 13px;padding: 1px;'>";
-                foreach ($awardTypes as $type => $num) {
-                    if ($value == $type) {
-                        $telem .= "<option value='$type' selected>$type</option>";
-                    } else {
-                        $telem .= "<option value='$type'>$type</option>";
-                    }
+			list($doclass, $ftype) = getClassAndFType($value);
+			if ($selectName) {
+				$telem = "<select id='$selectName' onchange='toggleChange(\"$value\", $(this), $i, $(this).closest(\"table\").attr(\"class\"), \"$source\", \"$awardNo\");' style='font-size: 13px;padding: 1px;'>";
+				foreach ($awardTypes as $type => $num) {
+					if ($value == $type) {
+						$telem .= "<option value='$type' selected>$type</option>";
+					} else {
+						$telem .= "<option value='$type'>$type</option>";
+					}
 
-                }
-                $telem .= "</select>";
-            } else {
-                $telem = $value;
-            }
-		} else if ($key == "start_date") {
-		 	if($value == ''){
-		 		$startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='' />";
-		 	} else {
-                $mdyValue = DateManagement::YMD2MDY($value);
-                $startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='$mdyValue' />";
-            }
-		} else if ($key == "end_date") {
-			if($value == ''){
-		 		$enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='' />";
-		 	} else {
-                $mdyValue = DateManagement::YMD2MDY($value);
-                $enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='$mdyValue' />";
-            }
-        } else if($key == "project_start_date"){
-            if($value == ''){
-                $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='' />";
-            } else {
-                $mdyValue = DateManagement::YMD2MDY($value);
-                $project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='$mdyValue' />";
-            }
-        } else if($key == "project_end_date"){
-            if($value == ''){
-                $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='' />";
-            } else {
-                $mdyValue = DateManagement::YMD2MDY($value);
-                $project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='$mdyValue' />";
-            }
-        } else if(($key == "person_name") && $value){
-            if (strlen($value) > 100) {
-                $piName = substr($value, 0, 100)."...";
-            } else {
-                $piName = $value;
-            }
-        } else if($key == "sponsor"){
-			if($value == ''){
+				}
+				$telem .= "</select>";
+			} else {
+				$telem = $value;
+			}
+		} elseif ($key == "start_date") {
+			if ($value == '') {
+				$startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='' />";
+			} else {
+				$mdyValue = DateManagement::YMD2MDY($value);
+				$startdate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"start_date\", \"$source\", \"$awardNo\");' id='$startName' value='$mdyValue' />";
+			}
+		} elseif ($key == "end_date") {
+			if ($value == '') {
+				$enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='' />";
+			} else {
+				$mdyValue = DateManagement::YMD2MDY($value);
+				$enddate = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"end_date\", \"$source\", \"$awardNo\");' id='$endName' value='$mdyValue' />";
+			}
+		} elseif ($key == "project_start_date") {
+			if ($value == '') {
+				$project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='' />";
+			} else {
+				$mdyValue = DateManagement::YMD2MDY($value);
+				$project_start_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_start_date\", \"$source\", \"$awardNo\");' id='$projectStartName' value='$mdyValue' />";
+			}
+		} elseif ($key == "project_end_date") {
+			if ($value == '') {
+				$project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='' />";
+			} else {
+				$mdyValue = DateManagement::YMD2MDY($value);
+				$project_end_date = "<input type='text' class='dates' onkeydown='enactChange($i, this, \"project_end_date\", \"$source\", \"$awardNo\");' id='$projectEndName' value='$mdyValue' />";
+			}
+		} elseif (($key == "person_name") && $value) {
+			if (strlen($value) > 100) {
+				$piName = substr($value, 0, 100)."...";
+			} else {
+				$piName = $value;
+			}
+		} elseif ($key == "sponsor") {
+			if ($value == '') {
 				$d_sponsor = BLANK_VALUE;
-			} else $d_sponsor = $value;
-		} else if($key == "sponsor_type"){
-			if($value == ''){
+			} else {
+				$d_sponsor = $value;
+			}
+		} elseif ($key == "sponsor_type") {
+			if ($value == '') {
 				$d_sponsor_type = '';
-			} else $d_sponsor_type = " (".$value.")";
-		} else if($key == "original_award_number"){
-			if($value == ''){
+			} else {
+				$d_sponsor_type = " (".$value.")";
+			}
+		} elseif ($key == "original_award_number") {
+			if ($value == '') {
 				$d_original_award_number_no = '';
 				$d_ck_original_award_number = '';
 			} else {
-                if ($value !== "000") {
-                    $d_ck_original_award_number = Grant::trimApplicationType($value);
-                } else {
-                    $d_ck_original_award_number = $value;
-                }
+				if ($value !== "000") {
+					$d_ck_original_award_number = Grant::trimApplicationType($value);
+				} else {
+					$d_ck_original_award_number = $value;
+				}
 				$d_original_award_number_no = $value;
 			}
-		} else if($key == "finance_type"){
-			if($value == ''){
+		} elseif ($key == "finance_type") {
+			if ($value == '') {
 				$d_finance_type = '';
-			} else $d_finance_type = "<div class='fl wd49 sect'><div class='fwb'>Finance Type</div><div class='display_data'>".ucfirst($value)."</div></div>";
-		} else if($key == "sponsor_award_no"){
-			if($value == ''){
+			} else {
+				$d_finance_type = "<div class='fl wd49 sect'><div class='fwb'>Finance Type</div><div class='display_data'>".ucfirst($value)."</div></div>";
+			}
+		} elseif ($key == "sponsor_award_no") {
+			if ($value == '') {
 				$d_sponsor_award_no = '';
 			} else {
-                addSpacesIfRelevant($value);
-                $d_sponsor_award_no = "<div class='fl wd49 sect'><div class='fwb'>Sponsor Award #</div><div class='display_data'>$value</div></div>";
-            }
-		} else if($key == "base_award_no"){
-			if($value == ''){
+				addSpacesIfRelevant($value);
+				$d_sponsor_award_no = "<div class='fl wd49 sect'><div class='fwb'>Sponsor Award #</div><div class='display_data'>$value</div></div>";
+			}
+		} elseif ($key == "base_award_no") {
+			if ($value == '') {
 				$d_base_award_no = '';
 				$d_ck_base_award_no = '';
 			} else {
@@ -436,134 +442,162 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 				$d_ck_base_award_no = $value;
 				$d_base_award_no = "<div class='fl wd49 sect'><div class='fwb'>Base Award #</div><div class='display_data'>$value</div></div>";
 			}
-		} else if($key == "prime_sponsor_type"){
-			if($value == ''){
+		} elseif ($key == "prime_sponsor_type") {
+			if ($value == '') {
 				$d_prime_sponsor_type = BLANK_VALUE;
-			} else $d_prime_sponsor_type = "$value";
-		} else if($key == "direct_sponsor_type"){
-			if($value == '' || $value == null){
+			} else {
+				$d_prime_sponsor_type = "$value";
+			}
+		} elseif ($key == "direct_sponsor_type") {
+			if ($value == '' || $value == null) {
 				$d_direct_sponsor_type = BLANK_VALUE;
-			} else $d_direct_sponsor_type = ' ('.$value.')';
-		}  else if($key == "direct_sponsor_name"){
-			if($value == ''){
+			} else {
+				$d_direct_sponsor_type = ' ('.$value.')';
+			}
+		} elseif ($key == "direct_sponsor_name") {
+			if ($value == '') {
 				$d_direct_sponsor_name = BLANK_VALUE;
-			} else $d_direct_sponsor_name = $value;
-		}  else if($key == "prime_sponsor_name"){
-			if($value == ''){
+			} else {
+				$d_direct_sponsor_name = $value;
+			}
+		} elseif ($key == "prime_sponsor_name") {
+			if ($value == '') {
 				$d_prime_sponsor_name = BLANK_VALUE;
-			} else $d_prime_sponsor_name = ', '.$value;
-		}  else if($key == "role"){
-			if($value == ''){
+			} else {
+				$d_prime_sponsor_name = ', '.$value;
+			}
+		} elseif ($key == "role") {
+			if ($value == '') {
 				$d_role = '';
-			} else {$d_role = $value;}
-		}  else if($key == "source"){
-			if($value == ''){
+			} else {
+				$d_role = $value;
+			}
+		} elseif ($key == "source") {
+			if ($value == '') {
 				$d_source = BLANK_VALUE;
-			} else $d_source = str_replace("_", " ", $value);
-		}   else if($key == "nih_mechanism"){
-			if($value == ''){
+			} else {
+				$d_source = str_replace("_", " ", $value);
+			}
+		} elseif ($key == "nih_mechanism") {
+			if ($value == '') {
 				$d_nih_mechanism = BLANK_VALUE;
-			} else $d_nih_mechanism = $value;
-		} else if($key == "url"){
-			if($value == ''){
+			} else {
+				$d_nih_mechanism = $value;
+			}
+		} elseif ($key == "url") {
+			if ($value == '') {
 				$d_redcap_url = BLANK_VALUE;
-			} else $d_redcap_url = $value;
-		}  else if($key == "application_type"){
-			if($value == ''){
+			} else {
+				$d_redcap_url = $value;
+			}
+		} elseif ($key == "application_type") {
+			if ($value == '') {
 				$d_application_type = '';
-			} else $d_application_type = "<div class='fl wd49 sect'><div class='fwb'>Application Type</div><div class='display_data'>$value</div></div>";
-		}   else if($key == "funding_source"){
-			if($value == ''){
+			} else {
+				$d_application_type = "<div class='fl wd49 sect'><div class='fwb'>Application Type</div><div class='display_data'>$value</div></div>";
+			}
+		} elseif ($key == "funding_source") {
+			if ($value == '') {
 				$d_funding_source = BLANK_VALUE;
-			} else $d_funding_source = str_replace("/", " / ", $value);
-		} else if(in_array($key, ["budget", "total_budget"])) {
-			if($value == ''){
+			} else {
+				$d_funding_source = str_replace("/", " / ", $value);
+			}
+		} elseif (in_array($key, ["budget", "total_budget"])) {
+			if ($value == '') {
 				$d_budget_total = BLANK_VALUE;
-			} else $d_budget_total = '$'.number_format(intval($value));
-		} else if(in_array($key, ["direct_budget", "budget"])){
-			if(($value == '') && in_array($d_direct_budget, ['', BLANK_VALUE])) {
+			} else {
+				$d_budget_total = '$'.number_format(intval($value));
+			}
+		} elseif (in_array($key, ["direct_budget", "budget"])) {
+			if (($value == '') && in_array($d_direct_budget, ['', BLANK_VALUE])) {
 				$d_direct_budget = BLANK_VALUE;
-			} else $d_direct_budget = '$'.number_format(intval($value));
-		} else if($key == "percent_effort"){
-			if($value == ''){
+			} else {
+				$d_direct_budget = '$'.number_format(intval($value));
+			}
+		} elseif ($key == "percent_effort") {
+			if ($value == '') {
 				$d_percent_effort = BLANK_VALUE;
-			} else $d_percent_effort = $value.'%';
-		} else if($key == "last_update"){
-			if($value == ''){
+			} else {
+				$d_percent_effort = $value.'%';
+			}
+		} elseif ($key == "last_update") {
+			if ($value == '') {
 				$d_last_update = '';
-			} else $d_last_update = "<span class='fwb'>Last Updated:</span><br/>".DateManagement::YMD2MDY($value);
-        } else if ($key == "title") {
-            if ($value != "") {
-                $d_title = "<tr class='$backgroundClass'><td><div class='fl sect display_data centered'>$value</div></td></tr>";
-            }
-        }
-    }
+			} else {
+				$d_last_update = "<span class='fwb'>Last Updated:</span><br/>".DateManagement::YMD2MDY($value);
+			}
+		} elseif ($key == "title") {
+			if ($value != "") {
+				$d_title = "<tr class='$backgroundClass'><td><div class='fl sect display_data centered'>$value</div></td></tr>";
+			}
+		}
+	}
 
-    $d_role = $d_role ?? BLANK_VALUE;
-    $d_source = $d_source ?? BLANK_VALUE;
-    $d_percent_effort = $d_percent_effort ?? BLANK_VALUE;
-    $d_funding_source = $d_funding_source ?? BLANK_VALUE;
-    $d_sponsor = $d_sponsor ?? "";
-    $d_sponsor_type = $d_sponsor_type ?? "";
-    $d_finance_type = $d_finance_type ?? "";
-    $d_application_type = $d_application_type ?? "";
-    $d_base_award_no = $d_base_award_no ?? "";
-    $d_redcap_url = $d_redcap_url ?? "";
-    $d_nih_mechanism = $d_nih_mechanism ?? "";
-    $telem = $telem ?? "";
-    $ftype = $ftype ?? "";
-    $d_last_update = $d_last_update ?? "";
-    $d_original_award_number_no = $d_original_award_number_no ?? "";
+	$d_role = $d_role ?? BLANK_VALUE;
+	$d_source = $d_source ?? BLANK_VALUE;
+	$d_percent_effort = $d_percent_effort ?? BLANK_VALUE;
+	$d_funding_source = $d_funding_source ?? BLANK_VALUE;
+	$d_sponsor = $d_sponsor ?? "";
+	$d_sponsor_type = $d_sponsor_type ?? "";
+	$d_finance_type = $d_finance_type ?? "";
+	$d_application_type = $d_application_type ?? "";
+	$d_base_award_no = $d_base_award_no ?? "";
+	$d_redcap_url = $d_redcap_url ?? "";
+	$d_nih_mechanism = $d_nih_mechanism ?? "";
+	$telem = $telem ?? "";
+	$ftype = $ftype ?? "";
+	$d_last_update = $d_last_update ?? "";
+	$d_original_award_number_no = $d_original_award_number_no ?? "";
 
-    $redcapDiv = "<div class='fl wd49 sect'>";
-    if ($d_redcap_url) {
-        $redcapDiv .= "<div class='fwb'><a href='".$d_redcap_url."' target='_NEW'>View REDCap</a></div>";
-    } else {
-        $redcapDiv .= "<div class='fwb'>REDCap Instrument</div>";
-    }
-    if ($d_source) {
-        if ($d_redcap_url) {
-            $redcapDiv .= "<div class='display_data'><strong>Instrument</strong>: $d_source</div>";
-        } else {
-            $redcapDiv .= "<div class='display_data'>$d_source</div>";
-        }
-    }
-    $redcapDiv .= "</div>";
-    if (!$d_redcap_url && !$d_source) {
-        $redcapDiv = "";
-    }
+	$redcapDiv = "<div class='fl wd49 sect'>";
+	if ($d_redcap_url) {
+		$redcapDiv .= "<div class='fwb'><a href='".$d_redcap_url."' target='_NEW'>View REDCap</a></div>";
+	} else {
+		$redcapDiv .= "<div class='fwb'>REDCap Instrument</div>";
+	}
+	if ($d_source) {
+		if ($d_redcap_url) {
+			$redcapDiv .= "<div class='display_data'><strong>Instrument</strong>: $d_source</div>";
+		} else {
+			$redcapDiv .= "<div class='display_data'>$d_source</div>";
+		}
+	}
+	$redcapDiv .= "</div>";
+	if (!$d_redcap_url && !$d_source) {
+		$redcapDiv = "";
+	}
 
-    $awardNoWithoutApplicationType = $d_ck_original_award_number ?: Grant::trimApplicationType($ary['sponsor_award_no']) ?: $d_ck_base_award_no;
-    if ($awardNoWithoutApplicationType == "000") {
-        $awardNoWithoutApplicationType = "<i>".Grant::$noNameAssigned."</i> (000)";
-    }
-    $show_anawardno = REDCapManagement::makeHTMLId($d_ck_original_award_number ?: $d_ck_base_award_no);
-    $show_anawardno .= "___".$d_source;
-    if ($flagsOn && in_array($show_anawardno, $flaggedGrants)) {
-        $fontAwesomeFlag = "<i class='fas redtext fa-flag'></i>";
-    }
+	$awardNoWithoutApplicationType = $d_ck_original_award_number ?: Grant::trimApplicationType($ary['sponsor_award_no']) ?: $d_ck_base_award_no;
+	if ($awardNoWithoutApplicationType == "000") {
+		$awardNoWithoutApplicationType = "<i>".Grant::$noNameAssigned."</i> (000)";
+	}
+	$show_anawardno = REDCapManagement::makeHTMLId($d_ck_original_award_number ?: $d_ck_base_award_no);
+	$show_anawardno .= "___".$d_source;
+	if ($flagsOn && in_array($show_anawardno, $flaggedGrants)) {
+		$fontAwesomeFlag = "<i class='fas redtext fa-flag'></i>";
+	}
 
-    $primeSponsorDiv = "";
-    $directSponsorDiv = "";
-    if ($d_prime_sponsor_type || $d_prime_sponsor_name) {
-        $primeSponsorDiv = "<div class='fl wd49 sect'>".
-                "<div class='fwb'>Prime Sponsor Type</div>".
-                "<div class='display_data'>".$d_prime_sponsor_type.$d_prime_sponsor_name."</div>".
-            "</div>";
-    }
-    if ($d_direct_sponsor_type || $d_direct_sponsor_name) {
-        $directSponsorDiv = "<div class='fl wd49 sect'>".
-                "<div class='fwb'>Direct Sponsor Type</div>".
-                "<div class='display_data'>".$d_direct_sponsor_name.$d_direct_sponsor_type."</div>".
-            "</div>";
-    }
+	$primeSponsorDiv = "";
+	$directSponsorDiv = "";
+	if ($d_prime_sponsor_type || $d_prime_sponsor_name) {
+		$primeSponsorDiv = "<div class='fl wd49 sect'>".
+				"<div class='fwb'>Prime Sponsor Type</div>".
+				"<div class='display_data'>".$d_prime_sponsor_type.$d_prime_sponsor_name."</div>".
+			"</div>";
+	}
+	if ($d_direct_sponsor_type || $d_direct_sponsor_name) {
+		$directSponsorDiv = "<div class='fl wd49 sect'>".
+				"<div class='fwb'>Direct Sponsor Type</div>".
+				"<div class='display_data'>".$d_direct_sponsor_name.$d_direct_sponsor_type."</div>".
+			"</div>";
+	}
 
 	return "<table group='".$show_anawardno."' class='tn".$tablenum." ".$doclass." tlayer_".$show_anawardno." awardt rr".$d_original_award_number_no."' style='width: 380px; margin: 0 auto -12px auto; padding-top: 12px;'>".
 			"<tr class='".$backgroundClass."'>".
-                "<td style='padding: 3px 12px !important;'><div style='text-align: left;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: left; width:30%;'><strong>Role</strong>: ".$d_role."<br/><strong>Effort</strong>: ".$d_percent_effort."</div><div style='text-align: right;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: right; width:30%'> ".$d_last_update."</div><div style='float: right; width: 40%; text-align: center;'>$piName</div></td></tr>".
-                "<tr class='$backgroundClass'><td><h3 class='withFlag'>$awardNoWithoutApplicationType</h3><span title='Flag to manually choose' class='flag' onclick='toggleFlag(this, \"$awardNo\", \"$source\");'>$fontAwesomeFlag</span></td></tr>".
-                $d_title.
-			    "<tr class='$backgroundClass'><td><div class='row' style='margin-bottom:10px; margin-top: 7px;   padding-left: 15px;padding-right: 15px;'>".
+				"<td style='padding: 3px 12px !important;'><div style='text-align: left;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: left; width:30%;'><strong>Role</strong>: ".$d_role."<br/><strong>Effort</strong>: ".$d_percent_effort."</div><div style='text-align: right;font-size: 13px;margin-top: 2px;margin-bottom: -3px; float: right; width:30%'> ".$d_last_update."</div><div style='float: right; width: 40%; text-align: center;'>$piName</div></td></tr>".
+				"<tr class='$backgroundClass'><td><h3 class='withFlag'>$awardNoWithoutApplicationType</h3><span title='Flag to manually choose' class='flag' onclick='toggleFlag(this, \"$awardNo\", \"$source\");'>$fontAwesomeFlag</span></td></tr>".
+				$d_title.
+				"<tr class='$backgroundClass'><td><div class='row' style='margin-bottom:10px; margin-top: 7px;   padding-left: 15px;padding-right: 15px;'>".
 							"<div class='col-md-7 align-self-center' style='max-width:49%;padding-left: 0px;padding-right: 0px; background-color:#55555536;margin-right: 4px;'>".
 								"<div class='fwb'>PROJECT</div>".
 								"<div style='border-bottom: 1px solid;margin-right: 5px;margin-left: 5px;'>".
@@ -580,10 +614,10 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 							"</div></div>".
 							"<div class='row' style='margin-top: -10px; margin-bottom: 10px;    padding-left: 15px;padding-right: 15px;'>".
 							"<div class='col-md-7 align-self-center dateEntryDiv' style='margin-right: 4px;'>".
-                            "<div>".
-                                "<div style='width:50%;display: inline-block;' class='display_data'>$project_start_date</div>".
-                                "<div style='width:50%;display: inline-block;' class='display_data'>$project_end_date</div>".
-                            "</div>".
+							"<div>".
+								"<div style='width:50%;display: inline-block;' class='display_data'>$project_start_date</div>".
+								"<div style='width:50%;display: inline-block;' class='display_data'>$project_end_date</div>".
+							"</div>".
 							"</div>".
 							"<div class='col-md-7 align-self-center dateEntryDiv'>".
 								"<div>".
@@ -602,28 +636,28 @@ function transformAward($ary, $i, $pid, $flaggedGrants = []) {
 						"<div class='display_data'>".$d_sponsor.$d_sponsor_type."</div>".
 					"</div>".
 			"</td></tr>".
-            "<tr class='$backgroundClass'><td>".$d_sponsor_award_no.$d_finance_type.$d_application_type.$redcapDiv."</td></tr>".
-           "<tr class='$backgroundClass'><td>".$d_base_award_no.
+			"<tr class='$backgroundClass'><td>".$d_sponsor_award_no.$d_finance_type.$d_application_type.$redcapDiv."</td></tr>".
+		   "<tr class='$backgroundClass'><td>".$d_base_award_no.
 				"<div class='fl wd49 sect'>".
 					"<div class='fwb'>NIH Mechanism</div>".
-                    "<div class='display_data'>".$d_nih_mechanism."</div>".
-                "</div>".
-                $primeSponsorDiv.$directSponsorDiv.
+					"<div class='display_data'>".$d_nih_mechanism."</div>".
+				"</div>".
+				$primeSponsorDiv.$directSponsorDiv.
 			"</td></tr>".
 			"<tr class='$backgroundClass'><td>".
-                    "<div class='fl sect' style='width:40%'>".
-                        "<div class='fwb'>Funding Source</div>".
-                        "<div class='display_data' style='text-transform:uppercase;'>".$d_funding_source."</div>".
-                    "</div>".
+					"<div class='fl sect' style='width:40%'>".
+						"<div class='fwb'>Funding Source</div>".
+						"<div class='display_data' style='text-transform:uppercase;'>".$d_funding_source."</div>".
+					"</div>".
 					"<div class='fl sect' style='width:60%'>".
 						"<div class='fwb'>Type / Bin</div>".
 						"<div class='display_data' style='text-transform:uppercase;'>".$telem."</div>".
 					"</div>".
 			"</td></tr>".
 
-            "<tr class='$backgroundClass'><td>".
-            "</td></tr>".
-            implode("</tr><tr class='$backgroundClass'>", $elems)."</tr><tr><td><div>".$tbuttons."</div><div class='centered' style='float: right; width: calc(50% - 5px); font-size: 12px; margin: 8px auto;'><a href='javascript:;' class='button setNAButton' onclick='dissociate($i, award_$i); return false;'>not their grant</a></div></td></tr></table><div class='at ".$doclass." at".$class_baseaward."' style='position:relative;'><div class='ftype'>".$ftype."</div></div>";
+			"<tr class='$backgroundClass'><td>".
+			"</td></tr>".
+			implode("</tr><tr class='$backgroundClass'>", $elems)."</tr><tr><td><div>".$tbuttons."</div><div class='centered' style='float: right; width: calc(50% - 5px); font-size: 12px; margin: 8px auto;'><a href='javascript:;' class='button setNAButton' onclick='dissociate($i, award_$i); return false;'>not their grant</a></div></td></tr></table><div class='at ".$doclass." at".$class_baseaward."' style='position:relative;'><div class='ftype'>".$ftype."</div></div>";
 }
 
 function findNumberOfSimilarAwards($baseAwardNo, $originalKey, $listOfAwards) {
@@ -642,32 +676,32 @@ $getClause = isset($_GET['new']) ? "&new=$daysForNew" : "";
 $thisURL = Application::link("this")."&record=".urlencode($record).$getClause;
 $nextRecord = $records[0] ?? $record;
 foreach ($records as $i => $myRecordId) {
-    if ($myRecordId == $record) {
-        $nextRecord = $records[$i + 1] ?? $records[0];
-        $nextPageLink = Application::link("this")."&record=".urlencode($nextRecord).$getClause;
-        break;
-    }
+	if ($myRecordId == $record) {
+		$nextRecord = $records[$i + 1] ?? $records[0];
+		$nextPageLink = Application::link("this")."&record=".urlencode($nextRecord).$getClause;
+		break;
+	}
 }
 $nextNewRecordButton = "";
 if (isset($_GET['new'])) {
-	$nextNewRecord = getNextRecordWithNewData($record, FALSE);
+	$nextNewRecord = getNextRecordWithNewData($record, false);
 	if ($nextNewRecord && ($nextNewRecord > $record)) {
-        $url = Application::link("this");
-        $nextNewRecord = urlencode($nextNewRecord);
-        $nextNewRecordButton = "<br/><a href='"."$url&record=$nextNewRecord$getClause' class='button'>view next <u>new</u> record</a>";
+		$url = Application::link("this");
+		$nextNewRecord = urlencode($nextNewRecord);
+		$nextNewRecordButton = "<br/><a href='"."$url&record=$nextNewRecord$getClause' class='button'>view next <u>new</u> record</a>";
 	} else {
-        $nextNewRecordButton = "<br/><div class='centered'>No more new grants.</div>";
-    }
+		$nextNewRecordButton = "<br/><div class='centered'>No more new grants.</div>";
+	}
 }
 ?>
 
 <div id='content' style='margin-left:auto;'>
 <?php
-    if (function_exists("makeHelpLink")) {
-        echo makeHelpLink();
-    } else {
-        echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
-    }
+	if (function_exists("makeHelpLink")) {
+		echo makeHelpLink();
+	} else {
+		echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
+	}
 ?>
 <script>
 function refreshToDays() {
@@ -1107,13 +1141,13 @@ function isOkToShowJS(row) {
 	const ary = row[1];
 <?php
 	echo "\tconst isNew = ";
-	if (isset($_GET['new'])) {
-		echo "true";
-	} else {
-		echo "false";
-	}
-	echo ";\n";
-	echo "\tconst daysForNew = ".$daysForNew.";\n";
+if (isset($_GET['new'])) {
+	echo "true";
+} else {
+	echo "false";
+}
+echo ";\n";
+echo "\tconst daysForNew = ".$daysForNew.";\n";
 ?>
 	if ((typeof ary['last_update'] != "undefined") && (typeof ary['end_date'] != "undefined") && (isNew)) {
 		const dateLast = ary['last_update'];
@@ -1220,11 +1254,11 @@ function addToImport(award, action) {
 $lastUpdate = "";
 $row = REDCapManagement::getNormativeRow($redcapData);
 if (isset($_GET['new'])) {
-    echo "<div class='trow'><h1><span>Grant Wrangler for ";
-    echo "Last <input type='text' id='newDaysForNew' style='font-size:22px; width:50px;' onblur='refreshToDays();' value='$daysForNew'> Days";
-    echo "</span></h1>";
+	echo "<div class='trow'><h1><span>Grant Wrangler for ";
+	echo "Last <input type='text' id='newDaysForNew' style='font-size:22px; width:50px;' onblur='refreshToDays();' value='$daysForNew'> Days";
+	echo "</span></h1>";
 } else {
-    echo "<div class='trow'><h1><span>Grant Wrangler</span></h1>";
+	echo "<div class='trow'><h1><span>Grant Wrangler</span></h1>";
 }
 
 $switchFlagStatus = Grants::areFlagsOn($pid) ? "off" : "on";  // deliberately reversed
@@ -1232,26 +1266,26 @@ $switchFlagStatus = Grants::areFlagsOn($pid) ? "off" : "on";  // deliberately re
 
 echo "<br/>";
 if ($row['identifier_last_name'] && $row['identifier_first_name']) {
-    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span>, {$row['identifier_first_name']}</h2>";
-} else if ($row['identifier_first_name']) {
-    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'>{$row['identifier_first_name']}</h2>";
-} else if ($row['identifier_last_name']) {
-    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span></h2>";
+	echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span>, {$row['identifier_first_name']}</h2>";
+} elseif ($row['identifier_first_name']) {
+	echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'>{$row['identifier_first_name']}</h2>";
+} elseif ($row['identifier_last_name']) {
+	echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'><span>{$row['identifier_last_name']}</span></h2>";
 } else {
-    echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'>No name specified</h2>";
+	echo "<h2 style='width: 400px; display: inline-block; z-index: 0;'>No name specified</h2>";
 }
 echo "<div id='dsearch'>";
 
-if (($row['record_id'] == ((int) $record) + 1) && (!$nextPageLink))  {
-    $nextPageLink = Application::link("this")."&record=".($record+1).$getClause;
+if (($row['record_id'] == ((int) $record) + 1) && (!$nextPageLink)) {
+	$nextPageLink = Application::link("this")."&record=".($record + 1).$getClause;
 }
 $summaryLink = Links::makeSummaryLink($pid, $record, $event_id, "REDCap Summary");
 $addNewGrantLink = Links::makeCustomGrantLink($pid, $record, $event_id, "Add New Grant");
 if (!isset($_GET['new'])) {
-    $toggleLink = "<a href='$thisURL&new=$daysForNew'>New Grants Only</a>";
+	$toggleLink = "<a href='$thisURL&new=$daysForNew'>New Grants Only</a>";
 } else {
-    $allURL = str_replace($getClause, "", $thisURL);
-    $toggleLink = "<a href='$allURL'>View All Grants</a>";
+	$allURL = str_replace($getClause, "", $thisURL);
+	$toggleLink = "<a href='$allURL'>View All Grants</a>";
 }
 $excludeListHTML = $excludeList->makeEditForm($record);
 $excludeListHTML = str_replace("<button", "<a class='button' href='javascript:;'", $excludeListHTML);
@@ -1260,7 +1294,7 @@ $excludeListHTML = str_replace("Update", "update list", $excludeListHTML);
 
 echo "<div class='tsearch'><div>Enter Last Name:</div><div><input type='text' id='search'></div><div id='searchDiv'></div></div>";
 echo "<div class='tor'>or</div>";
-echo "<div class='tsearch'><div>Choose Record:</div><div style='color:#ffffff;'>".str_replace("Record:", "", Publications::getSelectRecord(TRUE))."</div></div>";
+echo "<div class='tsearch'><div>Choose Record:</div><div style='color:#ffffff;'>".str_replace("Record:", "", Publications::getSelectRecord(true))."</div></div>";
 echo "<div class='tflag' title='Flagging grants only uses the ones you choose. If turned off, the computer calculates results.'><a href='javascript:;' class='button' style='padding-left: 3px !important; padding-right: 3px !important; margin-top: 2px !important; line-height: 1.1em;' onclick='toggleFlags(\"$switchFlagStatus\"); return false;'>turn flags $switchFlagStatus</a></div>";
 echo "<div class='tsearch' style='clear: both;'><a href='$nextPageLink' class='button'>view next record</a>$nextNewRecordButton</div>";
 echo "<div class='tor'></div>";
@@ -1273,22 +1307,22 @@ echo "<div id='visualization'></div>";
 
 
 foreach ($row as $field => $value) {
-    if (($value === "") && preg_match("/^summary_calculate_to_import/", $field)) {
-        $row[$field] = "{}";
-    } else if (($value === "") && preg_match("/^summary_calculate_/", $field)) {
-        $row[$field] = "[]";
-    }
+	if (($value === "") && preg_match("/^summary_calculate_to_import/", $field)) {
+		$row[$field] = "{}";
+	} elseif (($value === "") && preg_match("/^summary_calculate_/", $field)) {
+		$row[$field] = "[]";
+	}
 }
 $lastUpdate = $row['summary_last_calculated'] ? "<h4 class=\"nomargin\">Calculated on ".DateManagement::datetime2LongDateTime($row['summary_last_calculated'])."</h4>" : "";
 $order = json_decode($row["summary_calculate_order"], true);
 $inUse = [];
 $careerProgressionAry = [];
 if (!empty($order)) {
-    $ai = 0;
-    foreach ($order as $award) {
-        $inUse[] = $award['sponsor_award_no'];
-        $careerProgressionAry[] = \Vanderbilt\FlightTrackerExternalModule\careerprogression($award, $ai++);
-    }
+	$ai = 0;
+	foreach ($order as $award) {
+		$inUse[] = $award['sponsor_award_no'];
+		$careerProgressionAry[] = \Vanderbilt\FlightTrackerExternalModule\careerprogression($award, $ai++);
+	}
 }
 $careerProgressionJSON = json_encode($careerProgressionAry);
 
@@ -1411,127 +1445,127 @@ $awardDescript = Grants::areFlagsOn($pid) ? "Flagged" : "Career-Defining";
 
         <?php
 
-        echo "</script>";
+		echo "</script>";
 
-        $skip = array("redcap_type", "start_date", "end_date");
-        foreach ($listOfAwards as $awardno => $award) {
-            foreach ($toImport as $index => $ary) {
-                $action = $ary[0];
-                $award2 = $ary[1];
-                $different = false;
-                foreach ($award2 as $type2 => $value2) {
-                    $awardValue = preg_replace("/qqqqq/", "'", $award[$type2]);
-                    $award2Value = preg_replace("/qqqqq/", "'", $value2);
-                    if (!in_array($type2, $skip)) {
-                        if ($award2Value != $awardValue) {
-                            $different = true;
-                            break;
-                        }
-                    }
-                }
-                if (!$different) {
-                    foreach ($skip as $field) {
-                        $listOfAwards[$awardno][$field] = $award2[$field];
-                    }
-                }
-            }
-        }
+$skip = ["redcap_type", "start_date", "end_date"];
+foreach ($listOfAwards as $awardno => $award) {
+	foreach ($toImport as $index => $ary) {
+		$action = $ary[0];
+		$award2 = $ary[1];
+		$different = false;
+		foreach ($award2 as $type2 => $value2) {
+			$awardValue = preg_replace("/qqqqq/", "'", $award[$type2]);
+			$award2Value = preg_replace("/qqqqq/", "'", $value2);
+			if (!in_array($type2, $skip)) {
+				if ($award2Value != $awardValue) {
+					$different = true;
+					break;
+				}
+			}
+		}
+		if (!$different) {
+			foreach ($skip as $field) {
+				$listOfAwards[$awardno][$field] = $award2[$field];
+			}
+		}
+	}
+}
 
-        echo "<div class='bwrap'><div class='middle'>";
-        if (isset($_GET['new'])) {
-            $title = "New Awards (<span id='allPossibleAwards'></span>)";
-        } else {
-            $title = "Auto-Processed Awards (<span id='allPossibleAwards'></span>)";
-        }
-        echo "<div style='font-size: 14px;letter-spacing: -0.4px;text-align: center;line-height: 16px;padding: 20px;'>These awards will be given normal weight when the computer automatically figures out career-defining awards.</div><h2 style='text-align: center;margin: auto;padding: 0;font-weight: 700;color: #00000078;'>$title</h2>";
-        echo "<div id='llist' class='list-group col'>";
+echo "<div class='bwrap'><div class='middle'>";
+if (isset($_GET['new'])) {
+	$title = "New Awards (<span id='allPossibleAwards'></span>)";
+} else {
+	$title = "Auto-Processed Awards (<span id='allPossibleAwards'></span>)";
+}
+echo "<div style='font-size: 14px;letter-spacing: -0.4px;text-align: center;line-height: 16px;padding: 20px;'>These awards will be given normal weight when the computer automatically figures out career-defining awards.</div><h2 style='text-align: center;margin: auto;padding: 0;font-weight: 700;color: #00000078;'>$title</h2>";
+echo "<div id='llist' class='list-group col'>";
 
-        $i = 0;
-        $awardsSeen = array();
-        $awardTypes = Grant::getAwardTypes();
-        foreach ($awardTypes as $type => $num) {
-            foreach ($listOfAwards as $idx => $award) {
-                if (
-                    ($award['redcap_type'] == $type)
-                    && !isAwardInToImport($toImport, $award)
-                ) {
-                    if (isOkToShow($award, $idx, $listOfAwards)) {
-                        $seenStatement = "";
-                        if ($awardsSeen[generateAwardIndex($award['sponsor_award_no'], $award['sponsor'])]) {
-                            $seenStatement = " (duplicate)";
-                        }
-                        $awardsSeen[generateAwardIndex($award['sponsor_award_no'], $award['sponsor'])] = 1;
+$i = 0;
+$awardsSeen = [];
+$awardTypes = Grant::getAwardTypes();
+foreach ($awardTypes as $type => $num) {
+	foreach ($listOfAwards as $idx => $award) {
+		if (
+			($award['redcap_type'] == $type)
+			&& !isAwardInToImport($toImport, $award)
+		) {
+			if (isOkToShow($award, $idx, $listOfAwards)) {
+				$seenStatement = "";
+				if ($awardsSeen[generateAwardIndex($award['sponsor_award_no'], $award['sponsor'])]) {
+					$seenStatement = " (duplicate)";
+				}
+				$awardsSeen[generateAwardIndex($award['sponsor_award_no'], $award['sponsor'])] = 1;
 
-                        echo "<li class='list list-group-item'>";
-                        echo "<input type='hidden' id='listOfAwards_$i' value=''>";
-                        echo "<script>\n";
-                        $awardJSON = json_encode($award);
-                        echo "const award_$i = $awardJSON;\n";
-                        if (preg_match("/____/", generateAwardIndex($award['sponsor_award_no'], $award['sponsor']))) {
-                            echo "$('#listOfAwards_".$i."').val(award_".$i."['sponsor']+'____'+award_".$i."['sponsor_award_no']);\n";
-                        } else {
-                            echo "$('#listOfAwards_".$i."').val(award_".$i."['sponsor_award_no']);\n";
-                        }
-                        echo "</script>\n";
-                        echo transformAward($award, $i, $pid, $flaggedGrants);
+				echo "<li class='list list-group-item'>";
+				echo "<input type='hidden' id='listOfAwards_$i' value=''>";
+				echo "<script>\n";
+				$awardJSON = json_encode($award);
+				echo "const award_$i = $awardJSON;\n";
+				if (preg_match("/____/", generateAwardIndex($award['sponsor_award_no'], $award['sponsor']))) {
+					echo "$('#listOfAwards_".$i."').val(award_".$i."['sponsor']+'____'+award_".$i."['sponsor_award_no']);\n";
+				} else {
+					echo "$('#listOfAwards_".$i."').val(award_".$i."['sponsor_award_no']);\n";
+				}
+				echo "</script>\n";
+				echo transformAward($award, $i, $pid, $flaggedGrants);
 
-                        echo "<script>$(document).ready(() => { ";
-                        if (in_array($award['sponsor_award_no'], $inUse)) {
-                            echo "$('#add_$i').hide();";
-                        } else {
-                            echo "$('#remove_$i').hide();";
-                        }
-                        echo "$('#left_$i').hide();";
-                        echo "$('#change_$i').hide();";
-                        echo " });</script>";
+				echo "<script>$(document).ready(() => { ";
+				if (in_array($award['sponsor_award_no'], $inUse)) {
+					echo "$('#add_$i').hide();";
+				} else {
+					echo "$('#remove_$i').hide();";
+				}
+				echo "$('#left_$i').hide();";
+				echo "$('#change_$i').hide();";
+				echo " });</script>";
 
-                        echo "</li>";
-                    }
-                    $i++;
-                }
-            }
-        }
-        echo "</div></div>";
+				echo "</li>";
+			}
+			$i++;
+		}
+	}
+}
+echo "</div></div>";
 
-        # key = award number
-        # value = array [ ADD/REMOVE/A_CHANGE/R_CHANGE, award ]
-        $toImport = json_decode($row["summary_calculate_to_import"], true);
-        echo "<div class='right'>";
-        echo "<div style='font-size: 14px;letter-spacing: -0.4px;text-align: center;line-height: 16px;padding: 20px;'>Adjusted / Preferred awards will be adapted next time the computer automatically figures out career-defining awards.</div><h2 style='text-align: center;margin: auto;padding: 0px;font-weight: 700;color: #00000078; padding-right: 16px;'>Adjusted / Preferred Awards (<span id='awardsToPrefer'></span>)</h2>";
-        echo "<div id='toImportDiv'>";
-        if (empty($toImport)) {
-            echo "<ul id='ldrop' class='list-group col' style='list-style: none;'>";
-            echo "</ul>";
-        } else {
-            echo "<ul id='ldrop' class='list-group col' style='list-style: none;'>";
-            foreach ($toImport as $index => $ary) {
-                $action = $ary[0];
-                $award = $ary[1];
-                $awardJSON = json_encode($award);
-                $awardno = $award['sponsor_award_no'] ?? $award['original_award_number'] ?? JS_UNDEFINED;
-                echo "<li class='list-group-item'>".transformAward($award, $i, $pid, $flaggedGrants)."</li>";
-                echo "<script>$(document).ready(() => {
+# key = award number
+# value = array [ ADD/REMOVE/A_CHANGE/R_CHANGE, award ]
+$toImport = json_decode($row["summary_calculate_to_import"], true);
+echo "<div class='right'>";
+echo "<div style='font-size: 14px;letter-spacing: -0.4px;text-align: center;line-height: 16px;padding: 20px;'>Adjusted / Preferred awards will be adapted next time the computer automatically figures out career-defining awards.</div><h2 style='text-align: center;margin: auto;padding: 0px;font-weight: 700;color: #00000078; padding-right: 16px;'>Adjusted / Preferred Awards (<span id='awardsToPrefer'></span>)</h2>";
+echo "<div id='toImportDiv'>";
+if (empty($toImport)) {
+	echo "<ul id='ldrop' class='list-group col' style='list-style: none;'>";
+	echo "</ul>";
+} else {
+	echo "<ul id='ldrop' class='list-group col' style='list-style: none;'>";
+	foreach ($toImport as $index => $ary) {
+		$action = $ary[0];
+		$award = $ary[1];
+		$awardJSON = json_encode($award);
+		$awardno = $award['sponsor_award_no'] ?? $award['original_award_number'] ?? JS_UNDEFINED;
+		echo "<li class='list-group-item'>".transformAward($award, $i, $pid, $flaggedGrants)."</li>";
+		echo "<script>$(document).ready(() => {
                     $('#add_$i').hide();
                     $('#remove_$i').hide();
                     $('#left_$i').show();
                     $('#change_$i').hide();
                     const award_$i = $awardJSON;
                 });</script>";
-                $i++;
-            }
-            echo "</ul>";
+		$i++;
+	}
+	echo "</ul>";
 
-        }
-        echo "</div></div>";
+}
+echo "</div></div>";
 
-        echo "<form id='tmainform' action='$nextPageLink' method='POST'>";
-        echo "<input type='hidden' name='toImport' id='toImport' value=''>";
-        echo "<input type='hidden' id='origToImport' value=''>";
-        echo "<input type='hidden' name='record' id='record' value='$record'>";
-        $csrfToken = Application::generateCSRFToken();
-        echo "<input type='hidden' name='redcap_csrf_token' id='redcap_csrf_token' value='$csrfToken'>";
-        echo "</form>";
-        echo "</div>";
+echo "<form id='tmainform' action='$nextPageLink' method='POST'>";
+echo "<input type='hidden' name='toImport' id='toImport' value=''>";
+echo "<input type='hidden' id='origToImport' value=''>";
+echo "<input type='hidden' name='record' id='record' value='$record'>";
+$csrfToken = Application::generateCSRFToken();
+echo "<input type='hidden' name='redcap_csrf_token' id='redcap_csrf_token' value='$csrfToken'>";
+echo "</form>";
+echo "</div>";
 ?>
     <script>
         $(document).ready(() => {
@@ -2218,70 +2252,84 @@ function resetCounts() {
 <?php
 
 function getClassAndFType($type) {
-    if($type == 'Individual K'){
-        $doclass = 'class_c0';  $ftype='K';
-    } elseif($type == 'Internal K'){
-        $doclass = 'class_c1';   $ftype='K';
-    } else if($type == 'K12/KL2'){
-        $doclass = 'class_c2';  $ftype='K';
-    } else if($type == 'K Equivalent'){
-        $doclass = 'class_c3';   $ftype='K';
-    } else if($type == 'R01'){
-        $doclass = 'class_c4';  $ftype='R';
-    } else if($type == 'R01 Equivalent'){
-        $doclass = 'class_c5';   $ftype='R';
-    } else if($type == 'Training Appointment'){
-        $doclass = 'class_c6';   $ftype='TA';
-    } else if($type == 'Research Fellowship'){
-        $doclass = 'class_c7';   $ftype='RF';
-    } else if($type == 'Training Grant Admin'){
-        $doclass = 'class_c8';  $ftype='TG';
-    } else if($type == 'Bridge Award'){
-        $doclass = 'class_c9';    $ftype='KR';
-    } else if($type == 'N/A'){
-        $doclass = 'class_c10';   $ftype='N';
-    } else {$doclass = 'class_grey';  $ftype='?';}
-    return [$doclass, $ftype];
+	if ($type == 'Individual K') {
+		$doclass = 'class_c0';
+		$ftype = 'K';
+	} elseif ($type == 'Internal K') {
+		$doclass = 'class_c1';
+		$ftype = 'K';
+	} elseif ($type == 'K12/KL2') {
+		$doclass = 'class_c2';
+		$ftype = 'K';
+	} elseif ($type == 'K Equivalent') {
+		$doclass = 'class_c3';
+		$ftype = 'K';
+	} elseif ($type == 'R01') {
+		$doclass = 'class_c4';
+		$ftype = 'R';
+	} elseif ($type == 'R01 Equivalent') {
+		$doclass = 'class_c5';
+		$ftype = 'R';
+	} elseif ($type == 'Training Appointment') {
+		$doclass = 'class_c6';
+		$ftype = 'TA';
+	} elseif ($type == 'Research Fellowship') {
+		$doclass = 'class_c7';
+		$ftype = 'RF';
+	} elseif ($type == 'Training Grant Admin') {
+		$doclass = 'class_c8';
+		$ftype = 'TG';
+	} elseif ($type == 'Bridge Award') {
+		$doclass = 'class_c9';
+		$ftype = 'KR';
+	} elseif ($type == 'N/A') {
+		$doclass = 'class_c10';
+		$ftype = 'N';
+	} else {
+		$doclass = 'class_grey';
+		$ftype = '?';
+	}
+	return [$doclass, $ftype];
 }
 
 function getEarliestStartDate($listOfAwards) {
-    $oneDay = 24 * 3600;
-    $startTs = time();
-    foreach ($listOfAwards as $key => $award) {
-        if ($award['start_date']) {
-            $ts = strtotime($award['start_date']);
-            if ($ts < $startTs) {
-                $startTs = $ts;
-            }
-        }
-    }
-    return date("Y-m-d", $startTs - getSpacingDays() * $oneDay);
+	$oneDay = 24 * 3600;
+	$startTs = time();
+	foreach ($listOfAwards as $key => $award) {
+		if ($award['start_date']) {
+			$ts = strtotime($award['start_date']);
+			if ($ts < $startTs) {
+				$startTs = $ts;
+			}
+		}
+	}
+	return date("Y-m-d", $startTs - getSpacingDays() * $oneDay);
 }
 
 function getSpacingDays() {
-    return 90;
+	return 90;
 }
 
 function getLatestEndDate($listOfAwards) {
-    $oneDay = 24 * 3600;
-    $endTs = time();
-    foreach ($listOfAwards as $key => $award) {
-        if ($award['end_date']) {
-            $ts = strtotime($award['end_date']);
-            if ($ts > $endTs) {
-                $endTs = $ts;
-            }
-        }
-    }
-    return date("Y-m-d", $endTs + getSpacingDays() * $oneDay);
+	$oneDay = 24 * 3600;
+	$endTs = time();
+	foreach ($listOfAwards as $key => $award) {
+		if ($award['end_date']) {
+			$ts = strtotime($award['end_date']);
+			if ($ts > $endTs) {
+				$endTs = $ts;
+			}
+		}
+	}
+	return date("Y-m-d", $endTs + getSpacingDays() * $oneDay);
 }
 
 function makeStatusButtons($i, $award) {
-    foreach ($award as $key => $value) {
-        $award[$key] = preg_replace("/'/", "qqqqq", $value);
-    }
+	foreach ($award as $key => $value) {
+		$award[$key] = preg_replace("/'/", "qqqqq", $value);
+	}
 
-    return "<div class='thebuttons'>
+	return "<div class='thebuttons'>
         <div id='add_$i' class='add'><span class='thestatus'>[ drag right to prefer ]</span></div>
         <a style='display:none;' class='tbutton addbutton' href='javascript:;' onclick='addAward(\"redcap_type_$i\", $i, award_$i);'>process award</a>
         <div id='left_$i' class='moveleft'><span class='thestatus'>[ drag left to backtrack ]</span></div>
@@ -2292,16 +2340,16 @@ function makeStatusButtons($i, $award) {
 }
 
 function isAwardInToImport($toImport, $award) {
-    $awardNo = $award['sponsor_award_no'] ?? JS_UNDEFINED;
-    $startDate = $award['start_date'] ?? JS_UNDEFINED;
-    $sponsor = $award['sponsor'] ?? JS_UNDEFINED;
+	$awardNo = $award['sponsor_award_no'] ?? JS_UNDEFINED;
+	$startDate = $award['start_date'] ?? JS_UNDEFINED;
+	$sponsor = $award['sponsor'] ?? JS_UNDEFINED;
 	$sep = "____";
 	$index = "$awardNo$sep$sponsor$sep$startDate";
-    return isset($toImport[$index]);
+	return isset($toImport[$index]);
 }
 
 function addSpacesIfRelevant(&$value) {
-    if (!preg_match("/\s/", $value) && preg_match("/\(/", $value)) {
-        $value = str_replace("(", " (", $value);
-    }
+	if (!preg_match("/\s/", $value) && preg_match("/\(/", $value)) {
+		$value = str_replace("(", " (", $value);
+	}
 }

@@ -26,138 +26,127 @@ namespace PhpOffice\PhpWord\Style;
  */
 class Indentation extends AbstractStyle
 {
-    /**
-     * Left indentation (twip).
-     *
-     * @var null|float
-     */
-    private $left = 0;
+	/**
+	 * Left indentation (twip).
+	 *
+	 * @var null|float
+	 */
+	private $left = 0;
 
-    /**
-     * Right indentation (twip).
-     *
-     * @var null|float
-     */
-    private $right = 0;
+	/**
+	 * Right indentation (twip).
+	 *
+	 * @var null|float
+	 */
+	private $right = 0;
 
-    /**
-     * Additional first line indentation (twip).
-     *
-     * @var null|float
-     */
-    private $firstLine = 0;
+	/**
+	 * Additional first line indentation (twip).
+	 *
+	 * @var null|float
+	 */
+	private $firstLine = 0;
 
-    /**
-     * Additional first line chars indentation (twip).
-     *
-     * @var int
-     */
-    private $firstLineChars = 0;
+	/**
+	 * Additional first line chars indentation (twip).
+	 *
+	 * @var int
+	 */
+	private $firstLineChars = 0;
 
-    /**
-     * Indentation removed from first line (twip).
-     *
-     * @var null|float
-     */
-    private $hanging = 0;
+	/**
+	 * Indentation removed from first line (twip).
+	 *
+	 * @var null|float
+	 */
+	private $hanging = 0;
 
-    /**
-     * Create a new instance.
-     *
-     * @param array $style
-     */
-    public function __construct($style = [])
-    {
-        $this->setStyleByArray($style);
-    }
+	/**
+	 * Create a new instance.
+	 *
+	 * @param array $style
+	 */
+	public function __construct($style = []) {
+		$this->setStyleByArray($style);
+	}
 
-    /**
-     * Get left.
-     */
-    public function getLeft(): ?float
-    {
-        return $this->left;
-    }
+	/**
+	 * Get left.
+	 */
+	public function getLeft(): ?float {
+		return $this->left;
+	}
 
-    /**
-     * Set left.
-     */
-    public function setLeft(?float $value): self
-    {
-        $this->left = $this->setNumericVal($value);
+	/**
+	 * Set left.
+	 */
+	public function setLeft(?float $value): self {
+		$this->left = $this->setNumericVal($value);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get right.
-     */
-    public function getRight(): ?float
-    {
-        return $this->right;
-    }
+	/**
+	 * Get right.
+	 */
+	public function getRight(): ?float {
+		return $this->right;
+	}
 
-    /**
-     * Set right.
-     */
-    public function setRight(?float $value): self
-    {
-        $this->right = $this->setNumericVal($value);
+	/**
+	 * Set right.
+	 */
+	public function setRight(?float $value): self {
+		$this->right = $this->setNumericVal($value);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get first line.
-     */
-    public function getFirstLine(): ?float
-    {
-        return $this->firstLine;
-    }
+	/**
+	 * Get first line.
+	 */
+	public function getFirstLine(): ?float {
+		return $this->firstLine;
+	}
 
-    /**
-     * Set first line.
-     */
-    public function setFirstLine(?float $value): self
-    {
-        $this->firstLine = $this->setNumericVal($value);
+	/**
+	 * Set first line.
+	 */
+	public function setFirstLine(?float $value): self {
+		$this->firstLine = $this->setNumericVal($value);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get first line chars.
-     */
-    public function getFirstLineChars(): int
-    {
-        return $this->firstLineChars;
-    }
+	/**
+	 * Get first line chars.
+	 */
+	public function getFirstLineChars(): int {
+		return $this->firstLineChars;
+	}
 
-    /**
-     * Set first line chars.
-     */
-    public function setFirstLineChars(int $value): self
-    {
-        $this->firstLineChars = $this->setIntVal($value, $this->firstLineChars);
+	/**
+	 * Set first line chars.
+	 */
+	public function setFirstLineChars(int $value): self {
+		$this->firstLineChars = $this->setIntVal($value, $this->firstLineChars);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get hanging.
-     */
-    public function getHanging(): ?float
-    {
-        return $this->hanging;
-    }
+	/**
+	 * Get hanging.
+	 */
+	public function getHanging(): ?float {
+		return $this->hanging;
+	}
 
-    /**
-     * Set hanging.
-     */
-    public function setHanging(?float $value = null): self
-    {
-        $this->hanging = $this->setNumericVal($value);
+	/**
+	 * Set hanging.
+	 */
+	public function setHanging(?float $value = null): self {
+		$this->hanging = $this->setNumericVal($value);
 
-        return $this;
-    }
+		return $this;
+	}
 }

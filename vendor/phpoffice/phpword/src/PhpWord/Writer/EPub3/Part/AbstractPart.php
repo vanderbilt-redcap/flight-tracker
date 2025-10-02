@@ -26,31 +26,29 @@ use PhpOffice\PhpWord\Writer\WriterPartInterface;
  */
 abstract class AbstractPart implements WriterPartInterface
 {
-    /**
-     * Parent writer.
-     *
-     * @var AbstractWriter
-     */
-    protected $parentWriter;
+	/**
+	 * Parent writer.
+	 *
+	 * @var AbstractWriter
+	 */
+	protected $parentWriter;
 
-    /**
-     * Set parent writer.
-     */
-    public function setParentWriter(AbstractWriter $writer): void
-    {
-        $this->parentWriter = $writer;
-    }
+	/**
+	 * Set parent writer.
+	 */
+	public function setParentWriter(AbstractWriter $writer): void {
+		$this->parentWriter = $writer;
+	}
 
-    /**
-     * Get parent writer.
-     */
-    public function getParentWriter(): AbstractWriter
-    {
-        return $this->parentWriter;
-    }
+	/**
+	 * Get parent writer.
+	 */
+	public function getParentWriter(): AbstractWriter {
+		return $this->parentWriter;
+	}
 
-    /**
-     * Write part content.
-     */
-    abstract public function write(): string;
+	/**
+	 * Write part content.
+	 */
+	abstract public function write(): string;
 }

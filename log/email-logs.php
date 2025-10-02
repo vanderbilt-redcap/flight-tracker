@@ -1,7 +1,7 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -20,15 +20,15 @@ if (is_numeric($pid)) {
 	");
 
 	$rows = [];
-	while($row = $results->fetch_assoc()){
+	while ($row = $results->fetch_assoc()) {
 		$rows[] = $row;
 	}
 
-    $from = Application::getSetting("default_from", $pid);
+	$from = Application::getSetting("default_from", $pid);
 	if ($adminEmail) {
-        $adminEmails = preg_split("/\s*,\s*/", $adminEmail);
-        $from = $adminEmails[0];
-    }
+		$adminEmails = preg_split("/\s*,\s*/", $adminEmail);
+		$from = $adminEmails[0];
+	}
 
 	$mssg = "";
 	$mssg .= "<h1>".$module->getName()." Error Report</h1>\n";
@@ -46,5 +46,5 @@ if (is_numeric($pid)) {
 	}
 	$mssg .= "</table>\n";
 
-	\REDCap::email(Application::getFeedbackEmail(), $from, $module->getName()." Error Report", $mssg); 
+	\REDCap::email(Application::getFeedbackEmail(), $from, $module->getName()." Error Report", $mssg);
 }

@@ -25,37 +25,35 @@ use PhpOffice\PhpWord\Shared\Text as SharedText;
  */
 class Bookmark extends AbstractElement
 {
-    /**
-     * Bookmark Name.
-     *
-     * @var string
-     */
-    private $name;
+	/**
+	 * Bookmark Name.
+	 *
+	 * @var string
+	 */
+	private $name;
 
-    /**
-     * Is part of collection.
-     *
-     * @var bool
-     */
-    protected $collectionRelation = true;
+	/**
+	 * Is part of collection.
+	 *
+	 * @var bool
+	 */
+	protected $collectionRelation = true;
 
-    /**
-     * Create a new Bookmark Element.
-     *
-     * @param string $name
-     */
-    public function __construct($name = '')
-    {
-        $this->name = SharedText::toUTF8($name);
-    }
+	/**
+	 * Create a new Bookmark Element.
+	 *
+	 * @param string $name
+	 */
+	public function __construct($name = '') {
+		$this->name = SharedText::toUTF8($name);
+	}
 
-    /**
-     * Get Bookmark name.
-     *
-     * @return string
-     */
-    public function getName()
-    {
-        return $this->name;
-    }
+	/**
+	 * Get Bookmark name.
+	 *
+	 * @return string
+	 */
+	public function getName() {
+		return $this->name;
+	}
 }

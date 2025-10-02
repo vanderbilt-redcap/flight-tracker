@@ -25,10 +25,9 @@ namespace PhpOffice\PhpWord\Escaper;
  */
 class RegExp extends AbstractEscaper
 {
-    const REG_EXP_DELIMITER = '/';
+	public const REG_EXP_DELIMITER = '/';
 
-    protected function escapeSingleValue($input)
-    {
-        return self::REG_EXP_DELIMITER . preg_quote($input, self::REG_EXP_DELIMITER) . self::REG_EXP_DELIMITER . 'u';
-    }
+	protected function escapeSingleValue($input) {
+		return self::REG_EXP_DELIMITER . preg_quote($input, self::REG_EXP_DELIMITER) . self::REG_EXP_DELIMITER . 'u';
+	}
 }

@@ -6,19 +6,20 @@ use function Vanderbilt\FlightTrackerExternalModule\json_encode_with_spaces;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Cohorts {
+class Cohorts
+{
 	public const PROHIBITED_CHARACTERS_REGEX = "/['\"#&]/";
 	public function __construct($token, $server, $moduleOrMetadata) {
 		$this->token = $token;
 		$this->server = $server;
-        $this->pid = Application::getPID($token);
+		$this->pid = Application::getPID($token);
 		$this->hijackedField = "identifier_first_name";
 		if (is_array($moduleOrMetadata)) {
 			$this->metadata = $moduleOrMetadata;
-			$this->module = NULL;
+			$this->module = null;
 		} else {
 			$this->module = $moduleOrMetadata;
-			$this->metadata = array();
+			$this->metadata = [];
 		}
 
 		$this->settingName = "configs";
@@ -28,125 +29,125 @@ class Cohorts {
 	}
 
 	public static function sanitize($cohort, $pid) {
-        if (is_numeric($cohort)) {
-            $cohort = (string) $cohort;
-        }
-        if (!is_string($cohort)) {
-            return "";
-        }
-        $cohort = urldecode($cohort);
-
-        $possibleCohorts = array_keys(Application::getSetting("configs", $pid) ?: []);
-        if (in_array($cohort, $possibleCohorts)) {
-            return html_entity_decode(htmlentities($cohort));
-        } else {
-            return "";
-        }
-    }
+		if (is_numeric($cohort)) {
+			$cohort = (string) $cohort;
+		}
+		if (!is_string($cohort)) {
+			return "";
+		}
+		$cohort = urldecode($cohort);
+		$module = Application::getModule();
+		$possibleCohorts = array_keys(Application::getSetting("configs", $pid) ?: []);
+		if (in_array($cohort, $possibleCohorts)) {
+			return $module->escape($cohort);
+		} else {
+			return "";
+		}
+	}
 
 	public function hasReadonlyProjects() {
-	    return !empty($this->readonlySettings);
-    }
+		return !empty($this->readonlySettings);
+	}
 
 	public function addReadonlyPid($cohort, $readonlyPid, $readonlyToken) {
-	    $this->readonlySettings[$cohort] = [ "pid" => $readonlyPid, "token" => $readonlyToken, ];
-	    $this->save();
-    }
+		$this->readonlySettings[$cohort] = [ "pid" => $readonlyPid, "token" => $readonlyToken, ];
+		$this->save();
+	}
 
-    public function hasReadonlyProjectsEnabled() {
-	    $supertoken = Application::getSetting("supertoken", Application::getPid($this->token));
-	    if (!$supertoken) {
-	        return FALSE;
-        }
-	    if (preg_match("/v\d+\.\d+\.\d+/", APP_PATH_WEBROOT, $matches)) {
-	        $version = preg_replace("/^v/", "", $matches[0]);
-	        if (REDCapManagement::versionGreaterThanOrEqualTo($version, "9.10.0")) {
-	            return TRUE;
-            }
-        }
-	    return FALSE;
-    }
+	public function hasReadonlyProjectsEnabled() {
+		$supertoken = Application::getSetting("supertoken", Application::getPid($this->token));
+		if (!$supertoken) {
+			return false;
+		}
+		if (preg_match("/v\d+\.\d+\.\d+/", APP_PATH_WEBROOT, $matches)) {
+			$version = preg_replace("/^v/", "", $matches[0]);
+			if (REDCapManagement::versionGreaterThanOrEqualTo($version, "9.10.0")) {
+				return true;
+			}
+		}
+		return false;
+	}
 
-    public function getExternalModuleFields() {
-	    return [$this->hijackedField, $this->readonlySettingName];
-    }
+	public function getExternalModuleFields() {
+		return [$this->hijackedField, $this->readonlySettingName];
+	}
 
 	private function getReadonlyConfiguration() {
-	    if (!$this->module) {
-	        return [];
-        }
-	    $readonlySettings = $this->module->getProjectSetting($this->readonlySettingName, $this->pid);
-        foreach ($readonlySettings as $settingName => $values) {
-            if (isset($values["pid"]) && ($values["pid"] == $this->pid)) {
-                # the project is attempting to copy to itself ==> the readonly settings were improperly copied over
-                # this project is a child project, not a parent ==> reset & return empty array
-                $this->module->setProjectSetting($this->readonlySettingName, [], $this->pid);
-                return [];
-            }
-        }
-	    if (!$readonlySettings) {
-	        return [];
-        }
-	    return $readonlySettings;
-    }
+		if (!$this->module) {
+			return [];
+		}
+		$readonlySettings = $this->module->getProjectSetting($this->readonlySettingName, $this->pid);
+		foreach ($readonlySettings as $settingName => $values) {
+			if (isset($values["pid"]) && ($values["pid"] == $this->pid)) {
+				# the project is attempting to copy to itself ==> the readonly settings were improperly copied over
+				# this project is a child project, not a parent ==> reset & return empty array
+				$this->module->setProjectSetting($this->readonlySettingName, [], $this->pid);
+				return [];
+			}
+		}
+		if (!$readonlySettings) {
+			return [];
+		}
+		return $readonlySettings;
+	}
 
-	public function makeCohortsSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
-	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
-    }
+	public function makeCohortsSelect($defaultCohort, $onchangeJS = "", $displayAllOption = false) {
+		return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
+	}
 
-    public function makeHandPickCohortSelect($defaultCohort, $onchangeJS = "") {
-        return self::makeCohortSelectGeneric($defaultCohort, $onchangeJS, FALSE, $this->getCohortTitles(TRUE));
-    }
+	public function makeHandPickCohortSelect($defaultCohort, $onchangeJS = "") {
+		return self::makeCohortSelectGeneric($defaultCohort, $onchangeJS, false, $this->getCohortTitles(true));
+	}
 
-    public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
-        return self::makeCohortSelectGeneric($defaultCohort, $onchangeJS, $displayAllOption, $this->getCohortTitles());
-    }
+	public function makeCohortSelect($defaultCohort, $onchangeJS = "", $displayAllOption = false) {
+		return self::makeCohortSelectGeneric($defaultCohort, $onchangeJS, $displayAllOption, $this->getCohortTitles());
+	}
 
 
 	public function makeCohortSelectGeneric($defaultCohort, $onchangeJS, $displayAllOption, $cohortTitles) {
-        $html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
-        if ($onchangeJS) {
-	        $html .= " onchange='".$onchangeJS."'";
-        }
-        $html .= " class='form-control'>";
-	    if ($displayAllOption) {
-	        $allStatus = "";
-	        if ($defaultCohort == "all") {
-	            $allStatus = " selected";
-            }
-            $html .= "<option value=''>---SELECT---</option>\n";
-            $html .= "<option value='all'$allStatus>---ALL---</option>\n";
-        } else {
-            $html .= "<option value=''>---SELECT---</option>\n";
-        }
+		$html = "<label for='cohort'>Cohort:</label> <select id='cohort' name='cohort'";
+		if ($onchangeJS) {
+			$html .= " onchange='".$onchangeJS."'";
+		}
+		$html .= " class='form-control'>";
+		if ($displayAllOption) {
+			$allStatus = "";
+			if ($defaultCohort == "all") {
+				$allStatus = " selected";
+			}
+			$html .= "<option value=''>---SELECT---</option>\n";
+			$html .= "<option value='all'$allStatus>---ALL---</option>\n";
+		} else {
+			$html .= "<option value=''>---SELECT---</option>\n";
+		}
 
-        foreach ($cohortTitles as $title) {
-            $html .= "<option value='$title'";
-            if ($title == $defaultCohort) {
-                $html .= " selected";
-            }
-            $html .= ">$title</option>\n";
-        }
-        $html .= "</select>";
-        return $html;
-    }
+		foreach ($cohortTitles as $title) {
+			$html .= "<option value='$title'";
+			if ($title == $defaultCohort) {
+				$html .= " selected";
+			}
+			$html .= ">$title</option>\n";
+		}
+		$html .= "</select>";
+		return $html;
+	}
 
-	public function makeCohortSelectUI($defaultCohort, $onchangeJS = "", $displayAllOption = FALSE) {
-	    return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
-    }
+	public function makeCohortSelectUI($defaultCohort, $onchangeJS = "", $displayAllOption = false) {
+		return $this->makeCohortSelect($defaultCohort, $onchangeJS, $displayAllOption);
+	}
 
-    public function getReadonlyPortalValue($cohort, $key) {
-	    $cohortNames = $this->getCohortNames();
-	    if (!in_array($cohort, $cohortNames)) {
-	        return "";
-        }
-	    if (($key == "pid") && isset($this->readonlySettings[$cohort]["pid"])) {
-	        return $this->readonlySettings[$cohort]["pid"];
-        } else if (($key == "token") && isset($this->readonlySettings[$cohort]["token"])) {
-	        return $this->readonlySettings[$cohort]["token"];
-        }
-	    return "";
-    }
+	public function getReadonlyPortalValue($cohort, $key) {
+		$cohortNames = $this->getCohortNames();
+		if (!in_array($cohort, $cohortNames)) {
+			return "";
+		}
+		if (($key == "pid") && isset($this->readonlySettings[$cohort]["pid"])) {
+			return $this->readonlySettings[$cohort]["pid"];
+		} elseif (($key == "token") && isset($this->readonlySettings[$cohort]["token"])) {
+			return $this->readonlySettings[$cohort]["token"];
+		}
+		return "";
+	}
 
 	private function getConfigs() {
 		if ($this->module) {
@@ -154,13 +155,13 @@ class Cohorts {
 			if ($configs) {
 				return $configs;
 			}
-		} else if ($this->metadata) {
+		} elseif ($this->metadata) {
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
 					$json = $row['field_annotation'];
 					if ($json) {
 						$configs = json_decode($json, true);
-						if ($configs !== NULL) {
+						if ($configs !== null) {
 							return $configs;
 						} else {
 							throw new \Exception("Could not decode config JSON: '".$json."'");
@@ -169,11 +170,11 @@ class Cohorts {
 				}
 			}
 		}
-		return array();
+		return [];
 	}
 
 	public function getAllFields() {
-		$allFields = array("record_id");
+		$allFields = ["record_id"];
 		foreach ($this->configs as $title => $configAry) {
 			$config = $this->getCohort($title);
 			if ($config) {
@@ -191,29 +192,29 @@ class Cohorts {
 		return in_array($cohort, $titles);
 	}
 
-	public function getCohortTitles($handPickedOnly = FALSE) {
-        return $this->getCohortNames($handPickedOnly);
+	public function getCohortTitles($handPickedOnly = false) {
+		return $this->getCohortNames($handPickedOnly);
 	}
 
-	public function getCohortNames($handPickedOnly = FALSE) {
+	public function getCohortNames($handPickedOnly = false) {
 		if ($this->configs) {
-            if ($handPickedOnly) {
-                $names = [];
-                foreach ($this->configs as $name => $config) {
-                    if (isset($config['records'])) {
-                        $names[] = Sanitizer::sanitizeCohort($name, $this->pid);
-                    }
-                }
-                return $names;
-            } else {
-                return array_keys($this->configs);
-            }
+			if ($handPickedOnly) {
+				$names = [];
+				foreach ($this->configs as $name => $config) {
+					if (isset($config['records'])) {
+						$names[] = Sanitizer::sanitizeCohort($name, $this->pid);
+					}
+				}
+				return $names;
+			} else {
+				return array_keys($this->configs);
+			}
 		}
 		return [];
 	}
 
 	public function getCohort($name) {
-	    if (isset($this->configs[$name])) {
+		if (isset($this->configs[$name])) {
 			return new CohortConfig($name, $this->configs[$name], $this->pid);
 		}
 		return null;
@@ -222,15 +223,15 @@ class Cohorts {
 	public function addCohort($name, $config) {
 		$cohortConfig = new CohortConfig($name, [], $this->pid);
 		if (isset($config['records'])) {
-		    $cohortConfig->addRecords($config['records']);
-        } else {
-            $cohortConfig->setCombiner($config['combiner']);
-            foreach ($config['rows'] as $row) {
-                if (CohortConfig::isValidRow($row)) {
-                    $cohortConfig->addRow($row);
-                }
-            }
-        }
+			$cohortConfig->addRecords($config['records']);
+		} else {
+			$cohortConfig->setCombiner($config['combiner']);
+			foreach ($config['rows'] as $row) {
+				if (CohortConfig::isValidRow($row)) {
+					$cohortConfig->addRow($row);
+				}
+			}
+		}
 		$this->configs[$cohortConfig->getName()] = $cohortConfig->getArray();
 		$this->save();
 	}
@@ -266,12 +267,12 @@ class Cohorts {
 
 	private function save() {
 		if ($this->module) {
-            $this->module->setProjectSetting($this->settingName, $this->configs);
-            $this->module->setProjectSetting($this->readonlySettingName, $this->readonlySettings);
-		} else if ($this->metadata) {
-		    # do not save readonly pids because this methodology is depracated
+			$this->module->setProjectSetting($this->settingName, $this->configs);
+			$this->module->setProjectSetting($this->readonlySettingName, $this->readonlySettings);
+		} elseif ($this->metadata) {
+			# do not save readonly pids because this methodology is depracated
 			$json = json_encode($this->configs);
-			$newMetadata = array();
+			$newMetadata = [];
 			foreach ($this->metadata as $row) {
 				if ($row['field_name'] == $this->hijackedField) {
 					$row['field_annotation'] = $json;
@@ -293,5 +294,5 @@ class Cohorts {
 	private $configs;
 	private $readonlySettings;
 	private $readonlySettingName;
-    private $pid;
+	private $pid;
 }

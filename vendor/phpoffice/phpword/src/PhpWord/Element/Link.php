@@ -27,111 +27,105 @@ use PhpOffice\PhpWord\Style\Paragraph;
  */
 class Link extends AbstractElement
 {
-    /**
-     * Link source.
-     *
-     * @var string
-     */
-    private $source;
+	/**
+	 * Link source.
+	 *
+	 * @var string
+	 */
+	private $source;
 
-    /**
-     * Link text.
-     *
-     * @var string
-     */
-    private $text;
+	/**
+	 * Link text.
+	 *
+	 * @var string
+	 */
+	private $text;
 
-    /**
-     * Font style.
-     *
-     * @var null|Font|string
-     */
-    private $fontStyle;
+	/**
+	 * Font style.
+	 *
+	 * @var null|Font|string
+	 */
+	private $fontStyle;
 
-    /**
-     * Paragraph style.
-     *
-     * @var null|Paragraph|string
-     */
-    private $paragraphStyle;
+	/**
+	 * Paragraph style.
+	 *
+	 * @var null|Paragraph|string
+	 */
+	private $paragraphStyle;
 
-    /**
-     * Has media relation flag; true for Link, Image, and Object.
-     *
-     * @var bool
-     */
-    protected $mediaRelation = true;
+	/**
+	 * Has media relation flag; true for Link, Image, and Object.
+	 *
+	 * @var bool
+	 */
+	protected $mediaRelation = true;
 
-    /**
-     * Has internal flag - anchor to internal bookmark.
-     *
-     * @var bool
-     */
-    protected $internal = false;
+	/**
+	 * Has internal flag - anchor to internal bookmark.
+	 *
+	 * @var bool
+	 */
+	protected $internal = false;
 
-    /**
-     * Create a new Link Element.
-     *
-     * @param string $source
-     * @param string $text
-     * @param mixed $fontStyle
-     * @param mixed $paragraphStyle
-     * @param bool $internal
-     */
-    public function __construct($source, $text = null, $fontStyle = null, $paragraphStyle = null, $internal = false)
-    {
-        $this->source = SharedText::toUTF8($source);
-        $this->text = null === $text ? $this->source : SharedText::toUTF8($text);
-        $this->fontStyle = $this->setNewStyle(new Font('text'), $fontStyle);
-        $this->paragraphStyle = $this->setNewStyle(new Paragraph(), $paragraphStyle);
-        $this->internal = $internal;
-    }
+	/**
+	 * Create a new Link Element.
+	 *
+	 * @param string $source
+	 * @param string $text
+	 * @param mixed $fontStyle
+	 * @param mixed $paragraphStyle
+	 * @param bool $internal
+	 */
+	public function __construct($source, $text = null, $fontStyle = null, $paragraphStyle = null, $internal = false) {
+		$this->source = SharedText::toUTF8($source);
+		$this->text = null === $text ? $this->source : SharedText::toUTF8($text);
+		$this->fontStyle = $this->setNewStyle(new Font('text'), $fontStyle);
+		$this->paragraphStyle = $this->setNewStyle(new Paragraph(), $paragraphStyle);
+		$this->internal = $internal;
+	}
 
-    /**
-     * Get link source.
-     *
-     * @return string
-     */
-    public function getSource()
-    {
-        return $this->source;
-    }
+	/**
+	 * Get link source.
+	 *
+	 * @return string
+	 */
+	public function getSource() {
+		return $this->source;
+	}
 
-    /**
-     * Get link text.
-     */
-    public function getText(): string
-    {
-        return $this->text;
-    }
+	/**
+	 * Get link text.
+	 */
+	public function getText(): string {
+		return $this->text;
+	}
 
-    /**
-     * Get Text style.
-     *
-     * @return null|Font|string
-     */
-    public function getFontStyle()
-    {
-        return $this->fontStyle;
-    }
+	/**
+	 * Get Text style.
+	 *
+	 * @return null|Font|string
+	 */
+	public function getFontStyle() {
+		return $this->fontStyle;
+	}
 
-    /**
-     * Get Paragraph style.
-     *
-     * @return null|Paragraph|string
-     */
-    public function getParagraphStyle()
-    {
-        return $this->paragraphStyle;
-    }
+	/**
+	 * Get Paragraph style.
+	 *
+	 * @return null|Paragraph|string
+	 */
+	public function getParagraphStyle() {
+		return $this->paragraphStyle;
+	}
 
-    /**
-     * is internal.
-     *
-     * @return bool
-     */
-    public function isInternal()
-    {
-        return $this->internal;
-    }
+	/**
+	 * is internal.
+	 *
+	 * @return bool
+	 */
+	public function isInternal() {
+		return $this->internal;
+	}
 }

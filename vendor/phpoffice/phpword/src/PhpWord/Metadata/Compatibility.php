@@ -26,40 +26,38 @@ namespace PhpOffice\PhpWord\Metadata;
  */
 class Compatibility
 {
-    /**
-     * OOXML version.
-     *
-     * 12 = 2007
-     * 14 = 2010
-     * 15 = 2013
-     *
-     * @var int
-     *
-     * @see  http://msdn.microsoft.com/en-us/library/dd909048%28v=office.12%29.aspx
-     */
-    private $ooxmlVersion = 12;
+	/**
+	 * OOXML version.
+	 *
+	 * 12 = 2007
+	 * 14 = 2010
+	 * 15 = 2013
+	 *
+	 * @var int
+	 *
+	 * @see  http://msdn.microsoft.com/en-us/library/dd909048%28v=office.12%29.aspx
+	 */
+	private $ooxmlVersion = 12;
 
-    /**
-     * Get OOXML version.
-     *
-     * @return int
-     */
-    public function getOoxmlVersion()
-    {
-        return $this->ooxmlVersion;
-    }
+	/**
+	 * Get OOXML version.
+	 *
+	 * @return int
+	 */
+	public function getOoxmlVersion() {
+		return $this->ooxmlVersion;
+	}
 
-    /**
-     * Set OOXML version.
-     *
-     * @param int $value
-     *
-     * @return self
-     */
-    public function setOoxmlVersion($value)
-    {
-        $this->ooxmlVersion = $value;
+	/**
+	 * Set OOXML version.
+	 *
+	 * @param int $value
+	 *
+	 * @return self
+	 */
+	public function setOoxmlVersion($value) {
+		$this->ooxmlVersion = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 }

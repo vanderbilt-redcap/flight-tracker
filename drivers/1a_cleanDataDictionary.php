@@ -7,12 +7,12 @@
 require_once(dirname(__FILE__)."/../small_base.php");
 
 # download the metadata
-$data = array(
-    'token' => $token,
-    'content' => 'metadata',
-    'format' => 'json',
-    'returnFormat' => 'json'
-);
+$data = [
+	'token' => $token,
+	'content' => 'metadata',
+	'format' => 'json',
+	'returnFormat' => 'json'
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -45,13 +45,13 @@ foreach ($metadata as $row) {
 
 # uploads scrubbed metadata
 echo "Uploading metadata\n";
-$data = array(
-    'token' => $token,
-    'content' => 'metadata',
-    'format' => 'json',
-    'data' => json_encode($metadata),
-    'returnFormat' => 'json'
-);
+$data = [
+	'token' => $token,
+	'content' => 'metadata',
+	'format' => 'json',
+	'data' => json_encode($metadata),
+	'returnFormat' => 'json'
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -68,18 +68,18 @@ print $output."\n";
 curl_close($ch);
 
 # download records
-$data = array(
-        'token' => $token,
-        'content' => 'record',
-        'format' => 'json',
-        'type' => 'flat',
-        'rawOrLabel' => 'raw',
-        'rawOrLabelHeaders' => 'raw',
-        'exportCheckboxLabel' => 'false',
-        'exportSurveyFields' => 'false',
-        'exportDataAccessGroups' => 'false',
-        'returnFormat' => 'json'
-);
+$data = [
+		'token' => $token,
+		'content' => 'record',
+		'format' => 'json',
+		'type' => 'flat',
+		'rawOrLabel' => 'raw',
+		'rawOrLabelHeaders' => 'raw',
+		'exportCheckboxLabel' => 'false',
+		'exportSurveyFields' => 'false',
+		'exportDataAccessGroups' => 'false',
+		'returnFormat' => 'json'
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -96,7 +96,7 @@ curl_close($ch);
 $redcapData = json_decode($output, true);
 echo count($redcapData)." rows downloaded.\n";
 
-$records = array();
+$records = [];
 foreach ($redcapData as $row) {
 	if (!in_array($row['record_id'], $records)) {
 		$records[] = $row['record_id'];
@@ -106,12 +106,12 @@ foreach ($redcapData as $row) {
 #delete all records
 echo "Deleting records\n";
 if (!empty($records)) {
-	$data = array(
+	$data = [
 		'token' => $token,
 		'action' => 'delete',
 		'content' => 'record',
 		'records' => $records
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $server);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

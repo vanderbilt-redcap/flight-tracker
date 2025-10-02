@@ -25,30 +25,29 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Element;
  */
 class TextBreak extends Text
 {
-    /**
-     * Write text break element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\TextBreak) {
-            return;
-        }
+	/**
+	 * Write text break element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\TextBreak) {
+			return;
+		}
 
-        if (!$this->withoutP) {
-            $hasStyle = $element->hasStyle();
-            $this->startElementP();
+		if (!$this->withoutP) {
+			$hasStyle = $element->hasStyle();
+			$this->startElementP();
 
-            if ($hasStyle) {
-                $xmlWriter->startElement('w:pPr');
-                $this->writeFontStyle();
-                $xmlWriter->endElement(); // w:pPr
-            }
+			if ($hasStyle) {
+				$xmlWriter->startElement('w:pPr');
+				$this->writeFontStyle();
+				$xmlWriter->endElement(); // w:pPr
+			}
 
-            $this->endElementP(); // w:p
-        } else {
-            $xmlWriter->writeElement('w:br');
-        }
-    }
+			$this->endElementP(); // w:p
+		} else {
+			$xmlWriter->writeElement('w:br');
+		}
+	}
 }

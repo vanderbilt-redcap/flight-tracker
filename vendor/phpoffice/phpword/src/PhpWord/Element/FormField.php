@@ -26,176 +26,165 @@ namespace PhpOffice\PhpWord\Element;
  */
 class FormField extends Text
 {
-    /**
-     * Form field type: textinput|checkbox|dropdown.
-     *
-     * @var string
-     */
-    private $type = 'textinput';
+	/**
+	 * Form field type: textinput|checkbox|dropdown.
+	 *
+	 * @var string
+	 */
+	private $type = 'textinput';
 
-    /**
-     * Form field name.
-     *
-     * @var ?string
-     */
-    private $name;
+	/**
+	 * Form field name.
+	 *
+	 * @var ?string
+	 */
+	private $name;
 
-    /**
-     * Default value.
-     *
-     * - TextInput: string
-     * - CheckBox: bool
-     * - DropDown: int Index of entries (zero based)
-     *
-     * @var bool|int|string
-     */
-    private $default;
+	/**
+	 * Default value.
+	 *
+	 * - TextInput: string
+	 * - CheckBox: bool
+	 * - DropDown: int Index of entries (zero based)
+	 *
+	 * @var bool|int|string
+	 */
+	private $default;
 
-    /**
-     * Value.
-     *
-     * @var null|bool|int|string
-     */
-    private $value;
+	/**
+	 * Value.
+	 *
+	 * @var null|bool|int|string
+	 */
+	private $value;
 
-    /**
-     * Dropdown entries.
-     *
-     * @var array
-     */
-    private $entries = [];
+	/**
+	 * Dropdown entries.
+	 *
+	 * @var array
+	 */
+	private $entries = [];
 
-    /**
-     * Create new instance.
-     *
-     * @param string $type
-     * @param mixed $fontStyle
-     * @param mixed $paragraphStyle
-     */
-    public function __construct($type, $fontStyle = null, $paragraphStyle = null)
-    {
-        parent::__construct(null, $fontStyle, $paragraphStyle);
-        $this->setType($type);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param string $type
+	 * @param mixed $fontStyle
+	 * @param mixed $paragraphStyle
+	 */
+	public function __construct($type, $fontStyle = null, $paragraphStyle = null) {
+		parent::__construct(null, $fontStyle, $paragraphStyle);
+		$this->setType($type);
+	}
 
-    /**
-     * Get type.
-     *
-     * @return string
-     */
-    public function getType()
-    {
-        return $this->type;
-    }
+	/**
+	 * Get type.
+	 *
+	 * @return string
+	 */
+	public function getType() {
+		return $this->type;
+	}
 
-    /**
-     * Set type.
-     *
-     * @param string $value
-     *
-     * @return self
-     */
-    public function setType($value)
-    {
-        $enum = ['textinput', 'checkbox', 'dropdown'];
-        $this->type = $this->setEnumVal($value, $enum, $this->type);
+	/**
+	 * Set type.
+	 *
+	 * @param string $value
+	 *
+	 * @return self
+	 */
+	public function setType($value) {
+		$enum = ['textinput', 'checkbox', 'dropdown'];
+		$this->type = $this->setEnumVal($value, $enum, $this->type);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get name.
-     *
-     * @return ?string
-     */
-    public function getName()
-    {
-        return $this->name;
-    }
+	/**
+	 * Get name.
+	 *
+	 * @return ?string
+	 */
+	public function getName() {
+		return $this->name;
+	}
 
-    /**
-     * Set name.
-     *
-     * @param ?string $value
-     *
-     * @return self
-     */
-    public function setName($value)
-    {
-        $this->name = $value;
+	/**
+	 * Set name.
+	 *
+	 * @param ?string $value
+	 *
+	 * @return self
+	 */
+	public function setName($value) {
+		$this->name = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get default.
-     *
-     * @return bool|int|string
-     */
-    public function getDefault()
-    {
-        return $this->default;
-    }
+	/**
+	 * Get default.
+	 *
+	 * @return bool|int|string
+	 */
+	public function getDefault() {
+		return $this->default;
+	}
 
-    /**
-     * Set default.
-     *
-     * @param bool|int|string $value
-     *
-     * @return self
-     */
-    public function setDefault($value)
-    {
-        $this->default = $value;
+	/**
+	 * Set default.
+	 *
+	 * @param bool|int|string $value
+	 *
+	 * @return self
+	 */
+	public function setDefault($value) {
+		$this->default = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get value.
-     *
-     * @return null|bool|int|string
-     */
-    public function getValue()
-    {
-        return $this->value;
-    }
+	/**
+	 * Get value.
+	 *
+	 * @return null|bool|int|string
+	 */
+	public function getValue() {
+		return $this->value;
+	}
 
-    /**
-     * Set value.
-     *
-     * @param null|bool|int|string $value
-     *
-     * @return self
-     */
-    public function setValue($value)
-    {
-        $this->value = $value;
+	/**
+	 * Set value.
+	 *
+	 * @param null|bool|int|string $value
+	 *
+	 * @return self
+	 */
+	public function setValue($value) {
+		$this->value = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get entries.
-     *
-     * @return array
-     */
-    public function getEntries()
-    {
-        return $this->entries;
-    }
+	/**
+	 * Get entries.
+	 *
+	 * @return array
+	 */
+	public function getEntries() {
+		return $this->entries;
+	}
 
-    /**
-     * Set entries.
-     *
-     * @param array $value
-     *
-     * @return self
-     */
-    public function setEntries($value)
-    {
-        $this->entries = $value;
+	/**
+	 * Set entries.
+	 *
+	 * @param array $value
+	 *
+	 * @return self
+	 */
+	public function setEntries($value) {
+		$this->entries = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 }

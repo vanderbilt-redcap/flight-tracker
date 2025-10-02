@@ -23,44 +23,43 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class TablePosition extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\TablePosition) {
-            return;
-        }
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\TablePosition) {
+			return;
+		}
 
-        $values = [];
-        $properties = [
-            'leftFromText',
-            'rightFromText',
-            'topFromText',
-            'bottomFromText',
-            'vertAnchor',
-            'horzAnchor',
-            'tblpXSpec',
-            'tblpX',
-            'tblpYSpec',
-            'tblpY',
-        ];
-        foreach ($properties as $property) {
-            $method = 'get' . $property;
-            if (method_exists($style, $method)) {
-                $values[$property] = $style->$method();
-            }
-        }
-        $values = array_filter($values);
+		$values = [];
+		$properties = [
+			'leftFromText',
+			'rightFromText',
+			'topFromText',
+			'bottomFromText',
+			'vertAnchor',
+			'horzAnchor',
+			'tblpXSpec',
+			'tblpX',
+			'tblpYSpec',
+			'tblpY',
+		];
+		foreach ($properties as $property) {
+			$method = 'get' . $property;
+			if (method_exists($style, $method)) {
+				$values[$property] = $style->$method();
+			}
+		}
+		$values = array_filter($values);
 
-        if ($values) {
-            $xmlWriter = $this->getXmlWriter();
-            $xmlWriter->startElement('w:tblpPr');
-            foreach ($values as $property => $value) {
-                $xmlWriter->writeAttribute('w:' . $property, $value);
-            }
-            $xmlWriter->endElement();
-        }
-    }
+		if ($values) {
+			$xmlWriter = $this->getXmlWriter();
+			$xmlWriter->startElement('w:tblpPr');
+			foreach ($values as $property => $value) {
+				$xmlWriter->writeAttribute('w:' . $property, $value);
+			}
+			$xmlWriter->endElement();
+		}
+	}
 }

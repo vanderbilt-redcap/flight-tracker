@@ -30,182 +30,173 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 abstract class AbstractRenderer extends HTML
 {
-    /**
-     * Name of renderer include file.
-     *
-     * @var string
-     */
-    protected $includeFile;
+	/**
+	 * Name of renderer include file.
+	 *
+	 * @var string
+	 */
+	protected $includeFile;
 
-    /**
-     * Temporary storage directory.
-     *
-     * @var string
-     */
-    protected $tempDir = '';
+	/**
+	 * Temporary storage directory.
+	 *
+	 * @var string
+	 */
+	protected $tempDir = '';
 
-    /**
-     * Font.
-     *
-     * @var string
-     */
-    protected $font;
+	/**
+	 * Font.
+	 *
+	 * @var string
+	 */
+	protected $font;
 
-    /**
-     * Paper size.
-     *
-     * @var int
-     */
-    protected $paperSize;
+	/**
+	 * Paper size.
+	 *
+	 * @var int
+	 */
+	protected $paperSize;
 
-    /**
-     * Orientation.
-     *
-     * @var string
-     */
-    protected $orientation;
+	/**
+	 * Orientation.
+	 *
+	 * @var string
+	 */
+	protected $orientation;
 
-    /**
-     * Paper Sizes xRef List.
-     *
-     * @var array
-     */
-    protected static $paperSizes = [
-        9 => 'A4', // (210 mm by 297 mm)
-    ];
+	/**
+	 * Paper Sizes xRef List.
+	 *
+	 * @var array
+	 */
+	protected static $paperSizes = [
+		9 => 'A4', // (210 mm by 297 mm)
+	];
 
-    /**
-     * Create new instance.
-     *
-     * @param PhpWord $phpWord PhpWord object
-     */
-    public function __construct(PhpWord $phpWord)
-    {
-        parent::__construct($phpWord);
-        $this->isPdf = true;
-        if ($this->includeFile != null) {
-            $includeFile = Settings::getPdfRendererPath() . '/' . $this->includeFile;
-            if (file_exists($includeFile)) {
-                /** @noinspection PhpIncludeInspection Dynamic includes */
-                require_once $includeFile;
-            } else {
-                // @codeCoverageIgnoreStart
-                // Can't find any test case. Uncomment when found.
-                throw new Exception('Unable to load PDF Rendering library');
-                // @codeCoverageIgnoreEnd
-            }
-        }
+	/**
+	 * Create new instance.
+	 *
+	 * @param PhpWord $phpWord PhpWord object
+	 */
+	public function __construct(PhpWord $phpWord) {
+		parent::__construct($phpWord);
+		$this->isPdf = true;
+		if ($this->includeFile != null) {
+			$includeFile = Settings::getPdfRendererPath() . '/' . $this->includeFile;
+			if (file_exists($includeFile)) {
+				/** @noinspection PhpIncludeInspection Dynamic includes */
+				require_once $includeFile;
+			} else {
+				// @codeCoverageIgnoreStart
+				// Can't find any test case. Uncomment when found.
+				throw new Exception('Unable to load PDF Rendering library');
+				// @codeCoverageIgnoreEnd
+			}
+		}
 
-        // Configuration
-        $options = Settings::getPdfRendererOptions();
-        if (!empty($options['font'])) {
-            $this->setFont($options['font']);
-        }
-    }
+		// Configuration
+		$options = Settings::getPdfRendererOptions();
+		if (!empty($options['font'])) {
+			$this->setFont($options['font']);
+		}
+	}
 
-    /**
-     * Get Font.
-     *
-     * @return string
-     */
-    public function getFont()
-    {
-        return $this->font;
-    }
+	/**
+	 * Get Font.
+	 *
+	 * @return string
+	 */
+	public function getFont() {
+		return $this->font;
+	}
 
-    /**
-     * Set font. Examples:
-     *      'arialunicid0-chinese-simplified'
-     *      'arialunicid0-chinese-traditional'
-     *      'arialunicid0-korean'
-     *      'arialunicid0-japanese'.
-     *
-     * @param string $fontName
-     *
-     * @return self
-     */
-    public function setFont($fontName)
-    {
-        $this->font = $fontName;
+	/**
+	 * Set font. Examples:
+	 *      'arialunicid0-chinese-simplified'
+	 *      'arialunicid0-chinese-traditional'
+	 *      'arialunicid0-korean'
+	 *      'arialunicid0-japanese'.
+	 *
+	 * @param string $fontName
+	 *
+	 * @return self
+	 */
+	public function setFont($fontName) {
+		$this->font = $fontName;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get Paper Size.
-     *
-     * @return int
-     */
-    public function getPaperSize()
-    {
-        return $this->paperSize;
-    }
+	/**
+	 * Get Paper Size.
+	 *
+	 * @return int
+	 */
+	public function getPaperSize() {
+		return $this->paperSize;
+	}
 
-    /**
-     * Set Paper Size.
-     *
-     * @param int $value Paper size = PAPERSIZE_A4
-     *
-     * @return self
-     */
-    public function setPaperSize($value = 9)
-    {
-        $this->paperSize = $value;
+	/**
+	 * Set Paper Size.
+	 *
+	 * @param int $value Paper size = PAPERSIZE_A4
+	 *
+	 * @return self
+	 */
+	public function setPaperSize($value = 9) {
+		$this->paperSize = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get Orientation.
-     *
-     * @return string
-     */
-    public function getOrientation()
-    {
-        return $this->orientation;
-    }
+	/**
+	 * Get Orientation.
+	 *
+	 * @return string
+	 */
+	public function getOrientation() {
+		return $this->orientation;
+	}
 
-    /**
-     * Set Orientation.
-     *
-     * @param string $value Page orientation ORIENTATION_DEFAULT
-     *
-     * @return self
-     */
-    public function setOrientation($value = 'default')
-    {
-        $this->orientation = $value;
+	/**
+	 * Set Orientation.
+	 *
+	 * @param string $value Page orientation ORIENTATION_DEFAULT
+	 *
+	 * @return self
+	 */
+	public function setOrientation($value = 'default') {
+		$this->orientation = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Save PhpWord to PDF file, pre-save.
-     *
-     * @param string $filename Name of the file to save as
-     *
-     * @return resource
-     */
-    protected function prepareForSave($filename = null)
-    {
-        $fileHandle = fopen($filename, 'wb');
-        // @codeCoverageIgnoreStart
-        // Can't find any test case. Uncomment when found.
-        if ($fileHandle === false) {
-            throw new Exception("Could not open file $filename for writing.");
-        }
-        // @codeCoverageIgnoreEnd
+	/**
+	 * Save PhpWord to PDF file, pre-save.
+	 *
+	 * @param string $filename Name of the file to save as
+	 *
+	 * @return resource
+	 */
+	protected function prepareForSave($filename = null) {
+		$fileHandle = fopen($filename, 'wb');
+		// @codeCoverageIgnoreStart
+		// Can't find any test case. Uncomment when found.
+		if ($fileHandle === false) {
+			throw new Exception("Could not open file $filename for writing.");
+		}
+		// @codeCoverageIgnoreEnd
 
-        return $fileHandle;
-    }
+		return $fileHandle;
+	}
 
-    /**
-     * Save PhpWord to PDF file, post-save.
-     *
-     * @param resource $fileHandle
-     */
-    protected function restoreStateAfterSave($fileHandle): void
-    {
-        fclose($fileHandle);
-    }
+	/**
+	 * Save PhpWord to PDF file, post-save.
+	 *
+	 * @param resource $fileHandle
+	 */
+	protected function restoreStateAfterSave($fileHandle): void {
+		fclose($fileHandle);
+	}
 }

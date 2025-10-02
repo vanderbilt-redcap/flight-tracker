@@ -27,104 +27,101 @@ use XMLWriter;
  */
 class Content extends AbstractPart
 {
-    /**
-     * PHPWord object.
-     *
-     * @var ?PhpWord
-     */
-    private $phpWord;
+	/**
+	 * PHPWord object.
+	 *
+	 * @var ?PhpWord
+	 */
+	private $phpWord;
 
-    /**
-     * Constructor.
-     */
-    public function __construct(?PhpWord $phpWord = null)
-    {
-        $this->phpWord = $phpWord;
-    }
+	/**
+	 * Constructor.
+	 */
+	public function __construct(?PhpWord $phpWord = null) {
+		$this->phpWord = $phpWord;
+	}
 
-    /**
-     * Get XML Writer.
-     *
-     * @return XMLWriter
-     */
-    protected function getXmlWriter()
-    {
-        $xmlWriter = new XMLWriter();
-        $xmlWriter->openMemory();
-        $xmlWriter->startDocument('1.0', 'UTF-8');
+	/**
+	 * Get XML Writer.
+	 *
+	 * @return XMLWriter
+	 */
+	protected function getXmlWriter() {
+		$xmlWriter = new XMLWriter();
+		$xmlWriter->openMemory();
+		$xmlWriter->startDocument('1.0', 'UTF-8');
 
-        return $xmlWriter;
-    }
+		return $xmlWriter;
+	}
 
-    /**
-     * Write part content.
-     */
-    public function write(): string
-    {
-        if ($this->phpWord === null) {
-            throw new Exception('No PhpWord assigned.');
-        }
+	/**
+	 * Write part content.
+	 */
+	public function write(): string {
+		if ($this->phpWord === null) {
+			throw new Exception('No PhpWord assigned.');
+		}
 
-        $xmlWriter = $this->getXmlWriter();
-        $docInfo = $this->phpWord->getDocInfo();
+		$xmlWriter = $this->getXmlWriter();
+		$docInfo = $this->phpWord->getDocInfo();
 
-        // Write package
-        $xmlWriter->startElement('package');
-        $xmlWriter->writeAttribute('xmlns', 'http://www.idpf.org/2007/opf');
-        $xmlWriter->writeAttribute('version', '3.0');
-        $xmlWriter->writeAttribute('unique-identifier', 'book-id');
-        $xmlWriter->writeAttribute('xml:lang', 'en');
+		// Write package
+		$xmlWriter->startElement('package');
+		$xmlWriter->writeAttribute('xmlns', 'http://www.idpf.org/2007/opf');
+		$xmlWriter->writeAttribute('version', '3.0');
+		$xmlWriter->writeAttribute('unique-identifier', 'book-id');
+		$xmlWriter->writeAttribute('xml:lang', 'en');
 
-        // Write metadata
-        $xmlWriter->startElement('metadata');
-        $xmlWriter->writeAttribute('xmlns:dc', 'http://purl.org/dc/elements/1.1/');
-        $xmlWriter->writeAttribute('xmlns:opf', 'http://www.idpf.org/2007/opf');
+		// Write metadata
+		$xmlWriter->startElement('metadata');
+		$xmlWriter->writeAttribute('xmlns:dc', 'http://purl.org/dc/elements/1.1/');
+		$xmlWriter->writeAttribute('xmlns:opf', 'http://www.idpf.org/2007/opf');
 
-        // Required elements
-        $xmlWriter->startElement('dc:identifier');
-        $xmlWriter->writeAttribute('id', 'book-id');
-        $xmlWriter->text('book-id-' . uniqid());
-        $xmlWriter->endElement();
-        $xmlWriter->writeElement('dc:title', $docInfo->getTitle() ?: 'Untitled');
-        $xmlWriter->writeElement('dc:language', 'en');
+		// Required elements
+		$xmlWriter->startElement('dc:identifier');
+		$xmlWriter->writeAttribute('id', 'book-id');
+		$xmlWriter->text('book-id-' . uniqid());
+		$xmlWriter->endElement();
+		$xmlWriter->writeElement('dc:title', $docInfo->getTitle() ?: 'Untitled');
+		$xmlWriter->writeElement('dc:language', 'en');
 
-        // Required modified timestamp
-        $xmlWriter->startElement('meta');
-        $xmlWriter->writeAttribute('property', 'dcterms:modified');
-        $xmlWriter->text(date('Y-m-d\TH:i:s\Z'));
-        $xmlWriter->endElement();
+		// Required modified timestamp
+		$xmlWriter->startElement('meta');
+		$xmlWriter->writeAttribute('property', 'dcterms:modified');
+		$xmlWriter->text(date('Y-m-d\TH:i:s\Z'));
+		$xmlWriter->endElement();
 
-        $xmlWriter->endElement(); // metadata
+		$xmlWriter->endElement(); // metadata
 
-        // Write manifest
-        $xmlWriter->startElement('manifest');
+		// Write manifest
+		$xmlWriter->startElement('manifest');
 
-        // Add nav document (required)
-        $xmlWriter->startElement('item');
-        $xmlWriter->writeAttribute('id', 'nav');
-        $xmlWriter->writeAttribute('href', 'nav.xhtml');
-        $xmlWriter->writeAttribute('media-type', 'application/xhtml+xml');
-        $xmlWriter->writeAttribute('properties', 'nav');
-        $xmlWriter->endElement();
+		// Add nav document (required)
+		$xmlWriter->startElement('item');
+		$xmlWriter->writeAttribute('id', 'nav');
+		$xmlWriter->writeAttribute('href', 'nav.xhtml');
+		$xmlWriter->writeAttribute('media-type', 'application/xhtml+xml');
+		$xmlWriter->writeAttribute('properties', 'nav');
+		$xmlWriter->endElement();
 
-        // Add content document
-        $xmlWriter->startElement('item');
-        $xmlWriter->writeAttribute('id', 'content');
-        $xmlWriter->writeAttribute('href', 'content.xhtml');
-        $xmlWriter->writeAttribute('media-type', 'application/xhtml+xml');
-        $xmlWriter->endElement();
+		// Add content document
+		$xmlWriter->startElement('item');
+		$xmlWriter->writeAttribute('id', 'content');
+		$xmlWriter->writeAttribute('href', 'content.xhtml');
+		$xmlWriter->writeAttribute('media-type', 'application/xhtml+xml');
+		$xmlWriter->endElement();
 
-        $xmlWriter->endElement(); // manifest
+		$xmlWriter->endElement(); // manifest
 
-        // Write spine
-        $xmlWriter->startElement('spine');
-        $xmlWriter->startElement('itemref');
-        $xmlWriter->writeAttribute('idref', 'content');
-        $xmlWriter->endElement();
-        $xmlWriter->endElement(); // spine
+		// Write spine
+		$xmlWriter->startElement('spine');
+		$xmlWriter->startElement('itemref');
+		$xmlWriter->writeAttribute('idref', 'content');
+		$xmlWriter->endElement();
+		$xmlWriter->endElement(); // spine
 
-        $xmlWriter->endElement(); // package
+		$xmlWriter->endElement(); // package
 
-        return $xmlWriter->outputMemory(true);
-    }
+		return $xmlWriter->outputMemory(true);
+	}
 }

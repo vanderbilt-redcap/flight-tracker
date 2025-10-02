@@ -25,10 +25,10 @@ namespace PhpOffice\PhpWord\Writer\HTML\Element;
  */
 class Endnote extends Footnote
 {
-    /**
-     * Note type.
-     *
-     * @var string
-     */
-    protected $noteType = 'endnote';
+	/**
+	 * Note type.
+	 *
+	 * @var string
+	 */
+	protected $noteType = 'endnote';
 }

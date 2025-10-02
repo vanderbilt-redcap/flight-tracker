@@ -30,8 +30,8 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class VerticalJc extends AbstractEnum
 {
-    const TOP = 'top';
-    const CENTER = 'center';
-    const BOTH = 'both';
-    const BOTTOM = 'bottom';
+	public const TOP = 'top';
+	public const CENTER = 'center';
+	public const BOTH = 'both';
+	public const BOTTOM = 'bottom';
 }

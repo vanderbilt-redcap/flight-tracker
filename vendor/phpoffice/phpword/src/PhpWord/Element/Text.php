@@ -27,129 +27,122 @@ use PhpOffice\PhpWord\Style\Paragraph;
  */
 class Text extends AbstractElement
 {
-    /**
-     * Text content.
-     *
-     * @var ?string
-     */
-    protected $text;
+	/**
+	 * Text content.
+	 *
+	 * @var ?string
+	 */
+	protected $text;
 
-    /**
-     * Text style.
-     *
-     * @var Font|string
-     */
-    protected $fontStyle;
+	/**
+	 * Text style.
+	 *
+	 * @var Font|string
+	 */
+	protected $fontStyle;
 
-    /**
-     * Paragraph style.
-     *
-     * @var Paragraph|string
-     */
-    protected $paragraphStyle;
+	/**
+	 * Paragraph style.
+	 *
+	 * @var Paragraph|string
+	 */
+	protected $paragraphStyle;
 
-    /**
-     * Create a new Text Element.
-     *
-     * @param string $text
-     * @param mixed $fontStyle
-     * @param mixed $paragraphStyle
-     */
-    public function __construct($text = null, $fontStyle = null, $paragraphStyle = null)
-    {
-        $this->setText($text);
-        $paragraphStyle = $this->setParagraphStyle($paragraphStyle);
-        $this->setFontStyle($fontStyle, $paragraphStyle);
-    }
+	/**
+	 * Create a new Text Element.
+	 *
+	 * @param string $text
+	 * @param mixed $fontStyle
+	 * @param mixed $paragraphStyle
+	 */
+	public function __construct($text = null, $fontStyle = null, $paragraphStyle = null) {
+		$this->setText($text);
+		$paragraphStyle = $this->setParagraphStyle($paragraphStyle);
+		$this->setFontStyle($fontStyle, $paragraphStyle);
+	}
 
-    /**
-     * Set Text style.
-     *
-     * @param array|Font|string $style
-     * @param array|Paragraph|string $paragraphStyle
-     *
-     * @return Font|string
-     */
-    public function setFontStyle($style = null, $paragraphStyle = null)
-    {
-        if ($style instanceof Font) {
-            $this->fontStyle = $style;
-            $this->setParagraphStyle($paragraphStyle);
-        } elseif (is_array($style)) {
-            $this->fontStyle = new Font('text', $paragraphStyle);
-            $this->fontStyle->setStyleByArray($style);
-        } elseif (null === $style) {
-            $this->fontStyle = new Font('text', $paragraphStyle);
-        } else {
-            $this->fontStyle = $style;
-            $this->setParagraphStyle($paragraphStyle);
-        }
+	/**
+	 * Set Text style.
+	 *
+	 * @param array|Font|string $style
+	 * @param array|Paragraph|string $paragraphStyle
+	 *
+	 * @return Font|string
+	 */
+	public function setFontStyle($style = null, $paragraphStyle = null) {
+		if ($style instanceof Font) {
+			$this->fontStyle = $style;
+			$this->setParagraphStyle($paragraphStyle);
+		} elseif (is_array($style)) {
+			$this->fontStyle = new Font('text', $paragraphStyle);
+			$this->fontStyle->setStyleByArray($style);
+		} elseif (null === $style) {
+			$this->fontStyle = new Font('text', $paragraphStyle);
+		} else {
+			$this->fontStyle = $style;
+			$this->setParagraphStyle($paragraphStyle);
+		}
 
-        return $this->fontStyle;
-    }
+		return $this->fontStyle;
+	}
 
-    /**
-     * Get Text style.
-     *
-     * @return Font|string
-     */
-    public function getFontStyle()
-    {
-        return $this->fontStyle;
-    }
+	/**
+	 * Get Text style.
+	 *
+	 * @return Font|string
+	 */
+	public function getFontStyle() {
+		return $this->fontStyle;
+	}
 
-    /**
-     * Set Paragraph style.
-     *
-     * @param array|Paragraph|string $style
-     *
-     * @return Paragraph|string
-     */
-    public function setParagraphStyle($style = null)
-    {
-        if (is_array($style)) {
-            $this->paragraphStyle = new Paragraph();
-            $this->paragraphStyle->setStyleByArray($style);
-        } elseif ($style instanceof Paragraph) {
-            $this->paragraphStyle = $style;
-        } elseif (null === $style) {
-            $this->paragraphStyle = new Paragraph();
-        } else {
-            $this->paragraphStyle = $style;
-        }
+	/**
+	 * Set Paragraph style.
+	 *
+	 * @param array|Paragraph|string $style
+	 *
+	 * @return Paragraph|string
+	 */
+	public function setParagraphStyle($style = null) {
+		if (is_array($style)) {
+			$this->paragraphStyle = new Paragraph();
+			$this->paragraphStyle->setStyleByArray($style);
+		} elseif ($style instanceof Paragraph) {
+			$this->paragraphStyle = $style;
+		} elseif (null === $style) {
+			$this->paragraphStyle = new Paragraph();
+		} else {
+			$this->paragraphStyle = $style;
+		}
 
-        return $this->paragraphStyle;
-    }
+		return $this->paragraphStyle;
+	}
 
-    /**
-     * Get Paragraph style.
-     *
-     * @return Paragraph|string
-     */
-    public function getParagraphStyle()
-    {
-        return $this->paragraphStyle;
-    }
+	/**
+	 * Get Paragraph style.
+	 *
+	 * @return Paragraph|string
+	 */
+	public function getParagraphStyle() {
+		return $this->paragraphStyle;
+	}
 
-    /**
-     * Set text content.
-     *
-     * @param string $text
-     *
-     * @return self
-     */
-    public function setText($text)
-    {
-        $this->text = SharedText::toUTF8($text);
+	/**
+	 * Set text content.
+	 *
+	 * @param string $text
+	 *
+	 * @return self
+	 */
+	public function setText($text) {
+		$this->text = SharedText::toUTF8($text);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get Text content.
-     */
-    public function getText(): ?string
-    {
-        return $this->text;
-    }
+	/**
+	 * Get Text content.
+	 */
+	public function getText(): ?string {
+		return $this->text;
+	}
 }

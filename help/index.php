@@ -3,12 +3,12 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\URLManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Links;
 
-define("NOAUTH", TRUE);
+define("NOAUTH", true);
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../CareerDev.php");
@@ -28,20 +28,20 @@ if (isset($_POST['fullPage'])) {
 		foreach ($menuPages as $itemTitle => $url) {
 			if (!preg_match("/toggleHelp\(.+\)/", $url)) {
 				$itemPage = CareerDev::getPageFromUrl($url);
-				if (strpos($itemPage, $fullPage) !== FALSE) {
-                    if (in_array($itemTitle, ["Patent Wrangler", "Publication Wrangler"])) {
-                        $params = URLManagement::getParameters($url);
-                        $wranglerType = $_POST['wranglerType'];
-                        if ($wranglerType == $params['wranglerType']) {
-                            $pageMenu = $menu;
-                            $pageTitle = $itemTitle;
-                            break;
-                        }
-                    } else {
-                        $pageMenu = $menu;
-                        $pageTitle = $itemTitle;
-                        break;
-                    }
+				if (strpos($itemPage, $fullPage) !== false) {
+					if (in_array($itemTitle, ["Patent Wrangler", "Publication Wrangler"])) {
+						$params = URLManagement::getParameters($url);
+						$wranglerType = $_POST['wranglerType'];
+						if ($wranglerType == $params['wranglerType']) {
+							$pageMenu = $menu;
+							$pageTitle = $itemTitle;
+							break;
+						}
+					} else {
+						$pageMenu = $menu;
+						$pageTitle = $itemTitle;
+						break;
+					}
 				}
 			}
 		}
@@ -58,10 +58,10 @@ if (isset($_POST['fullPage'])) {
 	if ($html) {
 		echo "<div style='text-align: right;'><a class='smallest' href='javascript:;' onclick='hideHelp(\"".CareerDev::getHelpHiderLink()."\");'>close</a></div>\n";
 	}
-} else if ($_GET['htmlPage']) {
+} elseif ($_GET['htmlPage']) {
 	if ($_GET['htmlPage'] == "REDCapFAQReports") {
 		header("Location: ".APP_PATH_WEBROOT_FULL."index.php?action=help#ss63");
-	} else if ($_GET['htmlPage'] == "Codebook") {
+	} elseif ($_GET['htmlPage'] == "Codebook") {
 		header("Location: Codebook.pdf");
 	} else {
 		echo "<script src='".CareerDev::link("/js/jquery.min.js")."'></script>\n";
@@ -73,11 +73,11 @@ if (isset($_POST['fullPage'])) {
 		$htmlPage = REDCapManagement::sanitize($_GET['htmlPage']);
 		$possiblePages = getPossibleHelpPages();
 		foreach ($possiblePages as $possiblePage) {
-		    if ($htmlPage == $possiblePage) {
-                $html .= CareerDevHelp::getHelpPage($possiblePage);
-                $pageTitle = CareerDevHelp::getPageTitle($possiblePage);
-            }
-        }
+			if ($htmlPage == $possiblePage) {
+				$html .= CareerDevHelp::getHelpPage($possiblePage);
+				$pageTitle = CareerDevHelp::getPageTitle($possiblePage);
+			}
+		}
 	}
 }
 
@@ -86,51 +86,51 @@ if ($pageTitle) {
 	if ($pageMenu) {
 		$pageMenu .= ": ";
 	}
-    $videosHTML = CareerDevHelp::getVideoVaultLinkHTML();
+	$videosHTML = CareerDevHelp::getVideoVaultLinkHTML();
 	$titleHTML = $videosHTML."<h2>Help for ".$pageMenu.$pageTitle."</h2>\n";
 }
 
 if ($html) {
-	$_SESSION['showHelp'] = TRUE;
+	$_SESSION['showHelp'] = true;
 	echo $titleHTML;
 	echo "<div id='mainHelp'>".$html."</div>\n";
 }
 
 function getPossibleHelpPages() {
-    return [
-        "addIdentifiers.html",
-        "copyProject.html",
-        "pubWrangler.html",
-        "useCaseConversion.html",
-        "useCaseResources.html",
-        "addNewDataSources.html",
-        "departure.html",
-        "roi.html",
-        "useCaseDemographics.html",
-        "useCaseSearches.html",
-        "addNewGrants.html",
-        "emailMgmt.html",
-        "situations.html",
-        "useCaseExporting.html",
-        "useCaseStats.html",
-        "addScholars.html",
-        "grantWrangler.html",
-        "socialNetworks.html",
-        "useCaseGrantsAndPubs.html",
-        "whitelist.html",
-        "bins.html",
-        "kaplanMeierCurves.html",
-        "timelines.html",
-        "useCaseMentors.html",
-        "who.html",
-        "changes.html",
-        "missingness.html",
-        "useCaseBins.html",
-        "useCaseProfiles.html",
-        "why.html",
-        "cohortDesign.html",
-        "nihReporting.html",
-        "useCaseCohortMetrics.html",
-        "useCasePubs.html",
-    ];
+	return [
+		"addIdentifiers.html",
+		"copyProject.html",
+		"pubWrangler.html",
+		"useCaseConversion.html",
+		"useCaseResources.html",
+		"addNewDataSources.html",
+		"departure.html",
+		"roi.html",
+		"useCaseDemographics.html",
+		"useCaseSearches.html",
+		"addNewGrants.html",
+		"emailMgmt.html",
+		"situations.html",
+		"useCaseExporting.html",
+		"useCaseStats.html",
+		"addScholars.html",
+		"grantWrangler.html",
+		"socialNetworks.html",
+		"useCaseGrantsAndPubs.html",
+		"whitelist.html",
+		"bins.html",
+		"kaplanMeierCurves.html",
+		"timelines.html",
+		"useCaseMentors.html",
+		"who.html",
+		"changes.html",
+		"missingness.html",
+		"useCaseBins.html",
+		"useCaseProfiles.html",
+		"why.html",
+		"cohortDesign.html",
+		"nihReporting.html",
+		"useCaseCohortMetrics.html",
+		"useCasePubs.html",
+	];
 }

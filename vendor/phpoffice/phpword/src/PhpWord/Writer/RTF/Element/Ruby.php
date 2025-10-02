@@ -24,36 +24,35 @@ namespace PhpOffice\PhpWord\Writer\RTF\Element;
  */
 class Ruby extends AbstractElement
 {
-    /**
-     * Write element.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        /** @var \PhpOffice\PhpWord\Element\Ruby $element */
-        $element = $this->element;
-        $elementClass = str_replace('\\Writer\\RTF', '', static::class);
-        if (!$element instanceof $elementClass || !is_string($element->getBaseTextRun()->getText())) {
-            return '';
-        }
+	/**
+	 * Write element.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		/** @var \PhpOffice\PhpWord\Element\Ruby $element */
+		$element = $this->element;
+		$elementClass = str_replace('\\Writer\\RTF', '', static::class);
+		if (!$element instanceof $elementClass || !is_string($element->getBaseTextRun()->getText())) {
+			return '';
+		}
 
-        $this->getStyles();
+		$this->getStyles();
 
-        $content = '';
-        $content .= $this->writeOpening();
-        $content .= '{';
-        $content .= $this->writeFontStyle();
-        $content .= $this->writeText($element->getBaseTextRun()->getText());
-        $rubyText = $element->getRubyTextRun()->getText();
-        if ($rubyText !== '') {
-            $content .= ' (';
-            $content .= $this->writeText($rubyText);
-            $content .= ')';
-        }
-        $content .= '}';
-        $content .= $this->writeClosing();
+		$content = '';
+		$content .= $this->writeOpening();
+		$content .= '{';
+		$content .= $this->writeFontStyle();
+		$content .= $this->writeText($element->getBaseTextRun()->getText());
+		$rubyText = $element->getRubyTextRun()->getText();
+		if ($rubyText !== '') {
+			$content .= ' (';
+			$content .= $this->writeText($rubyText);
+			$content .= ')';
+		}
+		$content .= '}';
+		$content .= $this->writeClosing();
 
-        return $content;
-    }
+		return $content;
+	}
 }

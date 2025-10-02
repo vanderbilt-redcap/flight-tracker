@@ -27,24 +27,23 @@ use PhpOffice\PhpWord\Writer\PDF\TCPDF;
  */
 class PageBreak extends TextBreak
 {
-    /**
-     * Write page break.
-     *
-     * @since 0.12.0
-     *
-     * @return string
-     */
-    public function write()
-    {
-        /** @var \PhpOffice\PhpWord\Writer\HTML $parentWriter Type hint */
-        $parentWriter = $this->parentWriter;
-        if ($parentWriter instanceof TCPDF) {
-            return '<br pagebreak="true"/>';
-        }
-        if ($parentWriter->isPdf()) {
-            return '<pagebreak style="page-break-before: always;" pagebreak="true"></pagebreak>';
-        }
+	/**
+	 * Write page break.
+	 *
+	 * @since 0.12.0
+	 *
+	 * @return string
+	 */
+	public function write() {
+		/** @var \PhpOffice\PhpWord\Writer\HTML $parentWriter Type hint */
+		$parentWriter = $this->parentWriter;
+		if ($parentWriter instanceof TCPDF) {
+			return '<br pagebreak="true"/>';
+		}
+		if ($parentWriter->isPdf()) {
+			return '<pagebreak style="page-break-before: always;" pagebreak="true"></pagebreak>';
+		}
 
-        return '<div style="page-break-before: always; height: 0; margin: 0; padding: 0; overflow: hidden;">&#160;</div>' . PHP_EOL;
-    }
+		return '<div style="page-break-before: always; height: 0; margin: 0; padding: 0; overflow: hidden;">&#160;</div>' . PHP_EOL;
+	}
 }

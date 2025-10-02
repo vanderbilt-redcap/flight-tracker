@@ -1,14 +1,14 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $pids = Application::getPids();
 $postJS = "";
 if (count($pids) > 0) {
-    $link = Application::link("/reporting/getUserid.php", $pids[0]);
-    $postJS = "
+	$link = Application::link("/reporting/getUserid.php", $pids[0]);
+	$postJS = "
     $.post('$link', {}, (prefill) => {
         for (let field in prefill) {
             const value = prefill[field];

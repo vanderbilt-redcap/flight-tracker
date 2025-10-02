@@ -11,43 +11,43 @@ require_once dirname(__FILE__).'/_header.php';
 
 $username = REDCapManagement::sanitize($_GET['uid'] ?? "");
 if (!$username || !MMAHelper::getMMADebug()) {
-    $username = Application::getUsername();
+	$username = Application::getUsername();
 }
 if (isset($_GET['test'])) {
-    echo "username: $username<br>";
-    echo "GET: ".REDCapManagement::sanitize($_GET['uid'])."<br>";
+	echo "username: $username<br>";
+	echo "GET: ".REDCapManagement::sanitize($_GET['uid'])."<br>";
 }
 
 $hashParam = (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") ? "&hash=".NEW_HASH_DESIGNATION : "";
 
-if(isset($_REQUEST['uid']) && MMAHelper::getMMADebug()){
-    $username = Sanitizer::sanitize($_REQUEST['uid']);
-    $uidString = "&uid=$username";
-    $spoofing = MMAHelper::makeSpoofingNotice($username);
+if (isset($_REQUEST['uid']) && MMAHelper::getMMADebug()) {
+	$username = Sanitizer::sanitize($_REQUEST['uid']);
+	$uidString = "&uid=$username";
+	$spoofing = MMAHelper::makeSpoofingNotice($username);
 } else {
-    $username = Application::getUsername();
-    $uidString = "";
-    $spoofing = "";
+	$username = Application::getUsername();
+	$uidString = "";
+	$spoofing = "";
 }
 
 if ($username) {
-    list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-    $welcomeMssg = "Welcome, $firstName!";
+	list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
+	$welcomeMssg = "Welcome, $firstName!";
 } else {
-    $firstName = "";
-    $lastName = "";
-    $welcomeMssg = "Welcome!";
+	$firstName = "";
+	$lastName = "";
+	$welcomeMssg = "Welcome!";
 }
 
 $resourcesLinkIfExtant = "";
 if ($link = Application::getSetting("mentee_agreement_link", $pid)) {
-    if (REDCapManagement::isGoodURL($link)) {
-        $institution = Application::getSetting("institution", $pid);
-        if (!$institution) {
-            $institution = "Your hosting institution";
-        }
-        $resourcesLinkIfExtant = "<p>$institution suggests <a href='$link'>viewing this resource</a> for further consultation.</p>";
-    }
+	if (REDCapManagement::isGoodURL($link)) {
+		$institution = Application::getSetting("institution", $pid);
+		if (!$institution) {
+			$institution = "Your hosting institution";
+		}
+		$resourcesLinkIfExtant = "<p>$institution suggests <a href='$link'>viewing this resource</a> for further consultation.</p>";
+	}
 }
 
 ?>

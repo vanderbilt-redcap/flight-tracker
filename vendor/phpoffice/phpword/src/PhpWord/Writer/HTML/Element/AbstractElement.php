@@ -28,51 +28,49 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 abstract class AbstractElement
 {
-    /**
-     * Parent writer.
-     *
-     * @var HTML
-     */
-    protected $parentWriter;
+	/**
+	 * Parent writer.
+	 *
+	 * @var HTML
+	 */
+	protected $parentWriter;
 
-    /**
-     * Element.
-     *
-     * @var Element
-     */
-    protected $element;
+	/**
+	 * Element.
+	 *
+	 * @var Element
+	 */
+	protected $element;
 
-    /**
-     * Without paragraph.
-     *
-     * @var bool
-     */
-    protected $withoutP = false;
+	/**
+	 * Without paragraph.
+	 *
+	 * @var bool
+	 */
+	protected $withoutP = false;
 
-    /**
-     * Write element.
-     */
-    abstract public function write();
+	/**
+	 * Write element.
+	 */
+	abstract public function write();
 
-    /**
-     * Create new instance.
-     *
-     * @param bool $withoutP
-     */
-    public function __construct(HTML $parentWriter, Element $element, $withoutP = false)
-    {
-        $this->parentWriter = $parentWriter;
-        $this->element = $element;
-        $this->withoutP = $withoutP;
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param bool $withoutP
+	 */
+	public function __construct(HTML $parentWriter, Element $element, $withoutP = false) {
+		$this->parentWriter = $parentWriter;
+		$this->element = $element;
+		$this->withoutP = $withoutP;
+	}
 
-    /**
-     * Set without paragraph.
-     *
-     * @param bool $value
-     */
-    public function setWithoutP($value): void
-    {
-        $this->withoutP = $value;
-    }
+	/**
+	 * Set without paragraph.
+	 *
+	 * @param bool $value
+	 */
+	public function setWithoutP($value): void {
+		$this->withoutP = $value;
+	}
 }

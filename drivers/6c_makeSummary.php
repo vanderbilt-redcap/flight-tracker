@@ -1,6 +1,6 @@
 <?php
 
-# used every time that the summaries are recalculated 
+# used every time that the summaries are recalculated
 # 15-30 minute runtimes
 
 $sendEmail = false;
@@ -50,43 +50,43 @@ if (!$selectRecord) {
 if (!$selectRecord) {
 	$records = Download::recordIds($token, $server);
 } else {
-	$records = array($selectRecord);
+	$records = [$selectRecord];
 }
-$errors = array();
+$errors = [];
 foreach ($records as $recordId) {
-	$time1 = microtime(TRUE);
-	$rows = Download::records($token, $server, array($recordId));
-	$time2 = microtime(TRUE);
+	$time1 = microtime(true);
+	$rows = Download::records($token, $server, [$recordId]);
+	$time2 = microtime(true);
 	error_log("6c CareerDev downloading $recordId took ".($time2 - $time1));
 
-	$time1 = microtime(TRUE);
+	$time1 = microtime(true);
 	$grants = new Grants($token, $server, $metadata);
 	$grants->setRows($rows);
 	$grants->compileGrants();
 	$result = $grants->uploadGrants();
-	$time2 = microtime(TRUE);
+	$time2 = microtime(true);
 	error_log("6c CareerDev processing grants $recordId took ".($time2 - $time1));
 	$myErrors = Upload::isolateErrors($result);
 	$errors = array_merge($errors, $myErrors);
 
-	$time1 = microtime(TRUE);
+	$time1 = microtime(true);
 	$summaryGrants = new SummaryGrants($token, $server);
 	$summaryGrants->setGrants($recordId, $grants, $metadata);
 	$summaryGrants->process();
 	$result = $summaryGrants->upload();
-	$time2 = microtime(TRUE);
+	$time2 = microtime(true);
 	error_log("6c CareerDev summarizing grants $recordId took ".($time2 - $time1));
 	$myErrors = Upload::isolateErrors($result);
 	$errors = array_merge($errors, $myErrors);
 
 	# update rows with new data
-	$time1 = microtime(TRUE);
+	$time1 = microtime(true);
 	$scholar = new Scholar($token, $server);
 	$scholar->downloadAndSetup($recordId);
 	$scholar->setGrants($grants);   // save compute time
 	$scholar->process();
 	$result = $scholar->upload();
-	$time2 = microtime(TRUE);
+	$time2 = microtime(true);
 	error_log("6c CareerDev processing scholar $recordId took ".($time2 - $time1));
 	$myErrors = Upload::isolateErrors($result);
 	$errors = array_merge($errors, $myErrors);
@@ -104,7 +104,7 @@ if ($screen) {
 		$successMessage .= "</ul>";
 	}
 	echo $successMesssage;
- 	echo $echoToScreen;
+	echo $echoToScreen;
 } else {
 	echo $successMesssage;
 }

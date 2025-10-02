@@ -27,19 +27,18 @@ use PhpOffice\PhpWord\Writer\Word2007\Element\AbstractElement as Word2007Abstrac
  */
 abstract class AbstractElement extends Word2007AbstractElement
 {
-    /**
-     * Get class name of writer element based on read element.
-     *
-     * @param \PhpOffice\PhpWord\Element\AbstractElement $element
-     */
-    public static function getElementClass($element): string
-    {
-        $elementClass = str_replace('PhpOffice\\PhpWord\\Element\\', '', get_class($element));
-        $writerClass = 'PhpOffice\\PhpWord\\Writer\\EPub3\\Element\\' . $elementClass;
-        if (!class_exists($writerClass)) {
-            throw new \PhpOffice\PhpWord\Exception\Exception("Writer element class {$writerClass} not found.");
-        }
+	/**
+	 * Get class name of writer element based on read element.
+	 *
+	 * @param \PhpOffice\PhpWord\Element\AbstractElement $element
+	 */
+	public static function getElementClass($element): string {
+		$elementClass = str_replace('PhpOffice\\PhpWord\\Element\\', '', get_class($element));
+		$writerClass = 'PhpOffice\\PhpWord\\Writer\\EPub3\\Element\\' . $elementClass;
+		if (!class_exists($writerClass)) {
+			throw new \PhpOffice\PhpWord\Exception\Exception("Writer element class {$writerClass} not found.");
+		}
 
-        return $writerClass;
-    }
+		return $writerClass;
+	}
 }

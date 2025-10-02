@@ -2,13 +2,13 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\CohortConfig;
-use \Vanderbilt\CareerDevLibrary\Filter;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\CohortConfig;
+use Vanderbilt\CareerDevLibrary\Filter;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
@@ -38,7 +38,7 @@ td.profileHeader div a:hover { color: #0000FF; }
 if (isset($_POST['title'])) {
 	$title = REDCapManagement::sanitize($_POST['title']);
 	$metadata = Download::metadata($token, $server);
-	$config = $cohorts->getCohort($title); 
+	$config = $cohorts->getCohort($title);
 
 	echo makeCohortSelectionHTML($cohorts);
 
@@ -53,7 +53,7 @@ if (isset($_POST['title'])) {
 		$totalGrants = 0;
 		$totalPubs = 0;
 		$totalScholars = count($records);
-		$redcapData = Download::fieldsForRecords($token, $server, array("record_id", "summary_total_budgets", "summary_publication_count", "summary_grant_count"), $records);
+		$redcapData = Download::fieldsForRecords($token, $server, ["record_id", "summary_total_budgets", "summary_publication_count", "summary_grant_count"], $records);
 		foreach ($redcapData as $row) {
 			if (in_array($row['record_id'], $records) && ($row['redcap_repeat_instance'] == "") && ($row['redcap_repeat_instrument'] == "")) {
 				$totalBudgets += $row['summary_total_budgets'];
@@ -61,7 +61,7 @@ if (isset($_POST['title'])) {
 				$totalGrants += $row['summary_grant_count'];
 			}
 		}
-?>
+		?>
 <br><br>
 <table class='blue' style='margin: 0px auto 0px auto; border-radius: 10px;'>
 <tr>

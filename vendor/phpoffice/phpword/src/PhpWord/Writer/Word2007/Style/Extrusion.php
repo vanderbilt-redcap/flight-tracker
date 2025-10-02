@@ -25,21 +25,20 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class Extrusion extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Extrusion) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Extrusion) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('o:extrusion');
-        $xmlWriter->writeAttribute('on', 't');
-        $xmlWriter->writeAttributeIf($style->getType() !== null, 'type', $style->getType());
-        $xmlWriter->writeAttributeIf($style->getColor() !== null, 'color', $style->getColor());
-        $xmlWriter->endElement();
-    }
+		$xmlWriter->startElement('o:extrusion');
+		$xmlWriter->writeAttribute('on', 't');
+		$xmlWriter->writeAttributeIf($style->getType() !== null, 'type', $style->getType());
+		$xmlWriter->writeAttributeIf($style->getColor() !== null, 'color', $style->getColor());
+		$xmlWriter->endElement();
+	}
 }

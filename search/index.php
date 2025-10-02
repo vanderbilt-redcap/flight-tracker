@@ -2,11 +2,11 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Scholar;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -31,29 +31,29 @@ echo "<h1>Search ".CareerDev::getProgramName()." Career-Defining Grants</h1>\n";
 
 $postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {
-    $postQuery = Sanitizer::sanitize($_POST['q']);
+	$postQuery = Sanitizer::sanitize($_POST['q']);
 	$recordIds = Download::recordIds($token, $server);
 	$metadata = Download::metadata($token, $server);
 
-	$fieldTypes = array();
+	$fieldTypes = [];
 	$choices = Scholar::getChoices($metadata);
 	foreach ($metadata as $row) {
 		$fieldTypes[$row['field_name']] = $row['field_type'];
 	}
-	
+
 	$terms = preg_split("/\s+/", Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']));
-	$multis = array("checkbox", "dropdown", "radio");
-	$textEntry = array("text", "notes");
-	$matches = array();      // record_id:field_name as key, then equals point value
-	$names = array();
-	$matchValues = array();
-	$matchAwards = array();
-	$nameFields = array("identifier_first_name", "identifier_last_name");
+	$multis = ["checkbox", "dropdown", "radio"];
+	$textEntry = ["text", "notes"];
+	$matches = [];      // record_id:field_name as key, then equals point value
+	$names = [];
+	$matchValues = [];
+	$matchAwards = [];
+	$nameFields = ["identifier_first_name", "identifier_last_name"];
 	foreach ($recordIds as $recordId) {
-		$recordData = Download::fieldsForRecords($token, $server, array_unique(array_merge(array("record_id"), Application::$summaryFields)), array($recordId));
+		$recordData = Download::fieldsForRecords($token, $server, array_unique(array_merge(["record_id"], Application::$summaryFields)), [$recordId]);
 		foreach ($recordData as $row) {
 			if ($row['redcap_repeat_instrument'] === "") {
-                		$names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
+				$names[$row['record_id']] = $row['identifier_first_name']." ".$row['identifier_last_name'];
 				foreach ($row as $field => $value) {
 					if (preg_match("/^summary_award_/", $field) || in_array($field, $nameFields)) {
 						$fieldType = $fieldTypes[$field];
@@ -65,7 +65,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 						if (in_array($fieldType, $textEntry)) {
 							# search $value
 							$points = 0;
-							$termsMatched = array();
+							$termsMatched = [];
 							foreach ($terms as $term) {
 								$term = preg_replace("/\//", "", $term);
 								$weight = 1;
@@ -76,15 +76,15 @@ if (isset($_POST['q']) && $_POST['q']) {
 									# whole word match
 									$points += 1000 / $weight;
 									$termsMatched[] = $term;
-								} else if (preg_match("/".strtolower($term)."/", strtolower($value))) {
+								} elseif (preg_match("/".strtolower($term)."/", strtolower($value))) {
 									# partial word match
 									$points += 500 / $weight;
 									$termsMatched[] = $term;
-								} else if (preg_match("/^summary_award_".strtolower($term)."$/", strtolower($field))) {
+								} elseif (preg_match("/^summary_award_".strtolower($term)."$/", strtolower($field))) {
 									# whole word match on field
 									$points += 400 / $weight;
 									$termsMatched[] = $term;
-								} else if (preg_match("/^summary_award_".strtolower($term)."/", strtolower($field))) {
+								} elseif (preg_match("/^summary_award_".strtolower($term)."/", strtolower($field))) {
 									# partial word match on field
 									$points += 200 / $weight;
 									$termsMatched[] = $term;
@@ -93,12 +93,12 @@ if (isset($_POST['q']) && $_POST['q']) {
 							if ($points > 0) {
 								$matches[$row['record_id'].":".$field] = $points;
 								if (!isset($matchValues[$row['record_id']])) {
-									$matchValues[$row['record_id']] = array();
-									$matchAwards[$row['record_id']] = array();
+									$matchValues[$row['record_id']] = [];
+									$matchAwards[$row['record_id']] = [];
 								}
 								$matchValues[$row['record_id']][$field] = $value;
 								$n = getNumber($field);
-								$matchAwards[$row['record_id']][$n] = array();
+								$matchAwards[$row['record_id']][$n] = [];
 								foreach ($row as $field2 => $value2) {
 									if (preg_match("/^summary_award_/", $field2)) {
 										$nodes = preg_split("/_/", $field2);
@@ -120,19 +120,19 @@ if (isset($_POST['q']) && $_POST['q']) {
 			}
 		}
 	}
-?>
+	?>
 <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
 <?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='text' value='<?= preg_replace("/'/", "\'", $postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
 </form>
 <?php
-	$forms = array(
-			"identifier" => "identifiers",
-			"summary" => "summary",
-			);
+		$forms = [
+				"identifier" => "identifiers",
+				"summary" => "summary",
+				];
 	echo "<p class='centered'>".count($matches)." grants in ".count($matchAwards)." profiles matched.</p>";
 	arsort($matches);
-	$order = array("sponsorno", "title", "type", "date", "end_date", "total_budget", "direct_budget", "nih_mechanism", );
+	$order = ["sponsorno", "title", "type", "date", "end_date", "total_budget", "direct_budget", "nih_mechanism", ];
 	echo "<div class='centered' style='text-align: left; max-width: 800px;'>\n";
 	foreach ($matches as $id => $points) {
 		list($recordId, $field) = preg_split("/:/", $id);
@@ -156,11 +156,11 @@ if (isset($_POST['q']) && $_POST['q']) {
 
 			echo "<br><b>".$item.":</b> ".$awardLine;
 		}
-		echo "</p>"; 
+		echo "</p>";
 	}
 	echo "</div>\n";
 } else {
-?>
+	?>
 <form action='<?= CareerDev::link("search/index.php") ?>' method='POST'>
 <?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='text' value='' name='q' id='q'> <input type='submit' value='Search'></p>

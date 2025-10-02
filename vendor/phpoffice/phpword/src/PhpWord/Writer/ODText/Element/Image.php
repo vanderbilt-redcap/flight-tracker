@@ -28,49 +28,48 @@ use PhpOffice\PhpWord\Shared\Converter;
  */
 class Image extends AbstractElement
 {
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $element = $this->getElement();
-        if (!$element instanceof ElementImage) {
-            return;
-        }
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$element = $this->getElement();
+		if (!$element instanceof ElementImage) {
+			return;
+		}
 
-        $mediaIndex = $element->getMediaIndex();
-        $target = 'Pictures/' . $element->getTarget();
-        $style = $element->getStyle();
-        $width = Converter::pixelToCm($style->getWidth());
-        $height = Converter::pixelToCm($style->getHeight());
+		$mediaIndex = $element->getMediaIndex();
+		$target = 'Pictures/' . $element->getTarget();
+		$style = $element->getStyle();
+		$width = Converter::pixelToCm($style->getWidth());
+		$height = Converter::pixelToCm($style->getHeight());
 
-        $xmlWriter = $this->getXmlWriter();
+		$xmlWriter = $this->getXmlWriter();
 
-        if (!$this->withoutP) {
-            $xmlWriter->startElement('text:p');
-            $xmlWriter->writeAttribute('text:style-name', 'IM' . $mediaIndex);
-        }
+		if (!$this->withoutP) {
+			$xmlWriter->startElement('text:p');
+			$xmlWriter->writeAttribute('text:style-name', 'IM' . $mediaIndex);
+		}
 
-        $xmlWriter->startElement('draw:frame');
-        $xmlWriter->writeAttribute('draw:style-name', 'fr' . $mediaIndex);
-        $xmlWriter->writeAttributeIf($this->withoutP, 'draw:text-style-name', 'IM' . $mediaIndex);
-        $xmlWriter->writeAttribute('draw:name', $element->getElementId());
-        $xmlWriter->writeAttribute('text:anchor-type', 'as-char');
-        $xmlWriter->writeAttribute('svg:width', $width . 'cm');
-        $xmlWriter->writeAttribute('svg:height', $height . 'cm');
-        $xmlWriter->writeAttribute('draw:z-index', $mediaIndex);
+		$xmlWriter->startElement('draw:frame');
+		$xmlWriter->writeAttribute('draw:style-name', 'fr' . $mediaIndex);
+		$xmlWriter->writeAttributeIf($this->withoutP, 'draw:text-style-name', 'IM' . $mediaIndex);
+		$xmlWriter->writeAttribute('draw:name', $element->getElementId());
+		$xmlWriter->writeAttribute('text:anchor-type', 'as-char');
+		$xmlWriter->writeAttribute('svg:width', $width . 'cm');
+		$xmlWriter->writeAttribute('svg:height', $height . 'cm');
+		$xmlWriter->writeAttribute('draw:z-index', $mediaIndex);
 
-        $xmlWriter->startElement('draw:image');
-        $xmlWriter->writeAttribute('xlink:href', $target);
-        $xmlWriter->writeAttribute('xlink:type', 'simple');
-        $xmlWriter->writeAttribute('xlink:show', 'embed');
-        $xmlWriter->writeAttribute('xlink:actuate', 'onLoad');
-        $xmlWriter->endElement(); // draw:image
+		$xmlWriter->startElement('draw:image');
+		$xmlWriter->writeAttribute('xlink:href', $target);
+		$xmlWriter->writeAttribute('xlink:type', 'simple');
+		$xmlWriter->writeAttribute('xlink:show', 'embed');
+		$xmlWriter->writeAttribute('xlink:actuate', 'onLoad');
+		$xmlWriter->endElement(); // draw:image
 
-        $xmlWriter->endElement(); // draw:frame
+		$xmlWriter->endElement(); // draw:frame
 
-        if (!$this->withoutP) {
-            $xmlWriter->endElement(); // text:p
-        }
-    }
+		if (!$this->withoutP) {
+			$xmlWriter->endElement(); // text:p
+		}
+	}
 }

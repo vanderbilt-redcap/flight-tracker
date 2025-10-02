@@ -1,6 +1,6 @@
 <?php
 
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 

@@ -1,13 +1,13 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\CareerDevLibrary\Patents;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Measurement;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
-use \Vanderbilt\CareerDevLibrary\Dashboard;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Scholar;
+use Vanderbilt\CareerDevLibrary\Patents;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Measurement;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Dashboard;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -19,9 +19,9 @@ define("FOLLOWUP_LOST", "Followup Lost to Other Institution");
 define("PATENTS_INCLUDED", "Number of Patents");
 
 if (isset($_GET['cohort'])) {
-    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+	$cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
 } else {
-    $cohort = "";
+	$cohort = "";
 }
 
 
@@ -30,8 +30,8 @@ $measurements = [];
 
 $metadata = Download::metadata($token, $server);
 $fields = array_unique(array_merge(
-    CareerDev::$summaryFields,
-    Application::getPatentFields($metadata)
+	CareerDev::$summaryFields,
+	Application::getPatentFields($metadata)
 ));
 $indexedRedcapData = Download::getIndexedRedcapData($token, $server, $fields, $cohort, Application::getModule());
 
@@ -79,7 +79,7 @@ $lexicon = [
 		"Not Converted" => "Not Converted (".Scholar::getKLength("Internal")." years for Internal K;<br>".Scholar::getKLength("External")." years for External K)",
 		"Not Eligible" => "Not Eligible (includes K99/R00s &amp; those on K-Grants)",
 		FOLLOWUP_LOST => "Followup Lost to Other Institution (Not Eligible)",
-        PATENTS_INCLUDED => "Number of Wrangled Patents",
+		PATENTS_INCLUDED => "Number of Wrangled Patents",
 		];
 $headers[] = "Overall Summary";
 if ($cohort) {
@@ -91,12 +91,12 @@ $measurements["Converted (Overall)"] = new Measurement(($convertedTotals["Conver
 foreach ($lexicon as $conv => $text) {
 	$total = $convertedTotals[$conv] ?? 0;
 	if ($conv == FOLLOWUP_LOST) {
-        $measurements[$text] = new Measurement($total, count($indexedRedcapData));
-    } else if ($conv == PATENTS_INCLUDED) {
-	    if (CareerDev::has("patent")) {
-            $measurements[$text] = new Measurement($total);
-        }
-	} else if (in_array($conv, $ineligibleStatuses)) {
+		$measurements[$text] = new Measurement($total, count($indexedRedcapData));
+	} elseif ($conv == PATENTS_INCLUDED) {
+		if (CareerDev::has("patent")) {
+			$measurements[$text] = new Measurement($total);
+		}
+	} elseif (in_array($conv, $ineligibleStatuses)) {
 		$measurements[$text] = new Measurement($total, count($indexedRedcapData));
 	} else {
 		$measurements[$text] = new Measurement($total, $eligible);

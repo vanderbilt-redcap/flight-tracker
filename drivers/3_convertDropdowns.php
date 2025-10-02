@@ -8,12 +8,12 @@ require_once(dirname(__FILE__)."/../small_base.php");
 # Requires some user input
 
 echo "Attempting download of metadata\n";
-$data = array(
-    'token' => $token,
-    'content' => 'metadata',
-    'format' => 'json',
-    'returnFormat' => 'json'
-);
+$data = [
+	'token' => $token,
+	'content' => 'metadata',
+	'format' => 'json',
+	'returnFormat' => 'json'
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -33,7 +33,7 @@ $metadata = json_decode($output, true);
 echo count($metadata)." rows\n";
 
 # a list of all dropdowns; may be dated
-$dropdowns = array(
+$dropdowns = [
 			"newman_demographics_department1",
 			"newman_demographics_department2",
 			"newman_demographics_academic_rank",
@@ -61,20 +61,20 @@ $dropdowns = array(
 			"newman_nonrespondents_ethnicity",
 			"newman_nonrespondents_rank",
 			"summary_primary_dept",
-		);
-$depts = array(
-                        "newman_demographics_department1",
-                        "newman_demographics_department2",
-                        "newman_data_department1",
-                        "newman_data_department2",
-                        "newman_sheet2_department1",
-                        "newman_sheet2_department2",
-                        "summary_primary_dept",
-		);
-$dropdownChoices = array();
-$dropdownTypes = array();
+		];
+$depts = [
+						"newman_demographics_department1",
+						"newman_demographics_department2",
+						"newman_data_department1",
+						"newman_data_department2",
+						"newman_sheet2_department1",
+						"newman_sheet2_department2",
+						"summary_primary_dept",
+		];
+$dropdownChoices = [];
+$dropdownTypes = [];
 foreach ($dropdowns as $field) {
-	$dropdownChoices[$field] = array();
+	$dropdownChoices[$field] = [];
 	if (preg_match("/_dept/", $field) || preg_match("/_department/", $field)) {
 		$dropdownChoices[$field][] = "vfrs_department";
 		$dropdownTypes[$field] = "dropdown";
@@ -105,32 +105,32 @@ foreach ($dropdowns as $field) {
 # makes an array out of the choices string (1, abc | 2, def)
 function makeChoiceArray($choiceStr) {
 	$choices = preg_split("/\s*\|\s*/", $choiceStr);
-	$choices2 = array();
+	$choices2 = [];
 	foreach ($choices as $choice) {
 		$a = preg_split("/\s*,\s*/", $choice);
 		if (count($a) > 2) {
-			$b = array();
-			for ($i=1; $i < count($a); $i++) {
+			$b = [];
+			for ($i = 1; $i < count($a); $i++) {
 				$b[] = $a[$i];
 			}
-			$a = array($a[0], implode(", ", $b));
+			$a = [$a[0], implode(", ", $b)];
 		}
 		$choices2[$a[0]] = $a[1];
 	}
-        if (preg_match("/MD/", $choiceStr)) {
-                $choices2[6] = "MD, MPH";
-                $choices2[7] = "MD, MSCI";
-                $choices2[8] = "MD, MS";
-                $choices2[9] = "MD, PhD";
-                $choices2[10] = "MS, MD, PhD";
-                $choices2[11] = "MHS";
-                $choices2[12] = "MD, MHS";
-                $choices2[13] = "PharmD";
-                $choices2[14] = "MD, PharmD";
-                $choices2[15] = "PsyD";
-                $choices2[16] = "MPH, MS";
-                $choices2[17] = "RN";
-        }
+	if (preg_match("/MD/", $choiceStr)) {
+		$choices2[6] = "MD, MPH";
+		$choices2[7] = "MD, MSCI";
+		$choices2[8] = "MD, MS";
+		$choices2[9] = "MD, PhD";
+		$choices2[10] = "MS, MD, PhD";
+		$choices2[11] = "MHS";
+		$choices2[12] = "MD, MHS";
+		$choices2[13] = "PharmD";
+		$choices2[14] = "MD, PharmD";
+		$choices2[15] = "PsyD";
+		$choices2[16] = "MPH, MS";
+		$choices2[17] = "RN";
+	}
 	if (preg_match("/Assistant Professor/", $choiceStr)) {
 		unset($choices2[0]);
 		$choices2[1] = "Research Fellow";
@@ -146,9 +146,9 @@ function makeChoiceArray($choiceStr) {
 		$choices2 = getDepartmentChoices();
 	}
 	if (isset($choices2[0])) {
-		$choices3 = array();
+		$choices3 = [];
 		foreach ($choices2 as $i => $choice) {
-			$choices[$i+1] = $choice;
+			$choices[$i + 1] = $choice;
 		}
 		return $choices3;
 	}
@@ -157,7 +157,7 @@ function makeChoiceArray($choiceStr) {
 
 # make a string from the choices array
 function makeChoiceString($choices) {
-	$choices2 = array();
+	$choices2 = [];
 	foreach ($choices as $a => $b) {
 		$choices2[] = "$a, $b";
 	}
@@ -165,12 +165,12 @@ function makeChoiceString($choices) {
 	return implode(" | ", $choices2);
 }
 
-$metadataNew = array();
+$metadataNew = [];
 foreach ($metadata as $row) {
 	if ($row['field_name'] == "newman_demographics_primary_dept") {
-		$row['field_name'] = "newman_demographics_department1"; 
+		$row['field_name'] = "newman_demographics_department1";
 		$metadataNew[] = $row;
-		$row['field_name'] = "newman_demographics_department2"; 
+		$row['field_name'] = "newman_demographics_department2";
 		$metadataNew[] = $row;
 	} else {
 		$metadataNew[] = $row;
@@ -193,7 +193,7 @@ foreach ($metadata as $row) {
 	}
 }
 foreach ($dropdownChoices as $field => $ary) {
-	$ary2 = array();
+	$ary2 = [];
 	foreach ($ary as $a) {
 		foreach ($a as $value => $label) {
 			$ary2[$value] = $label;
@@ -220,13 +220,13 @@ fwrite($fp, json_encode($metadata));
 fclose($fp);
 
 # uploads the new metadata
-$data = array(
-    'token' => $token,
-    'content' => 'metadata',
-    'format' => 'json',
-    'data' => json_encode($metadata),
-    'returnFormat' => 'json'
-);
+$data = [
+	'token' => $token,
+	'content' => 'metadata',
+	'format' => 'json',
+	'data' => json_encode($metadata),
+	'returnFormat' => 'json'
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -244,11 +244,11 @@ curl_close($ch);
 
 
 # download record IDs
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
-	'fields' => array('record_id'),
+	'fields' => ['record_id'],
 	'type' => 'flat',
 	'rawOrLabel' => 'raw',
 	'rawOrLabelHeaders' => 'raw',
@@ -256,7 +256,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -272,7 +272,7 @@ $output = curl_exec($ch);
 curl_close($ch);
 
 $rows = json_decode($output, true);
-$recordIds = array();
+$recordIds = [];
 foreach ($rows as $row) {
 	$recordId = $row['record_id'];
 	if (!in_array($recordId, $recordIds)) {
@@ -288,11 +288,11 @@ echo count($recordIds)." record ids.\n";
 $pullSize = 40;
 $numPulls = ceil(count($recordIds) / $pullSize);
 for ($pull = 0; $pull < $numPulls; $pull++) {
-	$records = array();
+	$records = [];
 	for ($j = 0; ($j < $pullSize) && ($j + 1 + $pullSize * $pull <= count($recordIds)) ; $j++) {
 		$records[] = $pullSize * $pull + $j + 1;
 	}
-	$data = array(
+	$data = [
 		'token' => $token,
 		'content' => 'record',
 		'format' => 'json',
@@ -304,7 +304,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 		'exportSurveyFields' => 'false',
 		'exportDataAccessGroups' => 'false',
 		'returnFormat' => 'json'
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $server);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -318,12 +318,12 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 	$output = curl_exec($ch);
 	curl_close($ch);
-	
+
 	$records = json_decode($output, true);
-	$departments = array();
-	$departmentFields = array();
+	$departments = [];
+	$departmentFields = [];
 	$i = 0;
-	foreach($records as $row) {
+	foreach ($records as $row) {
 		foreach ($row as $field => $value) {
 			if (isset($dropdownChoices[$field])) {
 				if ($value !== "") {
@@ -334,133 +334,133 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 						# autopopulate some options
 						if (($value == "Asst Prof.") || ($value == "Asst Prof") || ($value == "Asst. Prof") || ($value == "Asst. Prof.") || ($value == "Assistant") || ($value == "Assistant Prof") || ($value == "Assdt Prof") || ($value == "Prof") || ($value == "Professor")) {
 							$value = "Assistant Professor";
-						} else if (($value == "Assoc. Prof.") || ($value == "Assoc. Prof") || ($value == "Assc Prof") || ($value == "Assoc Prof") || ($value == "Research Assc Prof")) {
+						} elseif (($value == "Assoc. Prof.") || ($value == "Assoc. Prof") || ($value == "Assc Prof") || ($value == "Assoc Prof") || ($value == "Research Assc Prof")) {
 							$value = "Associate Professor";
-						} else if ($value == "MB") {
+						} elseif ($value == "MB") {
 							$value = "Other";
-						} else if ($value == "MSc") {
+						} elseif ($value == "MSc") {
 							$value = "MS";
-						} else if ($value == "MSPH") {
+						} elseif ($value == "MSPH") {
 							$value = "MPH";
-						} else if (($value == "MD MPH") || ($value == "MD,MPH")) {
+						} elseif (($value == "MD MPH") || ($value == "MD,MPH")) {
 							$value = "MD, MPH";
-						} else if ($value == "MD MSCI") {
+						} elseif ($value == "MD MSCI") {
 							$value = "MD, MSCI";
-						} else if ($value == "MD, MSc") {
+						} elseif ($value == "MD, MSc") {
 							$value = "MD, MS";
-						} else if ($value == "MD PhD") {
+						} elseif ($value == "MD PhD") {
 							$value = "MD, PhD";
-						} else if ($value == "MPH MSc") {
+						} elseif ($value == "MPH MSc") {
 							$value = "MPH";
-						} else if (($value == "Adjunct") || ($value == "Adj Assc Prof")) {
+						} elseif (($value == "Adjunct") || ($value == "Adj Assc Prof")) {
 							$value = "Other";
-						} else if (($value == "Rsch Fellow") || ($value == "Fellow") || ($value == "Resch Fellow")) {
+						} elseif (($value == "Rsch Fellow") || ($value == "Fellow") || ($value == "Resch Fellow")) {
 							$value = "Research Fellow";
-						} else if (($value == "Rsch Assist Prof") || ($value == "Staff Scientist Asst") || ($value == "Rsch Asst Prof") || ($value == "Res. Asst. Prof.") || (preg_match("/^Rsch Asst Prof/", $value))) {
+						} elseif (($value == "Rsch Assist Prof") || ($value == "Staff Scientist Asst") || ($value == "Rsch Asst Prof") || ($value == "Res. Asst. Prof.") || (preg_match("/^Rsch Asst Prof/", $value))) {
 							$value = "Research Assistant Professor";
-						} else if (($value == "Rsch Instructor") || ($value == "Adjoint Instructor") || ($value == "Research Instructor") || ($value == "Res. Instructor") || ($value == "Res. Inst.") || ($value == "Resch Instructor")) {
+						} elseif (($value == "Rsch Instructor") || ($value == "Adjoint Instructor") || ($value == "Research Instructor") || ($value == "Res. Instructor") || ($value == "Res. Inst.") || ($value == "Resch Instructor")) {
 							$value = "Instructor";
-						} else if (($value == "Pathology") || ($value == "Pathology, Microbiology & Immunology") || ($value == "Pathology, Microbiology and Immunology")) {
+						} elseif (($value == "Pathology") || ($value == "Pathology, Microbiology & Immunology") || ($value == "Pathology, Microbiology and Immunology")) {
 							$value = "Pathology";
-						} else if ($value == "Rad. Oncology") {
+						} elseif ($value == "Rad. Oncology") {
 							$value = "Radiation Oncology";
-						} else if ($value == "Biomed. Info.") {
+						} elseif ($value == "Biomed. Info.") {
 							$value = "Biomedical Informatics";
-						} else if (($value == "Meharry - Surgery") || ($value == "Medicine (Surgery)")) {
+						} elseif (($value == "Meharry - Surgery") || ($value == "Medicine (Surgery)")) {
 							$value = "Surgery";
-						} else if ($value == "M") {
+						} elseif ($value == "M") {
 							$value = "Male";
-						} else if ($value == "F") {
+						} elseif ($value == "F") {
 							$value = "Female";
-						} else if ($value == "More than one race") {
+						} elseif ($value == "More than one race") {
 							$value = "More Than One Race";
-						} else if (($value == "Hispanic") || ($value == "H")) {
+						} elseif (($value == "Hispanic") || ($value == "H")) {
 							$value = "Hispanic or Latino";
-						} else if ($value == "W") {
+						} elseif ($value == "W") {
 							$value = "White";
-						} else if ($value == "NH") {
+						} elseif ($value == "NH") {
 							$value = "Non-Hispanic";
-						} else if (($value == "Clinical Instructor") || ($value == "Resident Physician")) {
+						} elseif (($value == "Clinical Instructor") || ($value == "Resident Physician")) {
 							$value = "Other";
-						} else if (($value == "Af-Am") || ($value == "AA") || ($value == "Black") || ($value == "Ugandan")) {
+						} elseif (($value == "Af-Am") || ($value == "AA") || ($value == "Black") || ($value == "Ugandan")) {
 							$value = "Black or African American";
-						} else if ($value == "A") {
+						} elseif ($value == "A") {
 							$value = "Asian";
-						} else if (preg_match("/PhD /", $value) || preg_match("/, PhD/", $value) || ($value == "Ph.D")) {
+						} elseif (preg_match("/PhD /", $value) || preg_match("/, PhD/", $value) || ($value == "Ph.D")) {
 							$value = "PhD";
-						} else if ($value == "BSN") {
+						} elseif ($value == "BSN") {
 							$value == "RN";
-						} else if ($value == "Clinical Fellow") {
+						} elseif ($value == "Clinical Fellow") {
 							$value = "Research Fellow";
-						} else if ($value == "Psychologist") {
+						} elseif ($value == "Psychologist") {
 							$value = "Other";
-						} else if ($value == "Rsch Asst. Prof") {
+						} elseif ($value == "Rsch Asst. Prof") {
 							$value = "Research Assistant Professor";
-						} else if ($value == "Sci Review Officer NIH") {
+						} elseif ($value == "Sci Review Officer NIH") {
 							$value = "Other";
-						} else if ($value == "Asst. Clin. Prof.") {
+						} elseif ($value == "Asst. Clin. Prof.") {
 							$value = "Assistant Professor";
-						} else if ($value == "Postdoc") {
+						} elseif ($value == "Postdoc") {
 							$value = "Research Fellow";
-						} else if ($value == "Research Asst Prof") {
+						} elseif ($value == "Research Asst Prof") {
 							$value = "Research Assistant Professor";
-						} else if ($value == "Research Asst Prof") {
+						} elseif ($value == "Research Asst Prof") {
 							$value = "Research Assistant Professor";
-						} else if ($value == "Res Asst Prof") {
+						} elseif ($value == "Res Asst Prof") {
 							$value = "Research Assistant Professor";
-						} else if ($value == "Postdoctoral Fellow") {
+						} elseif ($value == "Postdoctoral Fellow") {
 							$value = "Research Fellow";
-						} else if ($value == "Asst Pfo") {
+						} elseif ($value == "Asst Pfo") {
 							$value = "Assistant Professor";
-						} else if ($value == "OH") {
+						} elseif ($value == "OH") {
 							$value = "Unknown";
-						} else if (($value == "Pediactrics") || ($value == "Pediatrics")) {
+						} elseif (($value == "Pediactrics") || ($value == "Pediatrics")) {
 							$value = "General Pediatrics";
-						} else if (preg_match("/^Medicine/", $value)) {
+						} elseif (preg_match("/^Medicine/", $value)) {
 							$value = "General Internal Medicine";
-						} else if ($value == "Urology") {
+						} elseif ($value == "Urology") {
 							$value = "Medicine ";
-						} else if ($value == "Surgical Sciences/General Surgery") {
+						} elseif ($value == "Surgical Sciences/General Surgery") {
 							$value = "Surgical Sciences";
-						} else if ($value == "Pediatrics/ID") {
+						} elseif ($value == "Pediatrics/ID") {
 							$value = "Pediatrics";
-						} else if ($value == "SON-Cardiovascular Medicine") {
+						} elseif ($value == "SON-Cardiovascular Medicine") {
 							$value = "Nursing";
-						} else if ($value == "VMS PGY5 Radiation Oncology") {
+						} elseif ($value == "VMS PGY5 Radiation Oncology") {
 							$value = "Radiation Oncology";
-						} else if ($value == "Psychiatry/Child-Adolescent Psych") {
+						} elseif ($value == "Psychiatry/Child-Adolescent Psych") {
 							$value = "Psychiatry";
-						} else if ($value == "Opthomology") {
+						} elseif ($value == "Opthomology") {
 							$value = "Ophthalmology and Visual Sciences";
-						} else if ($value == "Pediatrics/ Pulmonary Allergy and Immunology") {
+						} elseif ($value == "Pediatrics/ Pulmonary Allergy and Immunology") {
 							$value = "Pediatrics/Pulmonary";
-						} else if ($value == "Preventative Medicine") {
+						} elseif ($value == "Preventative Medicine") {
 							$value = "Preventive Medicine";
-						} else if ($value == "Pediatrics/Pediatric Hematology") {
+						} elseif ($value == "Pediatrics/Pediatric Hematology") {
 							$value = "Pediatrics/Hematology";
-						} else if ($value == "School of Nursing") {
+						} elseif ($value == "School of Nursing") {
 							$value = "School of Nursing - Research Faculty";
-						} else if ($value == "PMI") {
+						} elseif ($value == "PMI") {
 							$value = "Pathology";
-						} else if ($value == "Cell and Developmental Bio., Dept of") {
+						} elseif ($value == "Cell and Developmental Bio., Dept of") {
 							$value = "Cell and Developmental Biology";
-						} else if ($value == "Physical Medicine and Rehabilitation") {
+						} elseif ($value == "Physical Medicine and Rehabilitation") {
 							$value = "Orthopaedic Surgery and Rehabilitation";
-						} else if ($value == "Surgery/Meharry Medical College") {
+						} elseif ($value == "Surgery/Meharry Medical College") {
 							$value = "Other";
-						} else if ($value == "Meharry") {
+						} elseif ($value == "Meharry") {
 							$value = "Other";
-						} else if ($value == "Ob. and Gyn.") {
+						} elseif ($value == "Ob. and Gyn.") {
 							$value = "Obstetrics and Gynecology";
-						} else if (($value == "Orthopaedics and Rehabilitation") || ($value == "Orthopaedics")) {
+						} elseif (($value == "Orthopaedics and Rehabilitation") || ($value == "Orthopaedics")) {
 							$value = "Orthopaedic Surgery and Rehabilitation";
-						} else if ($value == "Internal Medicine/Hematology /Oncology") {
+						} elseif ($value == "Internal Medicine/Hematology /Oncology") {
 							$value = "Medicine/Hematology Oncology";
-						} else if ($value == "Radiology and Radiological Science") {
+						} elseif ($value == "Radiology and Radiological Science") {
 							$value = "Radiology and Radiological Sciences";
 						}
 						if (preg_match("/_degree/", $field)) {
-							$textOptions = array();
+							$textOptions = [];
 							foreach ($dropdownChoices[$field] as $choiceValue => $label) {
 								$textOptions[] = $label;
 							}
@@ -472,7 +472,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 							if (in_array($field, $depts)) {
 								$value = str_replace("/", "\\\/", $value);
 								$value = str_replace(".", "\\.", $value);
-								if (preg_match("/$value/",$label)) {
+								if (preg_match("/$value/", $label)) {
 									$value2 = $choiceValue;
 									$records[$i][$field] = $value2;
 									break;
@@ -486,7 +486,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 							}
 						}
 						if (!isset($dropdownChoices[$field][$value2])) {
-							if (!preg_match("/_dept/", $field) && !preg_match("/_department/", $field)) { 
+							if (!preg_match("/_dept/", $field) && !preg_match("/_department/", $field)) {
 								echo $row['record_id'].": $field='$value2' not in ";
 								echo makeChoiceString($dropdownChoices[$field]);
 								echo "\n";
@@ -494,7 +494,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 								$maxScore = -1;
 								$maxItem = "";
 								$maxValue = "";
-								foreach($dropdownChoices[$field] as $myvalue => $mylabel) {
+								foreach ($dropdownChoices[$field] as $myvalue => $mylabel) {
 									$score = similar_text($value, $mylabel);
 									if ($score > $maxScore) {
 										$maxScore = $score;
@@ -507,7 +507,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 								$line = readline("$field> ");
 								$value2 = trim($line);
 								$records[$i][$field] = $value2;
-	
+
 								$field2 = str_replace("1", "2", $field);
 								if (($field != $field2) && (isset($records[$i][$field2]))) {
 									$line2 = readline("$field2> ");
@@ -523,8 +523,8 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 	}
 
 	echo "\n";
-	$found = array();
-	foreach($records as $row) {
+	$found = [];
+	foreach ($records as $row) {
 		foreach ($dropdowns as $dropdown) {
 			if ($row[$dropdown] && !is_numeric($row[$dropdown])) {
 				echo "$recordId {$row['first_name']} {$row['last_name']} $dropdown is not numeric: {$row[$dropdown]}\n";
@@ -541,7 +541,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 					echo "$recordId {$row['first_name']} {$row['last_name']} $dropdown is not numeric: {$row[$dropdown]}\n";
 					echo "Blank out? ";
 					$result = "";
-					$valids = array("y", "n");
+					$valids = ["y", "n"];
 					while (!in_array($result, $valids)) {
 						$result = readline("y/n> ");
 						$result = trim($result);
@@ -558,7 +558,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 
 	echo ($pull + 1)." of $numPulls) Attempting to upload...\n";
 
-	$data = array(
+	$data = [
 		'token' => $token,
 		'content' => 'record',
 		'format' => 'json',
@@ -567,7 +567,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 		'data' => json_encode($records),
 		'returnContent' => 'count',
 		'returnFormat' => 'json'
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $server);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

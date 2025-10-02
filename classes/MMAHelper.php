@@ -3,117 +3,118 @@
 namespace Vanderbilt\CareerDevLibrary;
 
 use Couchbase\MutateArrayAppendSpec;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(__DIR__ . '/ClassLoader.php');
 require_once(APP_PATH_DOCROOT."/Classes/UserRights.php");
 
 if (!defined("NEW_HASH_DESIGNATION")) {
-    define('NEW_HASH_DESIGNATION', 'NEW');
+	define('NEW_HASH_DESIGNATION', 'NEW');
 }
 
-class MMAHelper {
-    public const INSTRUMENT = "mentoring_agreement";
-    public const PREFIX = "mentoring_";
-    public const EVAL_INSTRUMENT = "mentoring_agreement_evaluations";
-    public const STEPS_KEY = "mma_steps";
-    public const METADATA_KEY = "mma_metadata";
-    public const SESSION_EMULATOR = "mma_session";
+class MMAHelper
+{
+	public const INSTRUMENT = "mentoring_agreement";
+	public const PREFIX = "mentoring_";
+	public const EVAL_INSTRUMENT = "mentoring_agreement_evaluations";
+	public const STEPS_KEY = "mma_steps";
+	public const METADATA_KEY = "mma_metadata";
+	public const SESSION_EMULATOR = "mma_session";
+	public const NUM_CUSTOM_QUESTIONS = 5;
+	public const CUSTOM_QUESTIONS_SOURCE_KEY = "FTAdmin";
+	public const CUSTOM_QUESTIONS_SOURCE_READABLE = "Flight Tracker Admin";
 
-    public static function createHash($token, $server) {
-        $newHash = REDCapManagement::makeHash(self::getHashLength());
-        $recordIds = Download::recordIds($token, $server);
-        $newRecordId = empty($recordIds) ? 1 : (max($recordIds) + 1);
-        $uploadRow = [
-            "record_id" => $newRecordId,
-            "identifier_hash" => $newHash,
-            "identifiers_complete" => "2",
-        ];
-        Upload::oneRow($uploadRow, $token, $server);
-        return ["record" => $newRecordId, "hash" => $newHash];
-    }
+	public static function createHash($token, $server) {
+		$newHash = REDCapManagement::makeHash(self::getHashLength());
+		$recordIds = Download::recordIds($token, $server);
+		$newRecordId = empty($recordIds) ? 1 : (max($recordIds) + 1);
+		$uploadRow = [
+			"record_id" => $newRecordId,
+			"identifier_hash" => $newHash,
+			"identifiers_complete" => "2",
+		];
+		Upload::oneRow($uploadRow, $token, $server);
+		return ["record" => $newRecordId, "hash" => $newHash];
+	}
 
-    public static function validateHash($proposedHash, $token, $server, $proposedRecordId = "") {
-        if (self::isValidHash($proposedHash)) {
-            $savedHashes = Download::oneField($token, $server, "identifier_hash");
-            if ($proposedRecordId) {
-                if (
-                    $proposedHash
-                    && isset($savedHashes[$proposedRecordId])
-                    && ($savedHashes[$proposedRecordId] == $proposedHash)
-                ) {
-                    return ["record" => $proposedRecordId, "hash" => $proposedHash];
-                }
-            } else {
-                foreach ($savedHashes as $recordId => $instanceHash) {
-                    if (
-                        $proposedHash
-                        && $instanceHash
-                        && ($instanceHash == $proposedHash)
-                    ) {
-                        return ["record" => $recordId, "hash" => $instanceHash];
-                    }
-                }
-            }
-        }
-        return ["record" => FALSE, "hash" => FALSE];
-    }
+	public static function validateHash($proposedHash, $token, $server, $proposedRecordId = "") {
+		if (self::isValidHash($proposedHash)) {
+			$savedHashes = Download::oneField($token, $server, "identifier_hash");
+			if ($proposedRecordId) {
+				if (
+					$proposedHash
+					&& isset($savedHashes[$proposedRecordId])
+					&& ($savedHashes[$proposedRecordId] == $proposedHash)
+				) {
+					return ["record" => $proposedRecordId, "hash" => $proposedHash];
+				}
+			} else {
+				foreach ($savedHashes as $recordId => $instanceHash) {
+					if (
+						$proposedHash
+						&& $instanceHash
+						&& ($instanceHash == $proposedHash)
+					) {
+						return ["record" => $recordId, "hash" => $instanceHash];
+					}
+				}
+			}
+		}
+		return ["record" => false, "hash" => false];
+	}
 
-    private static function getHashLength() {
-        return 32;
-    }
+	private static function getHashLength() {
+		return 32;
+	}
 
-    public static function isValidHash($str) {
-        # older versions had a bug where hashes were produced with twice the size
-        # this code allows for both
-        # hashes are still checked whether they correspond with the value in REDCap
-        return (strlen($str) == self::getHashLength()) || (strlen($str) == self::getHashLength() * 2);
-    }
+	public static function isValidHash($str) {
+		# older versions had a bug where hashes were produced with twice the size
+		# this code allows for both
+		# hashes are still checked whether they correspond with the value in REDCap
+		return (strlen($str) == self::getHashLength()) || (strlen($str) == self::getHashLength() * 2);
+	}
 
-    public static function makePublicApplicationForm($token, $server, $hash, $recordId = FALSE) {
-        $html = "";
+	public static function makePublicApplicationForm($token, $server, $hash, $recordId = false) {
+		$html = "";
 
-        $formUrl = Application::link("mentor/createHash.php")."&hash=".NEW_HASH_DESIGNATION;
-        if ($hash == NEW_HASH_DESIGNATION) {
-            $formStyle = "";
-            $startStyle = "style='display: none; cursor: pointer;'";
-            $startLink = "";
-            $mentorLink = "";
-            $menteeLink = "";
-            $mentorName = "";
-            $menteeName = "";
-        } else if ($hash && $recordId) {
-            $recordData = Download::records($token, $server, [$recordId]);
-            if (isset($_GET['test'])) {
-                echo "Record $recordId data: ".json_encode($recordData)."<br>";
-            }
-            $menteeName = REDCapManagement::findField($recordData, $recordId, "identifier_first_name")." ".REDCapManagement::findField($recordData, $recordId, "identifier_last_name");
-            $mentorName = REDCapManagement::findField($recordData, $recordId, "mentor_first_name")." ".REDCapManagement::findField($recordData, $recordId, "mentor_last_name");
+		$formUrl = Application::link("mentor/createHash.php")."&hash=".NEW_HASH_DESIGNATION;
+		if ($hash == NEW_HASH_DESIGNATION) {
+			$formStyle = "";
+			$startStyle = "style='display: none; cursor: pointer;'";
+			$startLink = "";
+			$mentorLink = "";
+			$menteeLink = "";
+			$mentorName = "";
+			$menteeName = "";
+		} elseif ($hash && $recordId) {
+			$recordData = Download::records($token, $server, [$recordId]);
+			$menteeName = REDCapManagement::findField($recordData, $recordId, "identifier_first_name")." ".REDCapManagement::findField($recordData, $recordId, "identifier_last_name");
+			$mentorName = REDCapManagement::findField($recordData, $recordId, "mentor_first_name")." ".REDCapManagement::findField($recordData, $recordId, "mentor_last_name");
 
-            $formStyle = "style='display: none;'";
-            $startStyle = "style='cursor: pointer;'";
-            $indexLink = Application::link("mentor/index.php")."&hash=$hash&menteeRecord=$recordId";
-            $menteeLink = $indexLink."&instance=1";
-            $mentorLink = $indexLink."&instance=2";
-            if (self::isMentee($recordId)) {
-                $startLink = Application::link("mentor/index_menteeview.php")."&hash=$hash&menteeRecord=$recordId";
-            } else {
-                $startLink = Application::link("mentor/index_mentorview.php")."&hash=$hash&menteeRecord=$recordId&index=2";
-            }
-        } else {
-            die("Improper access!");
-        }
+			$formStyle = "style='display: none;'";
+			$startStyle = "style='cursor: pointer;'";
+			$indexLink = Application::link("mentor/index.php")."&hash=$hash&menteeRecord=$recordId";
+			$menteeLink = $indexLink."&instance=1";
+			$mentorLink = $indexLink."&instance=2";
+			if (self::isMentee($recordId)) {
+				$startLink = Application::link("mentor/index_menteeview.php")."&hash=$hash&menteeRecord=$recordId";
+			} else {
+				$startLink = Application::link("mentor/index_mentorview.php")."&hash=$hash&menteeRecord=$recordId&index=2";
+			}
+		} else {
+			die("Improper access!");
+		}
 
-        $menteeUrl = Application::link("mentor/index_menteeview.php");
-        $mentorUrl = Application::link("mentor/index_mentorview.php");
-        $blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement"]);
-        if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
-            $oneMentorOnlyWarning = "<p class='centered'>For this agreement, in the case of multiple mentors, we suggest that one mentor take the ‘lead’ on this agreement process.  Certainly, we encourage the Mentors and Mentee to have open dialogue about the issues contained herein, but respectfully defer this responsibility to the lead Mentor on this Agreement and the Mentee.</p>";
-        } else {
-            $oneMentorOnlyWarning = "";
-        }
+		$menteeUrl = Application::link("mentor/index_menteeview.php");
+		$mentorUrl = Application::link("mentor/index_mentorview.php");
+		$blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement"]);
+		if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
+			$oneMentorOnlyWarning = "<p class='centered'>For this agreement, in the case of multiple mentors, we suggest that one mentor take the ‘lead’ on this agreement process.  Certainly, we encourage the Mentors and Mentee to have open dialogue about the issues contained herein, but respectfully defer this responsibility to the lead Mentor on this Agreement and the Mentee.</p>";
+		} else {
+			$oneMentorOnlyWarning = "";
+		}
 
-        $html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
+		$html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
 <div class='blue-box'>
     <h2 style='color: #222222;'>Typical Workflow Starting<br/>Early in Relationship</h2>
     <h3>$blueBoxText</h3>
@@ -253,34 +254,34 @@ function startNow() {
 }
 </script>
 ";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function downloadAndMakeNames($token, $server) {
-        $firstNames = Download::firstnames($token, $server);
-        $lastNames = Download::lastnames($token, $server);
-        $names = [];
-        foreach ($firstNames as $recordId => $firstName) {
-            $lastName = $lastNames[$recordId] ?? "";
-            $names[$recordId] = NameMatcher::formatName($firstName, "", $lastName);
-        }
-        return $names;
-    }
+	public static function downloadAndMakeNames($token, $server) {
+		$firstNames = Download::firstnames($token, $server);
+		$lastNames = Download::lastnames($token, $server);
+		$names = [];
+		foreach ($firstNames as $recordId => $firstName) {
+			$lastName = $lastNames[$recordId] ?? "";
+			$names[$recordId] = NameMatcher::formatName($firstName, "", $lastName);
+		}
+		return $names;
+	}
 
-    public static function makeMainTable($token, $server, $username, $metadata, $menteeRecordIds, $uidString = "") {
-        $html = "";
+	public static function makeMainTable($token, $server, $username, $metadata, $menteeRecordIds, $uidString = "") {
+		$html = "";
 
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        list($firstName, $lastName) = self::getNameFromREDCap($username, $token, $server);
-        $names = self::downloadAndMakeNames($token, $server);
-        $userids = Download::userids($token, $server);   // no hash defined -> not public project
-        $allMentorUids = Download::primaryMentorUserids($token, $server);
-        $allMentors = Download::primaryMentors($token, $server);
-        $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge($metadataFields, ["record_id"])), $menteeRecordIds);
+		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+		list($firstName, $lastName) = self::getNameFromREDCap($username, $token, $server);
+		$names = self::downloadAndMakeNames($token, $server);
+		$userids = Download::userids($token, $server);   // no hash defined -> not public project
+		$allMentorUids = Download::primaryMentorUserids($token, $server);
+		$allMentors = Download::primaryMentors($token, $server);
+		$redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge($metadataFields, ["record_id"])), $menteeRecordIds);
 
-        $blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement", "Revisit Agreement"]);
+		$blueBoxText = implode("<br>&rarr; ", ["Enter Mentee Preferences", "Discussion with Mentor", "Sign Final Agreement", "Revisit Agreement"]);
 
-        $html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
+		$html .= "<section class='bg-light'><div class='container'><div class='row'><div class='col-lg-12'>
 <div class='blue-box'>
     <h2 style='color: #222222;'>Typical Workflow Starting<br/>Early in Relationship</h2>
     <h3>$blueBoxText</h3>
@@ -300,233 +301,220 @@ function startNow() {
     </thead>
     <tbody>";
 
-        $i = 1;
-        foreach ($menteeRecordIds as $menteeRecordId) {
-            $menteeName = $names[$menteeRecordId];
-            $menteeUserids = self::getMenteeUserids($userids[$menteeRecordId]);
-            $namesOfMentors = $allMentors[$menteeRecordId] ?? [];
-            $useridsOfMentors = $allMentorUids[$menteeRecordId] ?? [];
-            $myRow = self::getLatestRow($menteeRecordId, [$username], $redcapData);
-            $mentorRow = self::getLatestRow($menteeRecordId, $useridsOfMentors, $redcapData);
-            if (empty($myRow)) {
-                $instance = REDCapManagement::getMaxInstance($redcapData, self::INSTRUMENT, $menteeRecordId) + 1;
-                $percentComplete = 0;
-                $mdy = date("m-d-Y");
-                $lastMentorInstance = FALSE;
-                $surveyText = "start";
-            } else {
-                $percentComplete = self::getPercentComplete($myRow, $metadata);
-                $mdy = DateManagement::YMD2MDY($myRow['mentoring_last_update']);
-                $instance = $myRow['redcap_repeat_instance'];
-                $lastMentorInstance = $mentorRow['redcap_repeat_instance'];
-                $surveyText = "edit";
-            }
-            $newMentorInstance = $instance + 1;
-            $trailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$instance";
-            if (in_array($username, $menteeUserids)) {
-                $surveyPage = Application::link("mentor/index_menteeview.php").$trailerURL;
-            } else {
-                $surveyPage = Application::link("mentor/index_mentorview.php").$trailerURL;
-            }
-            if ($lastMentorInstance) {
-                $completedTrailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$lastMentorInstance";
-                $completedPage = Application::link("mentor/index_complete.php").$completedTrailerURL;
-            } else {
-                $completedPage = "";
-            }
-            $phaseHTMLAry = [
-                "<input type='radio' id='phase1_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='1'> <label for='phase1_$menteeRecordId'>0 - 6 months</label>",
-                "<input type='radio' id='phase2_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='2'> <label for='phase2_$menteeRecordId'>7 - 12 months</label>",
-                "<input type='radio' id='phase3_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='3'> <label for='phase3_$menteeRecordId'>12+ months</label>",
-            ];
-            $phaseText = implode("<br/>", $phaseHTMLAry);
+		$i = 1;
+		foreach ($menteeRecordIds as $menteeRecordId) {
+			$menteeName = $names[$menteeRecordId];
+			$menteeUserids = self::getMenteeUserids($userids[$menteeRecordId]);
+			$namesOfMentors = $allMentors[$menteeRecordId] ?? [];
+			$useridsOfMentors = $allMentorUids[$menteeRecordId] ?? [];
+			$myRow = self::getLatestRow($menteeRecordId, [$username], $redcapData);
+			$mentorRow = self::getLatestRow($menteeRecordId, $useridsOfMentors, $redcapData);
+			if (empty($myRow)) {
+				$instance = REDCapManagement::getMaxInstance($redcapData, self::INSTRUMENT, $menteeRecordId) + 1;
+				$percentComplete = 0;
+				$mdy = date("m-d-Y");
+				$lastMentorInstance = false;
+				$surveyText = "start";
+			} else {
+				$percentComplete = self::getPercentComplete($myRow, $metadata);
+				$mdy = DateManagement::YMD2MDY($myRow['mentoring_last_update']);
+				$instance = $myRow['redcap_repeat_instance'];
+				$lastMentorInstance = $mentorRow['redcap_repeat_instance'];
+				$surveyText = "edit";
+			}
+			$newMentorInstance = $instance + 1;
+			$trailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$instance";
+			if (in_array($username, $menteeUserids)) {
+				$surveyPage = Application::link("mentor/index_menteeview.php").$trailerURL;
+			} else {
+				$surveyPage = Application::link("mentor/index_mentorview.php").$trailerURL;
+			}
+			if ($lastMentorInstance) {
+				$completedTrailerURL = $uidString."&menteeRecord=$menteeRecordId&instance=$lastMentorInstance";
+				$completedPage = Application::link("mentor/index_complete.php").$completedTrailerURL;
+			} else {
+				$completedPage = "";
+			}
+			$phaseHTMLAry = [
+				"<input type='radio' id='phase1_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='1'> <label for='phase1_$menteeRecordId'>0 - 6 months</label>",
+				"<input type='radio' id='phase2_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='2'> <label for='phase2_$menteeRecordId'>7 - 12 months</label>",
+				"<input type='radio' id='phase3_$menteeRecordId' onclick='changePhase(this);' name='phases_$menteeRecordId' value='3'> <label for='phase3_$menteeRecordId'>12+ months</label>",
+			];
+			$phaseText = implode("<br/>", $phaseHTMLAry);
 
-            $html .= "<tr id='m$i'>\n";
-            $html .= "<th scope='row'><a class='surveylink' href='$surveyPage'>$surveyText</a></th>\n";
-            if ($percentComplete > 0) {
-                $html .= "<td class='orange'>$percentComplete%<br><small>$mdy</small></td>\n";
-            } else {
-                $html .= "<td class='red incomplete'>NOT STARTED</td>\n";
-            }
-            if ($completedPage) {
-                $html .= "<td><a href='$completedPage'>view last agreement</a></td>\n";
-            } else {
-                $html .= "<td>no prior agreements</td>\n";
-            }
-            $html .= "<td>$menteeName</td>\n";
-            if (!empty($namesOfMentors)) {
-                $mentorNameText = REDCapManagement::makeConjunction($namesOfMentors);
-            } else {
-                $mentorNameText = "None listed";
-            }
-            $changeMentorLink = "";
-            if (self::isMentee($menteeRecordId, $username)) {
-                $changeMentorLink = "<br><a href='".Application::link("mentor/addMentor.php")."&menteeRecord=$menteeRecordId$uidString'>Add a Mentor</a>";
-            }
-            $html .= "<td>$mentorNameText$changeMentorLink</td>\n";
-            $html .= "<td>$phaseText</td>\n";
-            $html .= "<script>let namesOfMentors_$menteeRecordId = ".json_encode($namesOfMentors)."; let useridsOfMentors_$menteeRecordId = ".json_encode($useridsOfMentors).";</script>\n";
-            $html .= "<td><a href='javascript:void(0)' onclick='sendreminder(\"$menteeRecordId\", \"$newMentorInstance\", namesOfMentors_$menteeRecordId, useridsOfMentors_$menteeRecordId, \"$menteeName\");'>send reminder for mentor(s) to complete</a></td>\n";
-            $html .= "</tr>\n";
-            $i++;
-        }
-        $html .= "</tbody></table>";
-        if (empty($menteeRecordIds)) {
-            $html .= "<div style='text-align: center;'>No Mentees Active For You</div>";
-        }
-        $html .= "</div></div></div></section>";
+			$html .= "<tr id='m$i'>\n";
+			$html .= "<th scope='row'><a class='surveylink' href='$surveyPage'>$surveyText</a></th>\n";
+			if ($percentComplete > 0) {
+				$html .= "<td class='orange'>$percentComplete%<br><small>$mdy</small></td>\n";
+			} else {
+				$html .= "<td class='red incomplete'>NOT STARTED</td>\n";
+			}
+			if ($completedPage) {
+				$html .= "<td><a href='$completedPage'>view last agreement</a></td>\n";
+			} else {
+				$html .= "<td>no prior agreements</td>\n";
+			}
+			$html .= "<td>$menteeName</td>\n";
+			if (!empty($namesOfMentors)) {
+				$mentorNameText = REDCapManagement::makeConjunction($namesOfMentors);
+			} else {
+				$mentorNameText = "None listed";
+			}
+			$changeMentorLink = "";
+			if (self::isMentee($menteeRecordId, $username)) {
+				$changeMentorLink = "<br><a href='".Application::link("mentor/addMentor.php")."&menteeRecord=$menteeRecordId$uidString'>Add a Mentor</a>";
+			}
+			$html .= "<td>$mentorNameText$changeMentorLink</td>\n";
+			$html .= "<td>$phaseText</td>\n";
+			$html .= "<script>let namesOfMentors_$menteeRecordId = ".json_encode($namesOfMentors)."; let useridsOfMentors_$menteeRecordId = ".json_encode($useridsOfMentors).";</script>\n";
+			$html .= "<td><a href='javascript:void(0)' onclick='sendreminder(\"$menteeRecordId\", \"$newMentorInstance\", namesOfMentors_$menteeRecordId, useridsOfMentors_$menteeRecordId, \"$menteeName\");'>send reminder for mentor(s) to complete</a></td>\n";
+			$html .= "</tr>\n";
+			$i++;
+		}
+		$html .= "</tbody></table>";
+		if (empty($menteeRecordIds)) {
+			$html .= "<div style='text-align: center;'>No Mentees Active For You</div>";
+		}
+		$html .= "</div></div></div></section>";
 
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function hasMentorAgreementRightsForPlugin($pid, $username) {
-        $menteeRecord = FALSE;
-        if (isset($_REQUEST['menteeRecord'])) {
-            $menteeRecord = $_REQUEST['menteeRecord'];
-        } else if (isset($_REQUEST['record'])) {
-            $menteeRecord = $_REQUEST['record'];
-        } else if (method_exists("\Vanderbilt\CareerDevLibrary\MMAHelper", "getRecordsAssociatedWithUserid")) {
-            $records = self::getRecordsAssociatedWithUserid($username, $pid);
-            if (!empty($records)) {
-                return TRUE;
-            }
-        }
+	public static function hasMentorAgreementRightsForPlugin($pid, $username) {
+		$menteeRecord = false;
+		if (isset($_REQUEST['menteeRecord'])) {
+			$menteeRecord = $_REQUEST['menteeRecord'];
+		} elseif (isset($_REQUEST['record'])) {
+			$menteeRecord = $_REQUEST['record'];
+		} elseif (method_exists("\Vanderbilt\CareerDevLibrary\MMAHelper", "getRecordsAssociatedWithUserid")) {
+			$records = self::getRecordsAssociatedWithUserid($username, $pid);
+			if (!empty($records)) {
+				return true;
+			}
+		}
 
-        list($redcapData, $useridField) = self::getUseridDataFromREDCap($pid);
-        list($menteeUserids, $allMentorUserids) = self::getMenteeMentorUserids($redcapData, $useridField);
+		list($redcapData, $useridField) = self::getUseridDataFromREDCap($pid);
+		list($menteeUserids, $allMentorUserids) = self::getMenteeMentorUserids($redcapData, $useridField);
 
-        $validUserids = [];
-        if ($menteeRecord) {
-            if (isset($menteeUserids[$menteeRecord])) {
-                $validUserids[] = $menteeUserids[$menteeRecord];
-            }
-            if (isset($allMentorUserids[$menteeRecord])) {
-                foreach ($allMentorUserids[$menteeRecord] as $mentorUserid) {
-                    $validUserids[] = $mentorUserid;
-                }
-            }
-        }
-        if (in_array($username, $validUserids)) {
-            return TRUE;
-        }
-        if (self::getMMADebug() && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
-            return TRUE;
-        }
-        return FALSE;
-    }
+		$validUserids = [];
+		if ($menteeRecord) {
+			if (isset($menteeUserids[$menteeRecord])) {
+				$validUserids[] = $menteeUserids[$menteeRecord];
+			}
+			if (isset($allMentorUserids[$menteeRecord])) {
+				foreach ($allMentorUserids[$menteeRecord] as $mentorUserid) {
+					$validUserids[] = $mentorUserid;
+				}
+			}
+		}
+		if (in_array($username, $validUserids)) {
+			return true;
+		}
+		if (self::getMMADebug() && isset($_GET['uid']) && in_array($_GET['uid'], $validUserids)) {
+			return true;
+		}
+		return false;
+	}
 
-    public static function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = FALSE) {
-        if (!$username || self::isValidHash($username) || ($username == NEW_HASH_DESIGNATION)) {
-            return [];
-        }
+	public static function getRecordsAssociatedWithUserid($username, $pidOrToken, $server = false) {
+		if (!$username || self::isValidHash($username) || ($username == NEW_HASH_DESIGNATION)) {
+			return [];
+		}
 
-        if (is_numeric($pidOrToken)) {
-            $pid = $pidOrToken;
-        } else if (REDCapManagement::isValidToken($pidOrToken) && $server) {
-            $token = $pidOrToken;
-        } else {
-            throw new \Exception("Invalid parameters");
-        }
+		if (is_numeric($pidOrToken)) {
+			$pid = $pidOrToken;
+		} elseif (REDCapManagement::isValidToken($pidOrToken) && $server) {
+			$token = $pidOrToken;
+		} else {
+			throw new \Exception("Invalid parameters");
+		}
 
-        if (isset($pid)) {
-            list($redcapData, $useridField) = self::getUseridDataFromREDCap($pid);
-            if (isset($_GET['test'])) {
-                echo "Downloaded ".count($redcapData)." rows of REDCap data<br>";
-            }
-            list($menteeUserids, $allMentorUserids) = self::getMenteeMentorUserids($redcapData, $useridField);
-        } else if (isset($token)) {
-            $menteeUserids = Download::userids($token, $server);
-            $allMentorUserids = Download::primaryMentorUserids($token, $server);
-        } else {
-            throw new \Exception("This should never happen - no token or pid");
-        }
+		if (isset($pid)) {
+			list($redcapData, $useridField) = self::getUseridDataFromREDCap($pid);
+			list($menteeUserids, $allMentorUserids) = self::getMenteeMentorUserids($redcapData, $useridField);
+		} elseif (isset($token)) {
+			$menteeUserids = Download::userids($token, $server);
+			$allMentorUserids = Download::primaryMentorUserids($token, $server);
+		} else {
+			throw new \Exception("This should never happen - no token or pid");
+		}
 
-        if (isset($_GET['test'])) {
-            echo count($menteeUserids)." mentee userids and ".count($allMentorUserids)." mentees with mentor userids<br>";
-        }
+		if (isset($menteeUserids) && isset($allMentorUserids)) {
+			$menteeRecordIds = [];
+			$username = strtolower(trim($username));
+			foreach ($menteeUserids as $recordId => $menteeUserid) {
+				$useridList = self::getUserids($menteeUserid);
+				foreach ($useridList as $userid) {
+					if ($username == trim($userid)) {
+						$menteeRecordIds[] = $recordId;
+						break;
+					}
+				}
+			}
+			foreach ($allMentorUserids as $recordId => $mentorUserids) {
+				foreach ($mentorUserids as $mentorUserid) {
+					if ($username == strtolower(trim($mentorUserid))) {
+						$menteeRecordIds[] = $recordId;
+					}
+				}
+			}
+			$menteeRecordIds = array_unique($menteeRecordIds);
+			return $menteeRecordIds;
+		} else {
+			throw new \Exception("Could not find mentee/mentor userids");
+		}
+	}
 
-        if (isset($menteeUserids) && isset($allMentorUserids)) {
-            $menteeRecordIds = [];
-            $username = strtolower(trim($username));
-            foreach ($menteeUserids as $recordId => $menteeUserid) {
-                $useridList = self::getUserids($menteeUserid);
-                if (isset($_GET['test'])) {
-                    echo "Record $recordId: Checking mentee ".json_encode($useridList)." vs. $username<br>";
-                }
-                foreach ($useridList as $userid) {
-                    if ($username == trim($userid)) {
-                        $menteeRecordIds[] = $recordId;
-                        break;
-                    }
-                }
-            }
-            foreach ($allMentorUserids as $recordId => $mentorUserids) {
-                foreach ($mentorUserids as $mentorUserid) {
-                    if ($username == strtolower(trim($mentorUserid))) {
-                        $menteeRecordIds[] = $recordId;
-                    }
-                }
-            }
-            $menteeRecordIds = array_unique($menteeRecordIds);
-            if (isset($_GET['test'])) {
-                echo "Looking for $username and found ".json_encode($menteeRecordIds)."<br>";
-            }
-            return $menteeRecordIds;
-        } else {
-            throw new \Exception("Could not find mentee/mentor userids");
-        }
-    }
+	public static function getUserids($useridList) {
+		if (!$useridList) {
+			return [];
+		}
+		$userids = preg_split("/\s*[,;]\s*/", strtolower($useridList));
+		for ($i = 0; $i < count($userids); $i++) {
+			$userids[$i] = trim($userids[$i]);
+		}
+		return $userids;
+	}
 
-    public static function getUserids($useridList) {
-        if (!$useridList) {
-            return [];
-        }
-        $userids = preg_split("/\s*[,;]\s*/", strtolower($useridList));
-        for ($i = 0; $i < count($userids); $i++) {
-            $userids[$i] = trim($userids[$i]);
-        }
-        return $userids;
-    }
+	public static function getMenteeUserids($useridList) {
+		return self::getUserids($useridList);
+	}
 
-    public static function getMenteeUserids($useridList) {
-        return self::getUserids($useridList);
-    }
+	public static function getMenteeMentorUserids($redcapData, $useridField) {
+		$menteeUserids = [];
+		$mentorUserids = [];
+		foreach ($redcapData as $row) {
+			$recordId = $row['record_id'];
+			if ($row[$useridField]) {
+				$menteeUserids[$recordId] = $row[$useridField];
+			}
+			if ($row['summary_mentor_userid']) {
+				$mentorUserids[$recordId] = self::getUserids($row['summary_mentor_userid']);
+			}
+		}
+		return [$menteeUserids, $mentorUserids];
+	}
 
-    public static function getMenteeMentorUserids($redcapData, $useridField) {
-        $menteeUserids = [];
-        $mentorUserids = [];
-        foreach ($redcapData as $row) {
-            $recordId = $row['record_id'];
-            if ($row[$useridField]) {
-                $menteeUserids[$recordId] = $row[$useridField];
-            }
-            if ($row['summary_mentor_userid']) {
-                $mentorUserids[$recordId] = self::getUserids($row['summary_mentor_userid']);
-            }
-        }
-        return [$menteeUserids, $mentorUserids];
-    }
+	public static function getUseridDataFromREDCap($pid) {
+		$json = \REDCap::getDataDictionary($pid, "json");
+		$metadata = json_decode($json, true);
+		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+		if (in_array("identifier_userid", $metadataFields)) {
+			$useridField = "identifier_userid";
+		} elseif (in_array("identifier_vunet", $metadataFields)) {
+			$useridField = "identifier_vunet";
+		} else {
+			throw new \Exception("Could not find userid field in ".implode(", ", $metadataFields)." from $json");
+		}
 
-    public static function getUseridDataFromREDCap($pid) {
-        $json = \REDCap::getDataDictionary($pid, "json");
-        $metadata = json_decode($json, TRUE);
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        if (in_array("identifier_userid", $metadataFields)) {
-            $useridField = "identifier_userid";
-        } else if (in_array("identifier_vunet", $metadataFields)) {
-            $useridField = "identifier_vunet";
-        } else {
-            throw new \Exception("Could not find userid field in ".implode(", ", $metadataFields)." from $json");
-        }
+		$json = \REDCap::getData($pid, "json", null, ["record_id", "summary_mentor_userid", $useridField]);
+		$redcapData = json_decode($json, true);
+		$redcapData = Sanitizer::sanitizeArray($redcapData);
+		return [$redcapData, $useridField];
+	}
 
-        $json = \REDCap::getData($pid, "json", NULL, ["record_id", "summary_mentor_userid", $useridField]);
-        $redcapData = json_decode($json, TRUE);
-        $redcapData = Sanitizer::sanitizeArray($redcapData);
-        return [$redcapData, $useridField];
-    }
-
-    public static function makePercentCompleteJS() {
-        $html = "<script>
+	public static function makePercentCompleteJS() {
+		$html = "<script>
     function getPercentComplete() {
         let numer = 0;
         let denom = 0;
@@ -560,492 +548,465 @@ function startNow() {
         return Math.ceil(numer * 100 / denom);
     }
     </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function getMetadata($pid, $metadataFields = []) {
-        if (isset($_SESSION[self::METADATA_KEY])) {
-            return $_SESSION[self::METADATA_KEY];
-        }
-        if (empty($metadataFields)) {
-            $metadataFields = Download::metadataFieldsByPidWithPrefix($pid, self::PREFIX);
-        }
-        $metadata = Download::metadataByPid($pid, $metadataFields);
-        $_SESSION[self::METADATA_KEY] = $metadata;
-        return $metadata;
-    }
+	public static function getMetadata($pid, $metadataFields = []) {
+		if (isset($_SESSION[self::METADATA_KEY])) {
+			return $_SESSION[self::METADATA_KEY];
+		}
+		if (empty($metadataFields)) {
+			$metadataFields = Download::metadataFieldsByPidWithPrefix($pid, self::PREFIX);
+		}
+		$metadata = Download::metadataByPid($pid, $metadataFields);
+		$_SESSION[self::METADATA_KEY] = $metadata;
+		return $metadata;
+	}
 
-    public static function makePriorInstancesDropdown($instances, $currInstance) {
-        $html = "";
-        $html .= "<div style='margin: 0 auto; width: 100%;'><label for='instances'>Use Prior Data:</label><select id='instances' name='instances' style='margin-left: 1em;'>";
-        $html .= "<option value=''>--- new ---</option>";
-        foreach ($instances as $instance => $date) {
-            if ($instance == $currInstance) {
-                $sel = " selected";
-            } else {
-                $sel = "";
-            }
-            $html .= "<option value='$instance'$sel>$instance: ".DateManagement::YMD2MDY($date)."</option>";
-        }
+	public static function makePriorInstancesDropdown($instances, $currInstance) {
+		$html = "";
+		$html .= "<div style='margin: 0 auto; width: 100%;'><label for='instances'>Use Prior Data:</label><select id='instances' name='instances' style='margin-left: 1em;'>";
+		$html .= "<option value=''>--- new ---</option>";
+		foreach ($instances as $instance => $date) {
+			if ($instance == $currInstance) {
+				$sel = " selected";
+			} else {
+				$sel = "";
+			}
+			$html .= "<option value='$instance'$sel>$instance: ".DateManagement::YMD2MDY($date)."</option>";
+		}
 
-        $html .= "</select></div>";
-        return $html;
-    }
+		$html .= "</select></div>";
+		return $html;
+	}
 
-    public static function fieldValuesAgree($set1, $set2) {
-        foreach ($set1 as $item) {
-            if (!in_array($item, $set2)) {
-                return FALSE;
-            }
-        }
-        foreach ($set2 as $item) {
-            if (!in_array($item, $set1)) {
-                return FALSE;
-            }
-        }
-        return TRUE;
-    }
+	public static function fieldValuesAgree($set1, $set2) {
+		foreach ($set1 as $item) {
+			if (!in_array($item, $set2)) {
+				return false;
+			}
+		}
+		foreach ($set2 as $item) {
+			if (!in_array($item, $set1)) {
+				return false;
+			}
+		}
+		return true;
+	}
 
-    public static function scheduleEmail($to, $from, $subject, $message, $datetime, $pid, $token, $server) {
-        if (Application::isLocalhost()) {
-            $to = "scott.j.pearson@vumc.org";
-            Application::log($message);
-        } else if ($datetime == "now") {
-            \REDCap::email($to, $from, $subject, $message);
-        } else {
-            $ts = strtotime($datetime);
-            $datetime = date("Y-m-d H:i", $ts);
+	public static function scheduleEmail($to, $from, $subject, $message, $datetime, $pid, $token, $server) {
+		if (Application::isLocalhost()) {
+			$to = "scott.j.pearson@vumc.org";
+			Application::log($message);
+		} elseif ($datetime == "now") {
+			\REDCap::email($to, $from, $subject, $message);
+		} else {
+			$ts = strtotime($datetime);
+			$datetime = date("Y-m-d H:i", $ts);
 
-            $metadata = Download::metadata($token, $server);
-            $mgr = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
-            $emailSetting = EmailManager::makeEmailSetting($datetime, $to, $from, $subject, $message, TRUE);
-            $settingName = "MMA $subject $datetime TO:$to FROM:$from";
-            $mgr->saveSetting($settingName, $emailSetting);
-        }
-        if (Application::isVanderbilt() && self::getMMADebug()) {
-            $subject = "DUPLICATE: ".$to.": ".$subject." on ".$datetime;
-            \REDCap::email("scott.j.pearson@vumc.org", $from, $subject, $message);
-        }
-    }
+			$metadata = Download::metadata($token, $server);
+			$mgr = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
+			$emailSetting = EmailManager::makeEmailSetting($datetime, $to, $from, $subject, $message, true);
+			$settingName = "MMA $subject $datetime TO:$to FROM:$from";
+			$mgr->saveSetting($settingName, $emailSetting);
+		}
+		if (Application::isVanderbilt() && self::getMMADebug()) {
+			$subject = "DUPLICATE: ".$to.": ".$subject." on ".$datetime;
+			\REDCap::email("scott.j.pearson@vumc.org", $from, $subject, $message);
+		}
+	}
 
-    public static function parseSectionHeader($sectionHeader) {
-        $sectionHeaderLines =  preg_split("/>\s*<p/", $sectionHeader);
-        if (count($sectionHeaderLines) > 1) {
-            $sec_header = $sectionHeaderLines[0].">";
-            $sectionDescriptionLines = [];
-            for ($i = 1; $i < count($sectionHeaderLines); $i++) {
-                $sectionDescriptionLines[] = $sectionHeaderLines[$i];
-            }
-            $sectionDescription = "";
-            if (!empty($sectionDescriptionLines)) {
-                $sectionDescription = "<p".implode("><p", $sectionDescriptionLines);
-            }
-            return [$sec_header, $sectionDescription];
-        } else {
-            return [$sectionHeader, ""];
-        }
-    }
+	public static function parseSectionHeader($sectionHeader) {
+		$sectionHeaderLines =  preg_split("/>\s*<p/", $sectionHeader);
+		if (count($sectionHeaderLines) > 1) {
+			$sec_header = $sectionHeaderLines[0].">";
+			$sectionDescriptionLines = [];
+			for ($i = 1; $i < count($sectionHeaderLines); $i++) {
+				$sectionDescriptionLines[] = $sectionHeaderLines[$i];
+			}
+			$sectionDescription = "";
+			if (!empty($sectionDescriptionLines)) {
+				$sectionDescription = "<p".implode("><p", $sectionDescriptionLines);
+			}
+			return [$sec_header, $sectionDescription];
+		} else {
+			return [$sectionHeader, ""];
+		}
+	}
 
-    public static function isMentee($recordId = FALSE, $username = "") {
-        global $token, $server;
-        if ($username && !self::isValidHash($username)) {
-            $userids = Download::userids($token, $server);
-            $recordUserids = self::getUserids($userids[$recordId]);
-            if (in_array(strtolower($username), $recordUserids)) {
-                return TRUE;
-            } else {
-                return FALSE;
-            }
-        } else {
-            $currPage = REDCapManagement::sanitize($_GET['page']);
-            if ($currPage == "mentor/index_menteeview") {
-                return TRUE;
-            } else if ($currPage == "mentor/index_mentorview") {
-                return FALSE;
-            } else if ($recordId) {
-                global $token, $server;
-                $fields = ["record_id", "mentoring_userid"];
-                $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-                $maxInstance = REDCapManagement::getMaxInstance($redcapData, self::INSTRUMENT, $recordId);
-                return ($maxInstance >= 1);
-            } else {
-                return FALSE;
-            }
-        }
-    }
+	public static function isMentee($recordId = false, $username = "") {
+		global $token, $server;
+		if ($username && !self::isValidHash($username)) {
+			$userids = Download::userids($token, $server);
+			$recordUserids = self::getUserids($userids[$recordId]);
+			if (in_array(strtolower($username), $recordUserids)) {
+				return true;
+			} else {
+				return false;
+			}
+		} else {
+			$currPage = REDCapManagement::sanitize($_GET['page']);
+			if ($currPage == "mentor/index_menteeview") {
+				return true;
+			} elseif ($currPage == "mentor/index_mentorview") {
+				return false;
+			} elseif ($recordId) {
+				global $token, $server;
+				$fields = ["record_id", "mentoring_userid"];
+				$redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+				$maxInstance = REDCapManagement::getMaxInstance($redcapData, self::INSTRUMENT, $recordId);
+				return ($maxInstance >= 1);
+			} else {
+				return false;
+			}
+		}
+	}
 
-    public static function getNotesFields($fields) {
-        $notesFields = [];
-        foreach ($fields as $field) {
-            if (preg_match("/_notes$/", $field)) {
-                $notesFields[] = $field;
-            }
-        }
-        return $notesFields;
-    }
+	public static function getNotesFields($fields) {
+		$notesFields = [];
+		foreach ($fields as $field) {
+			if (preg_match("/_notes$/", $field)) {
+				$notesFields[] = $field;
+			}
+		}
+		return $notesFields;
+	}
 
-    public static function getLatestRow($recordId, $usernames, $redcapData) {
-        if (!isset($usernames) || empty($usernames)) {
-            return [];
-        }
-        $latestRow = [];
-        $latestInstance = 0;
-        foreach ($redcapData as $row) {
-            if (($row['record_id'] == $recordId)
-                && ($row['redcap_repeat_instrument'] = self::INSTRUMENT)
-                && in_array($row['mentoring_userid'], $usernames)
-                && ($row['redcap_repeat_instance'] > $latestInstance)) {
+	public static function getLatestRow($recordId, $usernames, $redcapData) {
+		if (!isset($usernames) || empty($usernames)) {
+			return [];
+		}
+		$latestRow = [];
+		$latestInstance = 0;
+		foreach ($redcapData as $row) {
+			if (($row['record_id'] == $recordId)
+				&& ($row['redcap_repeat_instrument'] = self::INSTRUMENT)
+				&& in_array($row['mentoring_userid'], $usernames)
+				&& ($row['redcap_repeat_instance'] > $latestInstance)) {
 
-                $latestRow = $row;
-                $latestInstance = $row['redcap_repeat_instance'];
-            }
-        }
-        return $latestRow;
-    }
+				$latestRow = $row;
+				$latestInstance = $row['redcap_repeat_instance'];
+			}
+		}
+		return $latestRow;
+	}
 
-    public static function getMentees($menteeRecordId, $userid, $token, $server) {
-        if (self::isValidHash($userid)) {
-            if (isset($_GET['test'])) {
-                echo "Public project<br>";
-            }
-            $hashes = Download::oneField($token, $server, "identifier_hash");
-            foreach ($hashes as $recordId => $hash) {
-                if ($userid == $hash) {
-                    if (isset($_GET['test'])) {
-                        echo "Found $hash at $recordId<br>";
-                    }
-                    $fields = [
-                        "record_id",
-                        "identifier_first_name",
-                        "identifier_last_name",
-                    ];
-                    $recordData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-                    $normativeRow = REDCapManagement::getNormativeRow($recordData);
-                    $myMentees = [$normativeRow['identifier_first_name'] . " " . $normativeRow['identifier_last_name']];
-                    return ["name" => $myMentees];
-                }
-            }
-            if (isset($_GET['test'])) {
-                echo "Hash not found in ".json_encode($hashes)."<br>";
-            }
-            return [];
-        } else {
-            if (isset($_GET['test'])) {
-                echo "Userid project<br>";
-            }
-            $menteeUserids = NULL;
-            $allMentorUserids = Download::primaryMentorUserids($token, $server);
-            $menteeRecords = (strtolower($menteeRecordId) == "all")  ? array_keys($allMentorUserids) : [$menteeRecordId];
-            $myMentees = [
-                "name" => Download::menteesForMentor($token, $server, $userid),
-                "uid" => [],
-            ];
-            foreach ($menteeRecords as $recordId) {
-                $mentorUids = $allMentorUserids[$recordId] ?? [];
-                $lowerUserid = strtolower($userid);
-                if (in_array($lowerUserid, $mentorUids)) {
-                    # Mentor on Record
-                    foreach ($myMentees["name"] as $recordId2 => $name) {
-                        $recordId2 = (string) $recordId2;
-                        if ($menteeUserids === NULL) {
-                            $menteeUserids = Download::userids($token, $server);
-                        }
-                        if (isset($menteeUserids[$recordId2]) && $menteeUserids[$recordId2]) {
-                            $myMentees["uid"][$recordId2] = $menteeUserids[$recordId2];
-                        }
-                    }
-                }
-            }
-            return $myMentees;
-        }
-    }
+	public static function getMentees($menteeRecordId, $userid, $token, $server) {
+		if (self::isValidHash($userid)) {
+			$hashes = Download::oneField($token, $server, "identifier_hash");
+			foreach ($hashes as $recordId => $hash) {
+				if ($userid == $hash) {
+					$fields = [
+						"record_id",
+						"identifier_first_name",
+						"identifier_last_name",
+					];
+					$recordData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+					$normativeRow = REDCapManagement::getNormativeRow($recordData);
+					$myMentees = [$normativeRow['identifier_first_name'] . " " . $normativeRow['identifier_last_name']];
+					return ["name" => $myMentees];
+				}
+			}
+			return [];
+		} else {
+			$menteeUserids = null;
+			$allMentorUserids = Download::primaryMentorUserids($token, $server);
+			$menteeRecords = (strtolower($menteeRecordId) == "all") ? array_keys($allMentorUserids) : [$menteeRecordId];
+			$myMentees = [
+				"name" => Download::menteesForMentor($token, $server, $userid),
+				"uid" => [],
+			];
+			foreach ($menteeRecords as $recordId) {
+				$mentorUids = $allMentorUserids[$recordId] ?? [];
+				$lowerUserid = strtolower($userid);
+				if (in_array($lowerUserid, $mentorUids)) {
+					# Mentor on Record
+					foreach ($myMentees["name"] as $recordId2 => $name) {
+						$recordId2 = (string) $recordId2;
+						if ($menteeUserids === null) {
+							$menteeUserids = Download::userids($token, $server);
+						}
+						if (isset($menteeUserids[$recordId2]) && $menteeUserids[$recordId2]) {
+							$myMentees["uid"][$recordId2] = $menteeUserids[$recordId2];
+						}
+					}
+				}
+			}
+			return $myMentees;
+		}
+	}
 
-    public static function getCurrentDatabaseSession(string $recordId, $pid): array {
-        $field = self::SESSION_EMULATOR."___".$recordId;
-        $session = Application::getSetting($field, $pid) ?: [];
-        $interval = 12 * 3600;
-        if ($session["timestamp"] + $interval > time()) {
-            # expired
-            Application::saveSetting($field, [], $pid);
-            return [];
-        }
-        return $session;
-    }
+	public static function getCurrentDatabaseSession(string $recordId, $pid): array {
+		$field = self::SESSION_EMULATOR."___".$recordId;
+		$session = Application::getSetting($field, $pid) ?: [];
+		$interval = 12 * 3600;
+		if ($session["timestamp"] + $interval > time()) {
+			# expired
+			Application::saveSetting($field, [], $pid);
+			return [];
+		}
+		return $session;
+	}
 
-    public static function saveCurrentDatabaseSession(string $recordId, $pid, array $session): void {
-        $field = self::SESSION_EMULATOR."___".$recordId;
-        $session["timestamp"] = time();
-        Application::saveSetting($field, $session, $pid);
-    }
+	public static function saveCurrentDatabaseSession(string $recordId, $pid, array $session): void {
+		$field = self::SESSION_EMULATOR."___".$recordId;
+		$session["timestamp"] = time();
+		Application::saveSetting($field, $session, $pid);
+	}
 
-    public static function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
-        if (self::isValidHash($userid)) {
-            if (isset($_GET['test'])) {
-                echo "Public project<br>";
-            }
-            $hashes = Download::oneField($token, $server, "identifier_hash");
-            foreach ($hashes as $recordId => $hash) {
-                if ($userid == $hash) {
-                    if (isset($_GET['test'])) {
-                        echo "Found $hash at $recordId<br>";
-                    }
-                    $fields = [
-                        "record_id",
-                        "identifier_first_name",
-                        "identifier_last_name",
-                        "mentor_first_name",
-                        "mentor_last_name",
-                    ];
-                    $recordData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-                    $normativeRow = REDCapManagement::getNormativeRow($recordData);
-                    $myMentees = [$normativeRow['identifier_first_name'] . " " . $normativeRow['identifier_last_name']];
-                    $myMentors = [$normativeRow['mentor_first_name'] . " " . $normativeRow['mentor_last_name']];
-                    return [["name" => $myMentees], ["name" => $myMentors]];
-                }
-            }
-            if (isset($_GET['test'])) {
-                echo "Hash not found in ".json_encode($hashes)."<br>";
-            }
-            return [[], []];
-        } else {
-            if (isset($_GET['test'])) {
-                echo "Userid project<br>";
-            }
-            $menteeRecords = (strtolower($menteeRecordId) == "all")  ? Download::recordIds($token, $server) : [$menteeRecordId];
-            if (count($menteeRecords) == 1) {
-                $pid = Application::getPID($token);
-                $mentorList = Download::oneFieldForRecordByPid($pid, "summary_mentor", $menteeRecordId);
-                $mentorUseridList = Download::oneFieldForRecordByPid($pid, "summary_mentor_userid", $menteeRecordId);
-                $regex = "/\s*[;\/]\s*/";
-                if (preg_match("/[A-Za-z\.]+\s+[A-Za-z\.]+\s*,\s*[A-Za-z\.]+\s+[A-Za-z\.]+/", $mentorList)) {
-                    # separating two names - not last name, first name
-                    $regex = "/\s*[;,\/]\s*/";
-                }
-                $mentorAry = $mentorList ? preg_split($regex, $mentorList) : [];
-                $mentorUseridAry = $mentorUseridList ? preg_split("/\s*[;,\/]\s*/", $mentorUseridList) : [];
+	public static function getMenteesAndMentors($menteeRecordId, $userid, $token, $server) {
+		if (self::isValidHash($userid)) {
+			$hashes = Download::oneField($token, $server, "identifier_hash");
+			foreach ($hashes as $recordId => $hash) {
+				if ($userid == $hash) {
+					$fields = [
+						"record_id",
+						"identifier_first_name",
+						"identifier_last_name",
+						"mentor_first_name",
+						"mentor_last_name",
+					];
+					$recordData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+					$normativeRow = REDCapManagement::getNormativeRow($recordData);
+					$myMentees = [$normativeRow['identifier_first_name'] . " " . $normativeRow['identifier_last_name']];
+					$myMentors = [$normativeRow['mentor_first_name'] . " " . $normativeRow['mentor_last_name']];
+					return [["name" => $myMentees], ["name" => $myMentors]];
+				}
+			}
+			return [[], []];
+		} else {
+			$menteeRecords = (strtolower($menteeRecordId) == "all") ? Download::recordIds($token, $server) : [$menteeRecordId];
+			if (count($menteeRecords) == 1) {
+				$pid = Application::getPID($token);
+				$mentorList = Download::oneFieldForRecordByPid($pid, "summary_mentor", $menteeRecordId);
+				$mentorUseridList = Download::oneFieldForRecordByPid($pid, "summary_mentor_userid", $menteeRecordId);
+				$regex = "/\s*[;\/]\s*/";
+				if (preg_match("/[A-Za-z\.]+\s+[A-Za-z\.]+\s*,\s*[A-Za-z\.]+\s+[A-Za-z\.]+/", $mentorList)) {
+					# separating two names - not last name, first name
+					$regex = "/\s*[;,\/]\s*/";
+				}
+				$mentorAry = $mentorList ? preg_split($regex, $mentorList) : [];
+				$mentorUseridAry = $mentorUseridList ? preg_split("/\s*[;,\/]\s*/", $mentorUseridList) : [];
 
-                $menteeUserids = [$menteeRecordId => Download::singleUserid($pid, $menteeRecordId)];
-                $allMentors = [$menteeRecordId => $mentorAry];
-                $allMentorUserids = [$menteeRecordId => $mentorUseridAry];
-                $menteeNamesByRecord = Download::menteesForMentor($token, $server, $userid);
-            } else {
-                $menteeUserids = Download::userids($token, $server);
-                $allMentors = Download::primaryMentors($token, $server);
-                $allMentorUserids = Download::primaryMentorUserids($token, $server);
-                $menteeNamesByRecord = Download::menteesForMentor($token, $server, $userid, $allMentorUserids);
-            }
-            $myMentees = [
-                "name" => array_values($menteeNamesByRecord),
-                "uid" => [],
-            ];
-            $myMentors = ["name" => [], "uid" => []];
-            foreach ($menteeRecords as $recordId) {
-                $menteeUids = self::getUserids($menteeUserids[$recordId]);
-                $mentorUids = $allMentorUserids[$recordId] ?: [];
-                $lowerUserid = strtolower($userid);
-                if (in_array($lowerUserid, $menteeUids) || in_array($lowerUserid, $mentorUids)) {
-                    # On Record (Mentee or Mentor)
-                    if (!empty($allMentors[$recordId] ?: [])) {
-                        $myMentors["name"] = array_unique(array_merge($myMentors['name'], $allMentors[$recordId] ?: []));
-                    }
-                    if (!empty($allMentorUserids[$recordId] ?: [])) {
-                        $myMentors["uid"] = array_unique(array_merge($myMentors['uid'], $allMentorUserids[$recordId] ?: []));
-                    }
-                }
-                if (in_array($lowerUserid, $mentorUids)) {
-                    # Mentor on Record
-                    foreach ($menteeNamesByRecord as $recordId2 => $name) {
-                        if ($menteeUserids[$recordId2] ?? "") {
-                            $myMentees["uid"][] = $menteeUserids[$recordId2];
-                        }
-                    }
-                }
-            }
-            return [$myMentees, $myMentors];
-        }
-    }
+				$menteeUserids = [$menteeRecordId => Download::singleUserid($pid, $menteeRecordId)];
+				$allMentors = [$menteeRecordId => $mentorAry];
+				$allMentorUserids = [$menteeRecordId => $mentorUseridAry];
+				$menteeNamesByRecord = Download::menteesForMentor($token, $server, $userid);
+			} else {
+				$menteeUserids = Download::userids($token, $server);
+				$allMentors = Download::primaryMentors($token, $server);
+				$allMentorUserids = Download::primaryMentorUserids($token, $server);
+				$menteeNamesByRecord = Download::menteesForMentor($token, $server, $userid, $allMentorUserids);
+			}
+			$myMentees = [
+				"name" => array_values($menteeNamesByRecord),
+				"uid" => [],
+			];
+			$myMentors = ["name" => [], "uid" => []];
+			foreach ($menteeRecords as $recordId) {
+				$menteeUids = self::getUserids($menteeUserids[$recordId]);
+				$mentorUids = $allMentorUserids[$recordId] ?: [];
+				$lowerUserid = strtolower($userid);
+				if (in_array($lowerUserid, $menteeUids) || in_array($lowerUserid, $mentorUids)) {
+					# On Record (Mentee or Mentor)
+					if (!empty($allMentors[$recordId] ?: [])) {
+						$myMentors["name"] = array_unique(array_merge($myMentors['name'], $allMentors[$recordId] ?: []));
+					}
+					if (!empty($allMentorUserids[$recordId] ?: [])) {
+						$myMentors["uid"] = array_unique(array_merge($myMentors['uid'], $allMentorUserids[$recordId] ?: []));
+					}
+				}
+				if (in_array($lowerUserid, $mentorUids)) {
+					# Mentor on Record
+					foreach ($menteeNamesByRecord as $recordId2 => $name) {
+						if ($menteeUserids[$recordId2] ?? "") {
+							$myMentees["uid"][] = $menteeUserids[$recordId2];
+						}
+					}
+				}
+			}
+			return [$myMentees, $myMentors];
+		}
+	}
 
-    public static function cleanMentorName($mentor) {
-        $mentor = str_replace(', PhD', '', $mentor);
-        $mentor = str_replace('N/A', '', $mentor);
-        $mentor = str_replace(',', '', $mentor);
-        $mentor = str_replace('PhD', '', $mentor);
-        $mentor = str_replace('/', ' and ', $mentor);
-        $mentor = str_replace('none (currently)', '', $mentor);
-        $mentor = str_replace('no longer in academia', '', $mentor);
-        return $mentor;
-    }
+	public static function cleanMentorName($mentor) {
+		$mentor = str_replace(', PhD', '', $mentor);
+		$mentor = str_replace('N/A', '', $mentor);
+		$mentor = str_replace(',', '', $mentor);
+		$mentor = str_replace('PhD', '', $mentor);
+		$mentor = str_replace('/', ' and ', $mentor);
+		$mentor = str_replace('none (currently)', '', $mentor);
+		$mentor = str_replace('no longer in academia', '', $mentor);
+		return $mentor;
+	}
 
-    public static function filterMetadata($metadata, $skipFields = TRUE) {
-        $fieldsToSkip = ["mentoring_userid", "mentoring_last_update", "mentoring_phase"];
-        $newMetadata = [];
-        foreach ($metadata as $row) {
-            if (!in_array($row['field_name'], $fieldsToSkip) || !$skipFields) {
-                $newMetadata[] = $row;
-            }
-        }
-        return $newMetadata;
-    }
+	public static function filterMetadata($metadata, $skipFields = true) {
+		$fieldsToSkip = ["mentoring_userid", "mentoring_last_update", "mentoring_phase"];
+		$newMetadata = [];
+		foreach ($metadata as $row) {
+			if (!in_array($row['field_name'], $fieldsToSkip) || !$skipFields) {
+				$newMetadata[] = $row;
+			}
+		}
+		return $newMetadata;
+	}
 
-    public static function getPercentComplete($row, $metadata) {
-        $metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
-        $notesFields = self::getNotesFields($metadataFields);
-        $numer = 0;
-        $denom = count($metadataFields) - count($notesFields);
+	public static function getPercentComplete($row, $metadata) {
+		$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
+		$notesFields = self::getNotesFields($metadataFields);
+		$numer = 0;
+		$denom = count($metadataFields) - count($notesFields);
 
-        $sectionTotals = [];
-        $sectionWithData = [];
+		$sectionTotals = [];
+		$sectionWithData = [];
 
-        $skip = ["checkbox", "notes"];
-        $lastSectionHeader = "";
-        foreach ($metadata as $metadataRow) {
-            if ($metadataRow['section_header']) {
-                $sectionTotals[$metadataRow['section_header']] = 0;
-                $sectionWithData[$metadataRow['section_header']] = 0;
-                $lastSectionHeader = $metadataRow['section_header'];
-            }
-            if (!in_array($metadataRow['field_name'], $notesFields)) {
-                if (in_array($metadataRow['field_type'], $skip)) {
-                    $denom--;
-                } else {
-                    if ($lastSectionHeader) {
-                        $sectionTotals[$lastSectionHeader]++;
-                    }
-                    if (isset($row[$metadataRow['field_name']]) && $row[$metadataRow['field_name']]) {
-                        $numer++;
-                        if ($lastSectionHeader) {
-                            $sectionWithData[$lastSectionHeader]++;
-                        }
-                    }
-                }
-            }
-        }
+		$skip = ["checkbox", "notes"];
+		$lastSectionHeader = "";
+		foreach ($metadata as $metadataRow) {
+			if ($metadataRow['section_header']) {
+				$sectionTotals[$metadataRow['section_header']] = 0;
+				$sectionWithData[$metadataRow['section_header']] = 0;
+				$lastSectionHeader = $metadataRow['section_header'];
+			}
+			if (!in_array($metadataRow['field_name'], $notesFields)) {
+				if (in_array($metadataRow['field_type'], $skip)) {
+					$denom--;
+				} else {
+					if ($lastSectionHeader) {
+						$sectionTotals[$lastSectionHeader]++;
+					}
+					if (isset($row[$metadataRow['field_name']]) && $row[$metadataRow['field_name']]) {
+						$numer++;
+						if ($lastSectionHeader) {
+							$sectionWithData[$lastSectionHeader]++;
+						}
+					}
+				}
+			}
+		}
 
-        foreach ($sectionWithData as $sectionHeader => $totalWithData) {
-            if (($totalWithData === 0) && ($sectionTotals[$sectionHeader] > 0)) {
-                # entire section was omitted => likely minimized
-                $denom -= $sectionTotals[$sectionHeader];
-            }
-        }
+		foreach ($sectionWithData as $sectionHeader => $totalWithData) {
+			if (($totalWithData === 0) && ($sectionTotals[$sectionHeader] > 0)) {
+				# entire section was omitted => likely minimized
+				$denom -= $sectionTotals[$sectionHeader];
+			}
+		}
 
-        if ($denom == 0) {
-            return 0;
-        }
-        return ceil($numer * 100 / $denom);
-    }
+		if ($denom == 0) {
+			return 0;
+		}
+		return ceil($numer * 100 / $denom);
+	}
 
-    public static function pullInstanceFromREDCap($redcapData, $instance) {
-        foreach ($redcapData as $redcapRow) {
-            if (($redcapRow['redcap_repeat_instrument'] == self::INSTRUMENT) && ($redcapRow["redcap_repeat_instance"] == $instance)) {
-                return $redcapRow;
-            }
-        }
-        return [];
-    }
+	public static function pullInstanceFromREDCap($redcapData, $instance) {
+		foreach ($redcapData as $redcapRow) {
+			if (($redcapRow['redcap_repeat_instrument'] == self::INSTRUMENT) && ($redcapRow["redcap_repeat_instance"] == $instance)) {
+				return $redcapRow;
+			}
+		}
+		return [];
+	}
 
-    public static function getNameFromREDCap($username, $token = "", $server = "") {
-        if (isset($_GET['test'])) {
-            echo "Username $username<br>";
-        }
-        if ($username == NEW_HASH_DESIGNATION) {
-            return ["", ""];
-        } else if (self::isValidHash($username)) {
-            $hashToLookFor = $username;
-            if ($token && $server) {
-                if (self::isMentee()) {
-                    $firstNames = Download::firstnames($token, $server);
-                    $lastNames = Download::lastnames($token, $server);
-                } else {
-                    $firstNames = Download::oneField($token, $server, "mentor_first_name");
-                    $lastNames = Download::oneField($token, $server, "mentor_last_name");
-                }
-                $hashes = Download::oneField($token, $server, "identifier_hash");
-                foreach ($hashes as $recordId => $recordHash) {
-                    if ($recordHash == $hashToLookFor) {
-                        return [$firstNames[$recordId], $lastNames[$recordId]];
-                    }
-                }
-            }
-        } else {
-            if ($token && $server) {
-                $firstNames = Download::firstnames($token, $server);
-                $lastNames = Download::lastnames($token, $server);
-                $userids = Download::userids($token, $server);
-                foreach ($userids as $recordId => $userid) {
-                    $recordUserids = self::getUserids($userid);
-                    if (in_array(strtolower($username), $recordUserids)) {
-                        return [$firstNames[$recordId], $lastNames[$recordId]];
-                    }
-                }
-            }
+	public static function getNameFromREDCap($username, $token = "", $server = "") {
+		if ($username == NEW_HASH_DESIGNATION) {
+			return ["", ""];
+		} elseif (self::isValidHash($username)) {
+			$hashToLookFor = $username;
+			if ($token && $server) {
+				if (self::isMentee()) {
+					$firstNames = Download::firstnames($token, $server);
+					$lastNames = Download::lastnames($token, $server);
+				} else {
+					$firstNames = Download::oneField($token, $server, "mentor_first_name");
+					$lastNames = Download::oneField($token, $server, "mentor_last_name");
+				}
+				$hashes = Download::oneField($token, $server, "identifier_hash");
+				foreach ($hashes as $recordId => $recordHash) {
+					if ($recordHash == $hashToLookFor) {
+						return [$firstNames[$recordId], $lastNames[$recordId]];
+					}
+				}
+			}
+		} else {
+			if ($token && $server) {
+				$firstNames = Download::firstnames($token, $server);
+				$lastNames = Download::lastnames($token, $server);
+				$userids = Download::userids($token, $server);
+				foreach ($userids as $recordId => $userid) {
+					$recordUserids = self::getUserids($userid);
+					if (in_array(strtolower($username), $recordUserids)) {
+						return [$firstNames[$recordId], $lastNames[$recordId]];
+					}
+				}
+			}
 
-            $module = Application::getModule();
-            $sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = ?";
-            $q = $module->query($sql, [$username]);
-            if ($row = $q->fetch_assoc()) {
-                $firstName = $row['user_firstname'];
-                $lastName = $row['user_lastname'];
-                return [$firstName, $lastName];
-            }
-        }
-        return ["", ""];
-    }
+			$module = Application::getModule();
+			$sql = "select user_firstname, user_lastname from redcap_user_information WHERE username = ?";
+			$q = $module->query($sql, [$username]);
+			if ($row = $q->fetch_assoc()) {
+				$firstName = $row['user_firstname'];
+				$lastName = $row['user_lastname'];
+				return [$firstName, $lastName];
+			}
+		}
+		return ["", ""];
+	}
 
-    public static function getMaxInstanceForUserid($rows, $recordId, $userid) {
-        $maxInstance = 0;
-        foreach ($rows as $row) {
-            if (($row['record_id'] == $recordId)
-                && ($row['redcap_repeat_instrument'] == self::INSTRUMENT)
-                && ($row['redcap_repeat_instance'] > $maxInstance)
-                && ($row['mentoring_userid'] == $userid)) {
-                $maxInstance = $row['redcap_repeat_instance'];
-            }
-        }
-        return $maxInstance;
-    }
+	public static function getMaxInstanceForUserid($rows, $recordId, $userid) {
+		$maxInstance = 0;
+		foreach ($rows as $row) {
+			if (($row['record_id'] == $recordId)
+				&& ($row['redcap_repeat_instrument'] == self::INSTRUMENT)
+				&& ($row['redcap_repeat_instance'] > $maxInstance)
+				&& ($row['mentoring_userid'] == $userid)) {
+				$maxInstance = $row['redcap_repeat_instance'];
+			}
+		}
+		return $maxInstance;
+	}
 
-    public static function makePopupJS() {
+	public static function makePopupJS() {
 
-        $resources = [];
-        // TODO Additional, Custom Resources - put at top
-        $resources[] = "Brown NJ. Developing Physician-Scientists. <i>Circ Res</i>. 2018 Aug 31;123(6):645-647. https://doi.org/10.1161/circresaha.118.313473";
-        $resources[] = "Huskins WC, Silet K, Weber-Main AM, Begg MD, Fowler VG, Jr., Hamilton J and Fleming M. Identifying and aligning expectations in a mentoring relationship. <i>Clinical and translational science</i>. 2011;4:439-47. https://doi.org/10.1111/j.1752-8062.2011.00356.x";
-        $resources[] = "Ramanan RA, Taylor WC, Davis RB and Phillips RS. Mentoring matters. Mentoring and career preparation in internal medicine residency training. <i>J Gen Intern Med</i>. 2006;21:340-5. https://doi.org/10.1111/j.1525-1497.2006.00346_1.x";
-        $resources[] = "Ramanan RA, Phillips RS, Davis RB, Silen W and Reede JY. Mentoring in medicine: keys to satisfaction. <i>The American journal of medicine</i>. 2002;112:336-41. https://doi.org/10.1016/s0002-9343%2802%2901032-x";
-        $resources[] = "Pololi L and Knight S. Mentoring faculty in academic medicine. A new paradigm? <i>J Gen Intern Med</i>. 2005;20:866-70. https://doi.org/10.1111/j.1525-1497.2005.05007.x";
-        $resources[] = "Pololi LH, Knight SM, Dennis K and Frankel RM. Helping medical school faculty realize their dreams: An innovative, collaborative mentoring program. <i>Academic Medicine</i>. 2002;77:377-384. https://doi.org/10.1097/00001888-200205000-00005";
-        $resources[] = "Johnston-Anumonwo I. Mentoring across difference: success and struggle in an academic geography career. <i>Gender Place Cult</i>. 2019;26:1683-1700. https://doi.org/10.1080/0966369x.2019.1681369";
-        $resources[] = "Campbell KM and Rodriguez JE. Mentoring Underrepresented Minority in Medicine (URMM) Students Across Racial, Ethnic and Institutional Differences. <i>Journal of the National Medical Association</i>. 2018;110:421-423. https://doi.org/10.1016/j.jnma.2017.09.004";
-        $resources[] = "Li SB, Malin JR and Hackman DG. Mentoring supports and mentoring across difference: insights from mentees. <i>Mentor Tutor</i>. 2018;26:563-584. https://doi.org/10.1080/13611267.2018.1561020";
-        $resources[] = "Bickel J. When \"You're Not the Boss of Me\": Mentoring across Generational Differences. <i>Educ Compet Glob Wor</i>. 2009:143-152.";
-        $resources[] = "Jackson VA, Palepu A, Szalacha L, Caswell C, Carr PL and Inui T. \"Having the right chemistry\": a qualitative study of mentoring in academic medicine. <i>Academic medicine : journal of the Association of American Medical Colleges</i>. 2003;78:328-34. https://doi.org/10.1097/00001888-200303000-00020";
-        $resources[] = "Manuel SP and Poorsattar SP. Mentoring up: Twelve tips for successfully employing a mentee-driven approach to mentoring relationships. <i>Medical teacher</i>. 2020:1-4. https://doi.org/10.1080/0142159x.2020.1795098";
-        $resources[] = "Koenig AM. Mentoring: Are we living up to our professional role as an educational leader? <i>Nurse Educ Today</i>. 2019;79:54-55. https://doi.org/10.1016/j.nedt.2019.04.007";
-        $resources[] = "Hale RL and Phillips CA. Mentoring up: A grounded theory of nurse-to-nurse mentoring. <i>J Clin Nurs</i>. 2019;28:159-172. https://doi.org/10.1111/jocn.14636";
-        $resources[] = "Mayer AP, Blair JE, Ko MG, Patel SI and Files JA. Long-term follow-up of a facilitated peer mentoring program. <i>Medical teacher</i>. 2014;36:260-6. https://doi.org/10.3109/0142159x.2013.858111";
-        $resources[] = "Maruta T, Rotz P and Peter T. Setting up a structured laboratory mentoring programme. <i>Afr J Lab Med</i>. 2013;2:77. https://doi.org/10.4102/ajlm.v2i1.77";
-        $resources[] = "Mentoring--a security blanket or a cover-up? <i>J Cell Sci</i>. 1999;112 ( Pt 20):3413-4.";
-        $resources[] = "Cho CS, Ramanan RA and Feldman MD. Defining the ideal qualities of mentorship: a qualitative analysis of the characteristics of outstanding mentors. <i>The American journal of medicine</i>. 2011;124:453-8. https://doi.org/10.1016/j.amjmed.2010.12.007";
-        $resources[] = "Carey EC and Weissman DE. Understanding and finding mentorship: a review for junior faculty. <i>Journal of palliative medicine</i>. 2010;13:1373-9. https://doi.org/10.1089/jpm.2010.0091";
-        $resources[] = "Feldman AM. The National Institutes of Health Physician-Scientist Workforce Working Group report: a roadmap for preserving the physician-scientist. <i>Clinical and translational science</i>. 2014;7:289-90. https://doi.org/10.1111/cts.12209";
-        $resources[] = "Bhagia J, Tinsley JA. The mentoring partnership. <i>Mayo Clin Proc</i>. 2000 May;75:535-7. https://doi.org/10.4065/75.5.535";
-        $resources[] = "Carey EC, Weissman DE. Understanding and finding mentorship: a review for junior faculty. <i>J Palliat Med</i> 2010 Nov;13:1373-9. https://doi.org/10.1089/jpm.2010.0091";
-        $resources[] = "Flores G, Mendoza FS, DeBaun MR, Fuentes-Afflick E, Jones VF, Mendoza JA, Raphael JL, Wang CJ. Keys to academic success for under-represented minority young investigators: recommendations from the Research in Academic Pediatrics Initiative on Diversity (RAPID) National Advisory Committee. <i>Int J Equity Health</i>. 2019 Jun;18;18(1):93. https://doi.org/10.1186/s12939-019-0995-1";
-        $resources[] = "Geraci SA, Thigpen SC. A review of mentoring in academic medicine. <i>Am J Med Sci</i>. 2017 Feb;353(2):151-7. https://doi.org/10.1016/j.amjms.2016.12.002";
-        $resources[] = "Sambunjak D, Straus SE, Marusic A. A systematic review of qualitative research on the meaning and characteristics of mentoring in academic medicine. <i>J Gen Intern Med</i>. 2010 Jan;25(1):72-8. https://doi.org/10.1007/s11606-009-1165-8";
-        $resources[] = "Philip-Jones, L. 75 Things to Do with Your Mentee: Practical and Effective Development Ideas You Can Try. <i>The New Mentors and Proteges</i>. 2003. https://my.lerner.udel.edu/wp-content/uploads/75-Things-To-Do-With-Your-Mentees.pdf";
+		$resources = [];
+		// TODO Additional, Custom Resources - put at top
+		$resources[] = "Brown NJ. Developing Physician-Scientists. <i>Circ Res</i>. 2018 Aug 31;123(6):645-647. https://doi.org/10.1161/circresaha.118.313473";
+		$resources[] = "Huskins WC, Silet K, Weber-Main AM, Begg MD, Fowler VG, Jr., Hamilton J and Fleming M. Identifying and aligning expectations in a mentoring relationship. <i>Clinical and translational science</i>. 2011;4:439-47. https://doi.org/10.1111/j.1752-8062.2011.00356.x";
+		$resources[] = "Ramanan RA, Taylor WC, Davis RB and Phillips RS. Mentoring matters. Mentoring and career preparation in internal medicine residency training. <i>J Gen Intern Med</i>. 2006;21:340-5. https://doi.org/10.1111/j.1525-1497.2006.00346_1.x";
+		$resources[] = "Ramanan RA, Phillips RS, Davis RB, Silen W and Reede JY. Mentoring in medicine: keys to satisfaction. <i>The American journal of medicine</i>. 2002;112:336-41. https://doi.org/10.1016/s0002-9343%2802%2901032-x";
+		$resources[] = "Pololi L and Knight S. Mentoring faculty in academic medicine. A new paradigm? <i>J Gen Intern Med</i>. 2005;20:866-70. https://doi.org/10.1111/j.1525-1497.2005.05007.x";
+		$resources[] = "Pololi LH, Knight SM, Dennis K and Frankel RM. Helping medical school faculty realize their dreams: An innovative, collaborative mentoring program. <i>Academic Medicine</i>. 2002;77:377-384. https://doi.org/10.1097/00001888-200205000-00005";
+		$resources[] = "Johnston-Anumonwo I. Mentoring across difference: success and struggle in an academic geography career. <i>Gender Place Cult</i>. 2019;26:1683-1700. https://doi.org/10.1080/0966369x.2019.1681369";
+		$resources[] = "Campbell KM and Rodriguez JE. Mentoring Underrepresented Minority in Medicine (URMM) Students Across Racial, Ethnic and Institutional Differences. <i>Journal of the National Medical Association</i>. 2018;110:421-423. https://doi.org/10.1016/j.jnma.2017.09.004";
+		$resources[] = "Li SB, Malin JR and Hackman DG. Mentoring supports and mentoring across difference: insights from mentees. <i>Mentor Tutor</i>. 2018;26:563-584. https://doi.org/10.1080/13611267.2018.1561020";
+		$resources[] = "Bickel J. When \"You're Not the Boss of Me\": Mentoring across Generational Differences. <i>Educ Compet Glob Wor</i>. 2009:143-152.";
+		$resources[] = "Jackson VA, Palepu A, Szalacha L, Caswell C, Carr PL and Inui T. \"Having the right chemistry\": a qualitative study of mentoring in academic medicine. <i>Academic medicine : journal of the Association of American Medical Colleges</i>. 2003;78:328-34. https://doi.org/10.1097/00001888-200303000-00020";
+		$resources[] = "Manuel SP and Poorsattar SP. Mentoring up: Twelve tips for successfully employing a mentee-driven approach to mentoring relationships. <i>Medical teacher</i>. 2020:1-4. https://doi.org/10.1080/0142159x.2020.1795098";
+		$resources[] = "Koenig AM. Mentoring: Are we living up to our professional role as an educational leader? <i>Nurse Educ Today</i>. 2019;79:54-55. https://doi.org/10.1016/j.nedt.2019.04.007";
+		$resources[] = "Hale RL and Phillips CA. Mentoring up: A grounded theory of nurse-to-nurse mentoring. <i>J Clin Nurs</i>. 2019;28:159-172. https://doi.org/10.1111/jocn.14636";
+		$resources[] = "Mayer AP, Blair JE, Ko MG, Patel SI and Files JA. Long-term follow-up of a facilitated peer mentoring program. <i>Medical teacher</i>. 2014;36:260-6. https://doi.org/10.3109/0142159x.2013.858111";
+		$resources[] = "Maruta T, Rotz P and Peter T. Setting up a structured laboratory mentoring programme. <i>Afr J Lab Med</i>. 2013;2:77. https://doi.org/10.4102/ajlm.v2i1.77";
+		$resources[] = "Mentoring--a security blanket or a cover-up? <i>J Cell Sci</i>. 1999;112 ( Pt 20):3413-4.";
+		$resources[] = "Cho CS, Ramanan RA and Feldman MD. Defining the ideal qualities of mentorship: a qualitative analysis of the characteristics of outstanding mentors. <i>The American journal of medicine</i>. 2011;124:453-8. https://doi.org/10.1016/j.amjmed.2010.12.007";
+		$resources[] = "Carey EC and Weissman DE. Understanding and finding mentorship: a review for junior faculty. <i>Journal of palliative medicine</i>. 2010;13:1373-9. https://doi.org/10.1089/jpm.2010.0091";
+		$resources[] = "Feldman AM. The National Institutes of Health Physician-Scientist Workforce Working Group report: a roadmap for preserving the physician-scientist. <i>Clinical and translational science</i>. 2014;7:289-90. https://doi.org/10.1111/cts.12209";
+		$resources[] = "Bhagia J, Tinsley JA. The mentoring partnership. <i>Mayo Clin Proc</i>. 2000 May;75:535-7. https://doi.org/10.4065/75.5.535";
+		$resources[] = "Carey EC, Weissman DE. Understanding and finding mentorship: a review for junior faculty. <i>J Palliat Med</i> 2010 Nov;13:1373-9. https://doi.org/10.1089/jpm.2010.0091";
+		$resources[] = "Flores G, Mendoza FS, DeBaun MR, Fuentes-Afflick E, Jones VF, Mendoza JA, Raphael JL, Wang CJ. Keys to academic success for under-represented minority young investigators: recommendations from the Research in Academic Pediatrics Initiative on Diversity (RAPID) National Advisory Committee. <i>Int J Equity Health</i>. 2019 Jun;18;18(1):93. https://doi.org/10.1186/s12939-019-0995-1";
+		$resources[] = "Geraci SA, Thigpen SC. A review of mentoring in academic medicine. <i>Am J Med Sci</i>. 2017 Feb;353(2):151-7. https://doi.org/10.1016/j.amjms.2016.12.002";
+		$resources[] = "Sambunjak D, Straus SE, Marusic A. A systematic review of qualitative research on the meaning and characteristics of mentoring in academic medicine. <i>J Gen Intern Med</i>. 2010 Jan;25(1):72-8. https://doi.org/10.1007/s11606-009-1165-8";
+		$resources[] = "Philip-Jones, L. 75 Things to Do with Your Mentee: Practical and Effective Development Ideas You Can Try. <i>The New Mentors and Proteges</i>. 2003. https://my.lerner.udel.edu/wp-content/uploads/75-Things-To-Do-With-Your-Mentees.pdf";
 
-        foreach ($resources as $i => $resource) {
-            $resource = REDCapManagement::fillInLinks($resource);
-            $resource = "<li>$resource</li>";
-            $resources[$i] = $resource;
-        }
+		foreach ($resources as $i => $resource) {
+			$resource = REDCapManagement::fillInLinks($resource);
+			$resource = "<li>$resource</li>";
+			$resources[$i] = $resource;
+		}
 
-        $close = "<div style='text-align: right; font-size: 13px; margin: 0;'><a href='javascript:;' onclick='$(this).parent().parent().slideUp(\"fast\");' style='text-decoration: none; color: black;'>X</a></div>";
+		$close = "<div style='text-align: right; font-size: 13px; margin: 0;'><a href='javascript:;' onclick='$(this).parent().parent().slideUp(\"fast\");' style='text-decoration: none; color: black;'>X</a></div>";
 
-        $html = "";
+		$html = "";
 
-        $html .= "<div class='characteristics' id='mentor_characteristics' style='display: none;'>$close<h3>Characteristics of Successful Mentor</h3>
+		$html .= "<div class='characteristics' id='mentor_characteristics' style='display: none;'>$close<h3>Characteristics of Successful Mentor</h3>
 <ul style='list-style-type:disc'>
 <li>Effectively provide intellectual guidance in the scientific topics of strength, to directly broaden the Mentee’s scientific, and overall academic, proficiency</li>
 <li>Shares time with Mentee</li>
@@ -1072,7 +1033,7 @@ function startNow() {
 <p>Of course, in many circumstances, a single Mentor cannot adequately mentor an individual, due to many constraints, including availability, expertise, etc…  As a result, many scholars require several mentors, or a <a href='https://edgeforscholars.org/you-need-mentors-noun-plural/' target='_new'>mentor panel</a>.  <a href='https://edgeforscholars.org/what-you-should-expect-from-mentors/' target='_new'>Additional resources</a>.
 </div>\n";
 
-        $html .= "<div class='characteristics' id='mentee_characteristics' style='display: none;'>$close<h3>Characteristics of a Successful Mentee</h3>
+		$html .= "<div class='characteristics' id='mentee_characteristics' style='display: none;'>$close<h3>Characteristics of a Successful Mentee</h3>
 <ul>
 <li>Actively participates in the Mentor – Mentee relationship, recognizing that often the Mentor is busy and benefits from an active Mentee ('Mentor up')</li>
 <li>Establish a mechanism for frequent contact with the mentor in an agreed upon manner</li>
@@ -1088,225 +1049,217 @@ function startNow() {
 </ul>
 </ul></div>\n";
 
-        $html .= "<div class='characteristics' id='resources_characteristics' style='display: none;'>$close<h3>References and Additional Resources</h3>
+		$html .= "<div class='characteristics' id='resources_characteristics' style='display: none;'>$close<h3>References and Additional Resources</h3>
 <ul>".implode("", $resources)."</ul></div>";
 
-        $html .= "<script>
+		$html .= "<script>
 function characteristicsPopup(entity) {
     $('.characteristics').hide();
     $('#'+entity+'_characteristics').slideDown();
 }
 </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-# one month prior
-    public static function getDateToRemind($data, $recordId, $instance) {
-        $dateToRevisit = self::getDateToRevisit($data, $recordId, $instance);
-        $dateToRevisit = REDCapManagement::MDY2YMD($dateToRevisit);
-        if (REDCapManagement::isDate($dateToRevisit)) {
-            $tsToRevisit = strtotime($dateToRevisit);
-            if ($tsToRevisit) {
-                $dateToReturn = self::adjustDate($tsToRevisit, -1);
-                if (isset($_GET['test'])) {
-                    echo "dateToReturn: $dateToReturn<br>";
-                }
-                return $dateToReturn;
-            } else {
-                if (isset($_GET['test'])) {
-                    echo "Could not transform $dateToRevisit into $tsToRevisit<br>";
-                }
-            }
-        }
-        return "";
-    }
+	# one month prior
+	public static function getDateToRemind($data, $recordId, $instance) {
+		$dateToRevisit = self::getDateToRevisit($data, $recordId, $instance);
+		$dateToRevisit = REDCapManagement::MDY2YMD($dateToRevisit);
+		if (REDCapManagement::isDate($dateToRevisit)) {
+			$tsToRevisit = strtotime($dateToRevisit);
+			if ($tsToRevisit) {
+				$dateToReturn = self::adjustDate($tsToRevisit, -1);
+				return $dateToReturn;
+			}
+		}
+		return "";
+	}
 
-    public static function isFirstEntryForUser($data, $userid, $recordId, $instance) {
-        $firstInstance = 1e6;
-        $existingInstances = [];
-        foreach ($data as $row) {
-            if (($row['record_id'] == $recordId) && ($row['mentoring_userid'] == $userid)) {
-                if ($firstInstance > $row['redcap_repeat_instance']) {
-                    $firstInstance = $row['redcap_repeat_instance'];
-                }
-                $existingInstances[] = $instance;
-            }
-        }
-        if (!in_array($instance, $existingInstances)) {
-            return TRUE;
-        } else {
-            return ($instance == $firstInstance);
-        }
-    }
+	public static function isFirstEntryForUser($data, $userid, $recordId, $instance) {
+		$firstInstance = 1e6;
+		$existingInstances = [];
+		foreach ($data as $row) {
+			if (($row['record_id'] == $recordId) && ($row['mentoring_userid'] == $userid)) {
+				if ($firstInstance > $row['redcap_repeat_instance']) {
+					$firstInstance = $row['redcap_repeat_instance'];
+				}
+				$existingInstances[] = $instance;
+			}
+		}
+		if (!in_array($instance, $existingInstances)) {
+			return true;
+		} else {
+			return ($instance == $firstInstance);
+		}
+	}
 
-    # returns MDY
-    public static function getDateToRevisit($data, $recordId, $instance) {
-        $userid = Application::getUsername();
-        if (self::isFirstEntryForUser($data, $userid, $recordId, $instance)) {
-            $monthsInFuture = 6;
-        } else {
-            $monthsInFuture = 12;
-        }
-        $lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", self::INSTRUMENT, $instance);
-        if ($lastUpdate) {
-            $ts = strtotime($lastUpdate);
-        } else {
-            $ts = FALSE;
-        }
-        if (!$ts) {
-            $ts = time();
-        }
-        if ($monthsInFuture) {
-            $dateToRevisit = self::adjustDate($ts, $monthsInFuture);
-            if (isset($_GET['test'])) {
-                echo "dateToRevisit: $dateToRevisit<br>";
-            }
-            return $dateToRevisit;
-        } else {
-            return "An Unspecified Date";
-        }
-    }
+	# returns MDY
+	public static function getDateToRevisit($data, $recordId, $instance) {
+		$userid = Application::getUsername();
+		if (self::isFirstEntryForUser($data, $userid, $recordId, $instance)) {
+			$monthsInFuture = 6;
+		} else {
+			$monthsInFuture = 12;
+		}
+		$lastUpdate = REDCapManagement::findField($data, $recordId, "mentoring_last_update", self::INSTRUMENT, $instance);
+		if ($lastUpdate) {
+			$ts = strtotime($lastUpdate);
+		} else {
+			$ts = false;
+		}
+		if (!$ts) {
+			$ts = time();
+		}
+		if ($monthsInFuture) {
+			$dateToRevisit = self::adjustDate($ts, $monthsInFuture);
+			return $dateToRevisit;
+		} else {
+			return "An Unspecified Date";
+		}
+	}
 
-    public static function fixDate($month, $day, $year) {
-        # check month
-        while ($month > 12) {
-            $month -= 12;
-            $year++;
-        }
-        while ($month < 1) {
-            $month += 12;
-            $year--;
-        }
+	public static function fixDate($month, $day, $year) {
+		# check month
+		while ($month > 12) {
+			$month -= 12;
+			$year++;
+		}
+		while ($month < 1) {
+			$month += 12;
+			$year--;
+		}
 
-        # check day
-        if (!checkdate($month, $day, $year)) {
-            $day = 1;
-            $month++;
-            while ($month > 12) {
-                $month -= 12;
-                $year++;
-            }
-        }
+		# check day
+		if (!checkdate($month, $day, $year)) {
+			$day = 1;
+			$month++;
+			while ($month > 12) {
+				$month -= 12;
+				$year++;
+			}
+		}
 
-        return $month."-".$day."-".$year;
-    }
+		return $month."-".$day."-".$year;
+	}
 
-    public static function getAllSections() {
-        return [
-            'Mentee_Mentor_11_Meetings' => "Mentee-Mentor 1:1 Meetings",
-            'Lab_Meetings' => "Lab Meetings",
-            'Communication' => "Communication",
-            'Mentoring_Panel' => "Mentoring Panel",
-            'Financial_Support' => "Financial Support",
-            'Scientific_Development' => "Scientific Development",
-            'Approach_to_Scholarly_Products' => "Approach to Scholarly Products",
-            'Career_and_Professional_Development' => "Career and Professional Development",
-            'Individual_Development_Plan' => "Individual Development Plan",
-        ];
-    }
+	public static function getAllSections() {
+		return [
+			'Mentee_Mentor_11_Meetings' => "Mentee-Mentor 1:1 Meetings",
+			'Lab_Meetings' => "Lab Meetings",
+			'Communication' => "Communication",
+			'Mentoring_Panel' => "Mentoring Panel",
+			'Financial_Support' => "Financial Support",
+			'Scientific_Development' => "Scientific Development",
+			'Approach_to_Scholarly_Products' => "Approach to Scholarly Products",
+			'Career_and_Professional_Development' => "Career and Professional Development",
+			'Individual_Development_Plan' => "Individual Development Plan",
+			'Custom_Questions' => 'Custom Questions',
+		];
+	}
 
-    private static function getMetadataForStep($metadata, $step) {
-        $newMetadata = [];
-        $start = FALSE;
-        $sections = self::getAllSections();
-        $stepTitle = $sections[$step];
-        foreach ($metadata as $row) {
-            $sectionHeaderTitle = "";
-            if (preg_match("/<h3>(.+)<\/h3>/i", $row['section_header'], $matches)) {
-                $sectionHeaderTitle = $matches[1];
-            }
-            if ($sectionHeaderTitle) {
-                if ($stepTitle == $sectionHeaderTitle) {
-                    $start = TRUE;
-                } else {
-                    $start = FALSE;
-                }
-            }
-            if ($start) {
-                $newMetadata[] = $row;
-            }
-        }
-        return $newMetadata;
-    }
+	private static function getMetadataForStep($metadata, $step) {
+		$newMetadata = [];
+		$start = false;
+		$sections = self::getAllSections();
+		$stepTitle = $sections[$step];
+		foreach ($metadata as $row) {
+			$sectionHeaderTitle = "";
+			if (preg_match("/<h3>(.+)<\/h3>/i", $row['section_header'], $matches)) {
+				$sectionHeaderTitle = $matches[1];
+			}
+			if ($sectionHeaderTitle) {
+				if ($stepTitle == $sectionHeaderTitle) {
+					$start = true;
+				} else {
+					$start = false;
+				}
+			}
+			if ($start) {
+				$newMetadata[] = $row;
+			}
+		}
+		return $newMetadata;
+	}
 
-    public static function makePrefillDropdownHTML($surveysAvailableToPrefill, $uidString, $instances, $currInstance) {
-        $html = "<div class='row col-lg-12 tdata' style='text-align: center;'>";
-        if (!empty($surveysAvailableToPrefill)) {
-            $html .= self::makePrefillHTML($surveysAvailableToPrefill, $uidString);
-        }
-        $instancesWithoutCurrent = $instances;
-        unset($instancesWithoutCurrent[$currInstance]);
-        if (!empty($instancesWithoutCurrent)) {
-            $html .= self::makePriorInstancesDropdown($instancesWithoutCurrent, $currInstance);
-        }
-        $html .= "<h4 style='margin: 0 auto; width: 100%; max-width: 800px;'>Please independently fill out the checklist below. Tables will appear one page at a time. When complete, click on the button to alert your mentor.</h4>";
-        $html .= "</div>";
-        return $html;
-    }
+	public static function makePrefillDropdownHTML($surveysAvailableToPrefill, $uidString, $instances, $currInstance) {
+		$html = "<div class='row col-lg-12 tdata' style='text-align: center;'>";
+		if (!empty($surveysAvailableToPrefill)) {
+			$html .= self::makePrefillHTML($surveysAvailableToPrefill, $uidString);
+		}
+		$instancesWithoutCurrent = $instances;
+		unset($instancesWithoutCurrent[$currInstance]);
+		if (!empty($instancesWithoutCurrent)) {
+			$html .= self::makePriorInstancesDropdown($instancesWithoutCurrent, $currInstance);
+		}
+		$html .= "<h4 style='margin: 0 auto; width: 100%; max-width: 800px;'>Please independently fill out the checklist below. Tables will appear one page at a time. When complete, click on the button to alert your mentor.</h4>";
+		$html .= "</div>";
+		return $html;
+	}
 
-    public static function canConfigureCustomAgreement($pid) {
-        return (Application::isVanderbilt() && in_array($pid, [175974, 175975]));
-    }
+	public static function canConfigureCustomAgreement($pid) {
+		return (Application::isVanderbilt() && in_array($pid, [175974, 175975]));
+	}
 
-    private static function makeStepsHTML($selectedSteps, $currStep) {
-        $stepHTML = [];
-        $allSections = self::getAllSections();
-        foreach ($selectedSteps as $step) {
-            $currentStep = ($step == $currStep) ? "currentStep" : "";
-            $stepHTML[] = "<span class='$currentStep step'>".$allSections[$step]."</span>";
-        }
-        $stepHTML [] = "<span class='step'>Notify Mentor(s)</span>";
-        return "<div class='max-width smaller centered'>".implode(" &rarr; ", $stepHTML)."</div>";
-    }
+	private static function makeStepsHTML($selectedSteps, $currStep) {
+		$stepHTML = [];
+		$allSections = self::getAllSections();
+		foreach ($selectedSteps as $step) {
+			$currentStep = ($step == $currStep) ? "currentStep" : "";
+			$stepHTML[] = "<span class='$currentStep step'>".$allSections[$step]."</span>";
+		}
+		$stepHTML [] = "<span class='step'>Notify Mentor(s)</span>";
+		return "<div class='max-width smaller centered'>".implode(" &rarr; ", $stepHTML)."</div>";
+	}
 
-    public static function doesMentoringStartExist(string $recordId, int $instance, $pid): bool {
-        $module = Application::getModule();
-        $redcapDataTable = Application::getDataTable($pid);
-        $params = [$recordId, $pid, "mentoring_start"];
-        if ($instance == 1) {
-            $trail = " IS NULL";
-        } else {
-            $trail = " = ?";
-            $params[] = $instance;
-        }
-        $sql = "SELECT value FROM $redcapDataTable WHERE record = ? AND project_id = ? AND field_name = ? AND instance ".$trail;
-        $result = $module->query($sql, $params);
-        return ($result->num_rows > 0);
-    }
+	public static function doesMentoringStartExist(string $recordId, int $instance, $pid): bool {
+		$module = Application::getModule();
+		$redcapDataTable = Application::getDataTable($pid);
+		$params = [$recordId, $pid, "mentoring_start"];
+		if ($instance == 1) {
+			$trail = " IS NULL";
+		} else {
+			$trail = " = ?";
+			$params[] = $instance;
+		}
+		$sql = "SELECT value FROM $redcapDataTable WHERE record = ? AND project_id = ? AND field_name = ? AND instance ".$trail;
+		$result = $module->query($sql, $params);
+		return ($result->num_rows > 0);
+	}
 
-    public static function makeStepHTML($metadata, $step, $redcapData, $menteeRecordId, $currInstance, $phase, $notesFields, $userid2, $thisUrl, $token, $server, $pid) {
-        $choices = DataDictionaryManagement::getChoices($metadata);
-        $secHeaders = self::getSectionHeadersWithMenteeQuestions($metadata);
-        $steps = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($menteeRecordId, $pid)[self::STEPS_KEY] ?? "";
-        if (in_array($step, $steps)) {
-            $index = array_search($step, $steps);
-            $recordInformation = "&menteeRecord=".urlencode($menteeRecordId)."&instance=$currInstance";
-            if ($index == 0) {
-                $priorButtonText = "";
-                $priorButtonOnClick = "";
-            } else {
-                $priorStep = $steps[$index - 1];
-                $priorButtonText = "move back";
-                $priorButtonOnClick = "saveagreement(() => { window.location.href = \"$thisUrl$recordInformation&step=$priorStep\"; });";
-            }
-            if ($index < count($steps) - 1) {
-                $nextStep = $steps[$index + 1];
-                $buttonText = "next form";
-                $buttonOnClick = "saveagreement(() => { window.location.href = \"$thisUrl$recordInformation&step=$nextStep\"; });";
-            } else {
-                $buttonText = "save mentoring agreement &amp; notify mentor(s)";
-                $buttonOnClick = "saveagreementandnotify();";
-            }
-        } else {
-            return "";
-        }
-        $stepsHTML = self::makeStepsHTML($steps, $step);
+	public static function makeStepHTML($metadata, $step, $redcapData, $menteeRecordId, $currInstance, $phase, $notesFields, $userid2, $thisUrl, $token, $server, $pid, $myMentors) {
+		$choices = DataDictionaryManagement::getChoices($metadata);
+		$secHeaders = self::getSectionHeadersWithMenteeQuestions($metadata);
+		$steps = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($menteeRecordId, $pid)[self::STEPS_KEY] ?? "";
+		$currentCustomQuestionResponses = array_merge(MMAHelper::getCustomQuestionData($pid, $menteeRecordId, $currInstance, false), MMAHelper::getCustomQuestionData($pid, $menteeRecordId, $currInstance, true));
+		if (in_array($step, $steps)) {
+			$index = array_search($step, $steps);
+			$recordInformation = "&menteeRecord=".urlencode($menteeRecordId)."&instance=$currInstance";
+			if ($index == 0) {
+				$priorButtonText = "";
+				$priorButtonOnClick = "";
+			} else {
+				$priorStep = $steps[$index - 1];
+				$priorButtonText = "move back";
+				$priorButtonOnClick = "saveagreement(() => { window.location.href = \"$thisUrl$recordInformation&step=$priorStep\"; });";
+			}
+			if ($index < count($steps) - 1) {
+				$nextStep = $steps[$index + 1];
+				$buttonText = "next form";
+				$buttonOnClick = "saveagreement(() => { window.location.href = \"$thisUrl$recordInformation&step=$nextStep\"; });";
+			} else {
+				$buttonText = "save mentoring agreement &amp; notify mentor(s)";
+				$buttonOnClick = "saveagreementandnotify();";
+			}
+		} else {
+			return "";
+		}
+		$stepsHTML = self::makeStepsHTML($steps, $step);
 
-        $mentoringStartHTML = "";
-        if (!self::doesMentoringStartExist($menteeRecordId, $currInstance, $pid)) {
-            $mentoringStartHTML = "<input type='hidden' class='form-hidden-data' name='mentoring_start' id='mentoring_start' value='" . date("Y-m-d H:i:s") . "' />";
-        }
-        $html = "<form id='tsurvey' name='tsurvey'>
+		$mentoringStartHTML = "";
+		if (!self::doesMentoringStartExist($menteeRecordId, $currInstance, $pid)) {
+			$mentoringStartHTML = "<input type='hidden' class='form-hidden-data' name='mentoring_start' id='mentoring_start' value='" . date("Y-m-d H:i:s") . "' />";
+		}
+		$html = "<form id='tsurvey' name='tsurvey'>
       <input type='hidden' class='form-hidden-data' name='mentoring_phase' id='mentoring_phase' value='$phase'>
       $mentoringStartHTML
 <section class='bg-light'>
@@ -1316,33 +1269,51 @@ function characteristicsPopup(entity) {
             <div class='col-lg-12 tdata'>
 
                 <div style='display: none'><table><tbody>";
-        $skipFieldTypes = ["file", "text"];
-        $sectionMetadata = self::getMetadataForStep($metadata, $step);
-        foreach ($sectionMetadata as $row) {
-            list($sec_header, $sectionDescription) = self::parseSectionHeader($row['section_header']);
-            $fieldName = $row['field_name'];
-            $rowName = $fieldName."-tr";
-            if(in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) {
-                $encodedSection = REDCapManagement::makeHTMLId($sec_header);
-                $sectionDescriptionHTML = $sectionDescription ? "<div class='subHeader'>".strip_tags($sectionDescription)."</div>" : "";
+		$skipFieldTypes = ["file", "text"];
+		if ($step == "Custom_Questions") {
+			$customQuestionData = self::getCustomQuestions($pid, $myMentors);
+			list($sectionMetadata, $customNotesFields) = self::getMetadataForCustomQuestions($customQuestionData);
+			$notesFields = array_merge($notesFields, $customNotesFields);
+		} else {
+			$sectionMetadata = self::getMetadataForStep($metadata, $step);
+		}
+		foreach ($sectionMetadata as $row) {
+			list($sec_header, $sectionDescription) = self::parseSectionHeader($row['section_header']);
+			$fieldName = $row['field_name'];
+			$rowName = $fieldName."-tr";
+			if ($step == "Custom_Questions" && $row['field_type'] !== "yesno") {
+				$choiceTemp = explode("|", $row['select_choices_or_calculations']);
+				$choiceTemp2 = [];
+				foreach ($choiceTemp as $choice) {
+					$temp = explode(",", trim($choice));
+					$choiceTemp2[$temp[0]] = trim($temp[1]);
+				}
+				$choices[$row['field_name']] = $choiceTemp2;
+			}
+			if ($step == "Custom_Questions" && $row['field_type'] == "yesno") {
+				$choices[$row['field_name']] = ["1" => "Yes", "0" => "No"];
+			}
+			if (in_array($sec_header, $secHeaders) && !in_array($row['field_type'], $skipFieldTypes)) {
+				$encodedSection = REDCapManagement::makeHTMLId($sec_header);
+				$sectionDescriptionHTML = $sectionDescription ? "<div class='subHeader'>".strip_tags($sectionDescription)."</div>" : "";
 
-                $answerHeadersHTML = "<th style='text-align: center;' scope='col'>mentee responses</th>
+				$answerHeadersHTML = "<th style='text-align: center;' scope='col'>mentee responses</th>
                                 <th style='text-align: center;' scope='col'>latest note<br>(click for full conversation)</th>";
-                $lineHeadersHTML = "<th style='text-align: center; border-right: 0;' scope='col'></th>
+				$lineHeadersHTML = "<th style='text-align: center; border-right: 0;' scope='col'></th>
                                 <th style='text-align: center;' scope='col'></th>";
-                if (preg_match("/Individual Development Plan/", $sec_header)) {
-                    $answerHeadersHTML = "<th style='text-align: center;' scope='col' colspan='2'>mentee responses</th>";
-                    $lineHeadersHTML = "<th style='text-align: center;' scope='col' colspan='2'></th>";
-                }
+				if (preg_match("/Individual Development Plan/", $sec_header)) {
+					$answerHeadersHTML = "<th style='text-align: center;' scope='col' colspan='2'>mentee responses</th>";
+					$lineHeadersHTML = "<th style='text-align: center;' scope='col' colspan='2'></th>";
+				}
 
-                $html .= "</tbody></table></div>
+				$html .= "</tbody></table></div>
                 <div class='tabledquestions'>
                     <div class='mainHeader' onclick='toggleSectionTable(\"$encodedSection\");'>".strip_tags($sec_header)."
                         $sectionDescriptionHTML
                     </div>
                     <table id='quest1' class='table $encodedSection' style='margin-left: 0;'>";
-                if ($row['field_type'] != "descriptive") {
-                    $html .= "<thead>
+				if ($row['field_type'] != "descriptive") {
+					$html .= "<thead>
                             <tr>
                                 <th style='text-align: left;' scope='col'></th>
                                 $lineHeadersHTML
@@ -1352,89 +1323,107 @@ function characteristicsPopup(entity) {
                                 $answerHeadersHTML
                             </tr>
                             </thead>";
-                }
-                $html .= "<tbody>";
-            }
-
-            if (preg_match("/@HIDDEN/", $row['field_annotation'])) {
-                continue;
-            } else if ($row['field_type'] == "radio") {
-                $html .= "<tr id='$rowName'><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
-                                <td>";
-                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
-                $prefix = "exampleRadiosh";
-                foreach ($choices[$fieldName] as $key => $label) {
-                    $name = $prefix.$fieldName;
-                    $id = $name."___".$key;
-                    $html .= "<div class='form-check'><input class='form-check-input' type='radio' onclick='doMMABranching();' name='$name' id='$id' value='$key' ".(($value == $key) ? "checked" : "")."><label class='form-check-label' for='$id'>$label</label></div>";
-                }
-                if ($row['field_note']) {
-                    $html .= "<p class='smaller'>".$row['field_note']."</p>";
-                }
-                $html .= "</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields)."
-              </tr>";
-
-            } else if ($row['field_type'] == "checkbox" ) {
-                $html .= "<tr id='$rowName'><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
-                      <td>";
-                $prefix = "exampleChecksh";
-                foreach ($choices[$fieldName] as $key => $label) {
-                    $name = $prefix.$fieldName;
-                    $id = $name."___".$key;
-                    $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName."___".$key, MMAHelper::INSTRUMENT, $currInstance);
-                    $isChecked = "";
-                    if ($value) {
-                        $isChecked = "checked";
-                    }
-
-                    $html .= "<div class='form-check'><input class='form-check-input' onclick='doMMABranching();' type='checkbox' name='$name' id='$id' $isChecked ><label class='form-check-label' for='$id'>$label</label></div>";
-                }
-                if ($row['field_note']) {
-                    $html .= "<p class='smaller'>".$row['field_note']."</p>";
-                }
-                $html .="</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields)."
-             </tr>";
-            } else if (($row['field_type'] == "notes") && (!in_array($fieldName, $notesFields))) {
-                $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
-                $prefix = "exampleTextareash";
-                $name = $prefix.$fieldName;
-                $id = $name;
-                $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
-                $html .= "<tr id='$rowName' $rowCSSStyle><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
+				}
+				$html .= "<tbody>";
+			}
+			$isCustomQuestion = $row['form_name'] === "custom_questions";
+			$colspan = $isCustomQuestion ? 2 : 1;
+			if (preg_match("/@HIDDEN/", $row['field_annotation'])) {
+				continue;
+			} elseif ($row['field_type'] == "radio" || $row['field_type'] == "yesno") {
+				$html .= "<tr id='$rowName'><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
+                                <td colspan='$colspan'>";
+				if ($isCustomQuestion) {
+					$value = in_array($currentCustomQuestionResponses[$row['field_name']], ["", null], true) ? "" : (int) $currentCustomQuestionResponses[$row['field_name']];
+				} else {
+					$value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
+				}
+				$prefix = "exampleRadiosh";
+				foreach ($choices[$fieldName] as $key => $label) {
+					$name = $prefix.$fieldName;
+					$id = $name."___".$key;
+					$html .= "<div class='form-check'><input class='form-check-input' type='radio' onclick='doMMABranching();' name='$name' id='$id' value='$key' ".(($value === $key) ? "checked" : "")."><label class='form-check-label' for='$id'>$label</label></div>";
+				}
+				if ($row['field_note']) {
+					$html .= "<p class='smaller'>".$row['field_note']."</p>";
+				}
+				if (!$isCustomQuestion) {
+					$html .= "</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields);
+				}
+				$html .= "</tr>";
+			} elseif ($row['field_type'] == "checkbox") {
+				$html .= "<tr id='$rowName'><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
+                      <td colspan='$colspan'>";
+				$prefix = "exampleChecksh";
+				foreach ($choices[$fieldName] as $key => $label) {
+					$name = $prefix.$fieldName;
+					$id = $name."___".$key;
+					if ($row['form_name'] === "custom_questions") {
+						$value = $currentCustomQuestionResponses[$row['field_name']][$key];
+					} else {
+						$value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName."___".$key, MMAHelper::INSTRUMENT, $currInstance);
+					}
+					$isChecked = "";
+					if ($value) {
+						$isChecked = "checked";
+					}
+					if ($isCustomQuestion) {
+						$name = $name . "[]";
+					}
+					$html .= "<div class='form-check'><input class='form-check-input' onclick='doMMABranching();' type='checkbox' name='$name' id='$id' $isChecked value='$key'><label class='form-check-label' for='$id'>$label</label></div>";
+				}
+				if ($row['field_note']) {
+					$html .= "<p class='smaller'>".$row['field_note']."</p>";
+				}
+				if (!$isCustomQuestion) {
+					$html .= "</td>".self::makeNotesHTML($fieldName, $redcapData, $menteeRecordId, $currInstance, $notesFields);
+				}
+				$html .= "</tr>";
+			} elseif ((in_array($row['field_type'], ["notes", "textarea"])) && (!in_array($fieldName, $notesFields))) {
+				$rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
+				$prefix = "exampleTextareash";
+				$name = $prefix.$fieldName;
+				$id = $name;
+				if ($row['form_name'] === "custom_questions") {
+					$value = $currentCustomQuestionResponses[$row['field_name']];
+				} else {
+					$value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldName, MMAHelper::INSTRUMENT, $currInstance);
+				}
+				$html .= "<tr id='$rowName' $rowCSSStyle><th scope='row'>".self::pipeIfApplicable($token, $server, trim($row['field_label']), $menteeRecordId, $currInstance, $userid2)."</th>
                       <td colspan='2'>";
-                $priorInfo = self::getPriorValue($token, $server, $fieldName, $menteeRecordId, $currInstance, $userid2);
-                if ($priorInfo) {
-                    echo "<p><strong>Prior Response</strong>: $priorInfo</p>";
-                }
-                $html .= "<div class='form-check' style='height: 100px;'>
+				$priorInfo = self::getPriorValue($token, $server, $fieldName, $menteeRecordId, $currInstance, $userid2);
+				if ($priorInfo) {
+					echo "<p><strong>Prior Response</strong>: $priorInfo</p>";
+				}
+				$html .= "<div class='form-check' style='height: 100px;'>
                       <textarea class='form-check-input' name='$name' id='$id'>$value</textarea>
                   </div>";
-                if ($row['field_note']) {
-                    $html .= "<p class='smaller'>".$row['field_note']."</p>";
-                }
-                $html .= "</td></tr>";
-            } else if ($row['field_type'] == "descriptive") {
-                $rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
-                if ($row['field_name'] == "mentoring_idp_skills_survey") {
-                    $surveyLink = Application::getSetting("idp_link", $pid);
-                    if ($surveyLink) {
-                        $text = str_replace("[this REDCap Survey]", "<a href='$surveyLink'>this REDCap Survey</a>", $row['field_label']);
-                        $html .="<tr id='$rowName' $rowCSSStyle>
+				if ($row['field_note']) {
+					$html .= "<p class='smaller'>".$row['field_note']."</p>";
+				}
+				$html .= "</td></tr>";
+			} elseif ($row['field_type'] == "descriptive") {
+				$rowCSSStyle = ($row['field_name'] == "mentoring_other_evaluation") ? "style='display: none;'" : "";
+				if ($row['field_name'] == "mentoring_idp_skills_survey") {
+					$surveyLink = Application::getSetting("idp_link", $pid);
+					if ($surveyLink) {
+						$text = str_replace("[this REDCap Survey]", "<a href='$surveyLink'>this REDCap Survey</a>", $row['field_label']);
+						$html .= "<tr id='$rowName' $rowCSSStyle>
                              <td colspan='3'>$text";
-                        if ($row['field_note']) {
-                            $html .= "<p class='smaller'>".$row['field_note']."</p>";
-                        }
-                        $html .= "</td></tr>";
-                    }
-                } else {
-                    $html .= "<tr id='$rowName' $rowCSSStyle>
+						if ($row['field_note']) {
+							$html .= "<p class='smaller'>".$row['field_note']."</p>";
+						}
+						$html .= "</td></tr>";
+					}
+				} else {
+					$html .= "<tr id='$rowName' $rowCSSStyle>
                           <td colspan='3'>".self::pipeIfApplicable($token, $server, $row['field_label'], $menteeRecordId, $currInstance, $userid2)."</td>
                       </tr>";
-                }
-            }
-        }
-        $priorButtonHTML = $priorButtonText ? "<button type='button' class='btn btn-light viewagreement' style=\"margin-top: 22px;margin-bottom: 8em; color:#ffffff; background-color: #056c7d; border-color: #056c7d;\" onclick='$priorButtonOnClick return false;'>$priorButtonText</button> " : "";
-        $html .="               </tbody>
+				}
+			}
+		}
+		$priorButtonHTML = $priorButtonText ? "<button type='button' class='btn btn-light viewagreement' style=\"margin-top: 22px;margin-bottom: 8em; color:#ffffff; background-color: #056c7d; border-color: #056c7d;\" onclick='$priorButtonOnClick return false;'>$priorButtonText</button> " : "";
+		$html .= "               </tbody>
                     </table>
                 </div>
             </div>
@@ -1445,52 +1434,45 @@ function characteristicsPopup(entity) {
 </section>
 </form>
 <div class='fauxcomment' style='display: none;'></div>";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function getInitialSetup($thisUrl, $phase, $menteeRecord, $instance) {
-        $stages = [
-            "Predoctoral" => "predoc",
-            "Postdoctoral" => "postdoc",
-            "Early Career Faculty" => "early_career",
-        ];
-        $stageRows = [];
-        foreach ($stages as $label => $id) {
-            $stageRows[] = "<input type='radio' name='stage' id='$id' value='$id' /> <label for='$id'>$label</label>";
-        }
-        $stageHTML = "<p class='left-align'>".implode("<br/>", $stageRows)."</p>";
+	public static function getInitialSetup($thisUrl, $phase, $menteeRecord, $instance, $myMentors) {
+		$stages = [
+			"Predoctoral" => "predoc",
+			"Postdoctoral" => "postdoc",
+			"Early Career Faculty" => "early_career",
+		];
+		$stageRows = [];
+		foreach ($stages as $label => $id) {
+			$stageRows[] = "<input type='radio' name='stage' id='$id' value='$id' /> <label for='$id'>$label</label>";
+		}
+		$stageHTML = "<p class='left-align'>".implode("<br/>", $stageRows)."</p>";
+		global $pid;
+		$customQuestions = self::getCustomQuestions($pid, $myMentors);
+		$sections = self::getEnabledSections($pid);
+		$checkboxes = [];
+		foreach ($sections as $id => $label) {
+			$checkboxes[] = "<input type='checkbox' class='sections' id='$id' name='$id' value='1' checked /> <label for='$id'>$label</label>";
+		}
+		if (!empty($customQuestions)) {
+			$checkboxes[] = "<input type='checkbox' class='sections' id='Custom_Questions' name='Custom_Questions' value='1' checked disabled /> <label for='Custom_Questions'>Custom Questions</label>";
+		}
+		$checkboxHTML = implode("<br/>", $checkboxes);
 
-        $sections = self::getAllSections();
-        $checkboxes = [];
-        foreach ($sections as $id => $label) {
-            $checkboxes[] = "<input type='checkbox' class='sections' id='$id' name='$id' value='1' /> <label for='$id'>$label</label>";
-        }
-        $checkboxHTML = implode("<br/>", $checkboxes);
+		$startChecked = "";
+		$monthsChecked = "";
+		$laterChecked = "";
+		if ($phase == 1) {
+			$startChecked = "checked";
+		} elseif ($phase == 2) {
+			$monthsChecked = "checked";
+		} elseif ($phase == 3) {
+			$laterChecked = "checked";
+		}
 
-        $startChecked = "";
-        $monthsChecked = "";
-        $laterChecked = "";
-        if ($phase == 1) {
-            $startChecked = "checked";
-        } else if ($phase == 2) {
-            $monthsChecked = "checked";
-        } else if ($phase == 3) {
-            $laterChecked = "checked";
-        }
-
-        $html = "<div class='max-width-400' id='setup1'>
-<h4>What career stage are you in?</h4>
-$stageHTML
-<h4>How far into the mentorship are you?</h4>
-<p class='left-align'><input type='radio' name='phase' id='start' value='start' $startChecked /> <label for='start'>At Start</label><br/>
-<input type='radio' name='phase' id='7_12_months' value='7_12_months' $monthsChecked /> <label for='7_12_months'>7-12 Months</label><br/>
-<input type='radio' name='phase' id='later' value='later' $laterChecked /> <label for='later'>More than 6 Months</label></p>
-<h4>Would you like to make an Individual Development Plan (IDP)?</h4>
-<p class='left-align'><input type='radio' name='idp' id='idp_yes' value='yes' /> <label for='idp_yes'>Yes</label><br/>
-<input type='radio' name='idp' id='idp_no' value='no' /> <label for='idp_no'>No</label></p>
-<p class='centered'><button onclick='setupCheckboxes(\"[name=stage]\", \"[name=idp]\", \"[name=phase]\"); return false;'>Next</button></p>
-</div>
-<div class='max-width-400' id='setup2' style='display: none;'>
+		$html = "
+<div class='max-width-400' id='setup2'>
 <h4>What topics would you like to discuss?</h4>
 <p class='centered smaller'>Suggested topics have been checked.</p>
 <p class='left-align'>$checkboxHTML</p>
@@ -1597,20 +1579,20 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
     }
 }
 </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    # returns MDY
-    public static function adjustDate($ts, $monthsInFuture) {
-        $month = date("m", $ts);
-        $year = date("Y", $ts);
-        $day = date("d", $ts);
-        $month += $monthsInFuture;
-        return self::fixDate($month, $day, $year);
-    }
-    
-    public static function getCompleteHead($trailingUidString, $menteeRecordId, $instance) {
-        return "
+	# returns MDY
+	public static function adjustDate($ts, $monthsInFuture) {
+		$month = date("m", $ts);
+		$year = date("Y", $ts);
+		$day = date("d", $ts);
+		$month += $monthsInFuture;
+		return self::fixDate($month, $day, $year);
+	}
+
+	public static function getCompleteHead($trailingUidString, $menteeRecordId, $instance) {
+		return "
 <script src='".Application::link("mentor/js/jSignature.min.js")."'></script>
 <style>
 .signature { width: 500px; }
@@ -1668,24 +1650,24 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
     background-image: url(".Application::link("mentor/img/box_trans.png").")
 }
 </style>";
-    }
+	}
 
-    public static function getMentorHead($menteeRecordId, $currInstance, $uidString, $userid2, $sections, $commentJS, $isAgreementSigned) {
-        $sectionJS = "";
-        foreach ($sections as $tableNum => $header) {
-            $encodedSection = REDCapManagement::makeHTMLId($header);
-            $header = strtolower($header);
-            $header = addslashes(self::beautifyHeader($header));
-            $sectionJS .= "const header$tableNum = '$encodedSection';\n";
-            $sectionJS .= "
+	public static function getMentorHead($menteeRecordId, $currInstance, $uidString, $userid2, $sections, $commentJS, $isAgreementSigned) {
+		$sectionJS = "";
+		foreach ($sections as $tableNum => $header) {
+			$encodedSection = REDCapManagement::makeHTMLId($header);
+			$header = strtolower($header);
+			$header = addslashes(self::beautifyHeader($header));
+			$sectionJS .= "const header$tableNum = '$encodedSection';\n";
+			$sectionJS .= "
             if (\$('#quest".$tableNum."').is(':visible')) {
                 \$('#quest".$tableNum."').before('<div class=\"verticalheader\" id=\"vh$tableNum\">$header</div>');
             }
             ";
-        }
-        $highlightingJS = "";
-        if (!$isAgreementSigned) {
-            $highlightingJS = "
+		}
+		$highlightingJS = "";
+		if (!$isAgreementSigned) {
+			$highlightingJS = "
             if (valuesAgree($(ob).attr('name'), getOtherName(ob))) {
                 $(ob).closest('tr').removeClass('disagree');
                 $(ob).closest('tr').addClass('agree');
@@ -1694,10 +1676,10 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
                 $(ob).closest('tr').removeClass('agree');
             }
             ";
-        }
+		}
 
 
-        return "
+		return "
 <link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />
 <link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
 <link rel='stylesheet' href='".Application::link("mentor/css/mentor.css")."' />
@@ -1731,6 +1713,8 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
         $('input[type=checkbox].form-check-input').change(function() { updateData(this); });
         $('input[type=radio].form-check-input').change(function() { updateData(this); });
         $('textarea.form-check-input').on('blur', function() { updateData(this); });
+        $('textarea.form-check-input.custom-question-textarea').trigger('blur');
+        
         $sectionJS
         doMMABranching();
     });
@@ -1739,11 +1723,11 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
 
     function valuesAgree(name1, name2) {
         const values1 = [];
-        $('[name='+name1+']:checked').each(function(idx, ob) {
+        $('[name=\"'+name1+'\"]:checked').each(function(idx, ob) {
             values1.push($(ob).val());
         });
         const values2 = [];
-        $('[name='+name2+']:checked').each(function(idx, ob) {
+        $('[name=\"'+name2+'\"]:checked').each(function(idx, ob) {
             values2.push($(ob).val());
         });
         if (values1.length !== values2.length) {
@@ -1760,13 +1744,20 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
         return true;
     }
 
-    function getOtherName(ob) {
-        if ($(ob).attr('name').match(/_menteeanswer/)) {
-            return $(ob).attr('name').replace(/_menteeanswer/, '');
-        } else {
-            return $(ob).attr('name') + '_menteeanswer';
-        }
-    }
+	function getOtherName(ob) {
+		if ($(ob).attr('name').match(/\[\]$/)) {
+			if ($(ob).attr('name').match(/_menteeanswer/)) {
+				return $(ob).attr('name').replace(/_menteeanswer/, '');
+			} else {
+				return $(ob).attr('name').replace(/\[\]$/, '') + '_menteeanswer[]';
+			}
+		} else {
+			if ($(ob).attr('name').match(/_menteeanswer/)) {
+				return $(ob).attr('name').replace(/_menteeanswer/, '');
+			} else
+				return $(ob).attr('name') + '_menteeanswer';
+		}
+	}
 
     function changeHighlightingFromAgreements(ob) {
         $highlightingJS
@@ -1859,12 +1850,12 @@ function setupCheckboxes(stageSel, idpSel, phaseSel) {
 </script>
 $commentJS
 ";
-    }
+	}
 
-    public static function getIndexHead($firstName, $lastName) {
-        $reminderJS = self::makeReminderJS(NameMatcher::formatName($firstName, "", $lastName));
+	public static function getIndexHead($firstName, $lastName) {
+		$reminderJS = self::makeReminderJS(NameMatcher::formatName($firstName, "", $lastName));
 
-        $html = "$reminderJS
+		$html = "$reminderJS
 <link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
 <link rel='stylesheet' href='".Application::link("mentor/css/index.css")."' />
 <script src='".Application::link("mentor/js/jquery.sweet-modal.min.js")."'></script>
@@ -2050,40 +2041,40 @@ $(document).ready(function() {
     );
 });
 </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    private static function getTableCSS(string $step, string $recordId, $pid): string {
-        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?? [];
-        $index = array_search($step, $enqueuedSections);
-        $colors = [
-            "#41a9de14",
-            "#f6dd6645",
-            "#ec9d5045",
-            "#5fb7494a",
-            "#a6609721",
-            "#9ba4ac21",
-        ];
-        if ($index !== FALSE) {
-            $color = $colors[$index % count($colors)];
-        } else {
-            $color = $colors[0];
-        }
-        return ".tabledquestions { padding: 1em; background-color: $color; }";
-    }
+	private static function getTableCSS(string $step, string $recordId, $pid): string {
+		$enqueuedSections = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?? [];
+		$index = array_search($step, $enqueuedSections);
+		$colors = [
+			"#41a9de14",
+			"#f6dd6645",
+			"#ec9d5045",
+			"#5fb7494a",
+			"#a6609721",
+			"#9ba4ac21",
+		];
+		if ($index !== false) {
+			$color = $colors[$index % count($colors)];
+		} else {
+			$color = $colors[0];
+		}
+		return ".tabledquestions { padding: 1em; background-color: $color; }";
+	}
 
-    public static function getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS, $pid) {
-        $hashStr = $hash ? '&hash=$hash' : '';
-        if (isset($_REQUEST['uid'])) {
-            $uid = Sanitizer::sanitize($_REQUEST['uid']);
-            $uidStatement = "uidStr = '&uid='+encodeURI('$uid')+'$hashStr'\n";
-        } else {
-            $uidStatement = "uidStr = '$hashStr'\n";
-        }
-        $branchingJS = self::getBranchingJS();
-        $percCompleteJS = self::makePercentCompleteJS();
-        $tableCSS = self::getTableCSS($_GET['step'] ?? "initial", $menteeRecordId, $pid);
-        return "
+	public static function getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS, $pid) {
+		$hashStr = $hash ? '&hash=$hash' : '';
+		if (isset($_REQUEST['uid'])) {
+			$uid = Sanitizer::sanitize($_REQUEST['uid']);
+			$uidStatement = "uidStr = '&uid='+encodeURI('$uid')+'$hashStr'\n";
+		} else {
+			$uidStatement = "uidStr = '$hashStr'\n";
+		}
+		$branchingJS = self::getBranchingJS();
+		$percCompleteJS = self::makePercentCompleteJS();
+		$tableCSS = self::getTableCSS($_GET['step'] ?? "initial", $menteeRecordId, $pid);
+		return "
 <link rel='stylesheet' type='text/css' href='".Application::link("mentor/css/simptip.css")."' media='screen,projection' />
 <link rel='stylesheet' href='".Application::link("mentor/css/jquery.sweet-modal.min.css")."' />
 <script src='".Application::link("mentor/js/jquery.sweet-modal.min.js")."'></script>
@@ -2166,7 +2157,7 @@ $tableCSS
         $('input[type=checkbox].form-check-input').change(function() { updateData(this); });
         $('input[type=radio].form-check-input').change(function() { updateData(this); });
         $('textarea.form-check-input').on('blur', function() { updateData(this); });
-
+		
         $('select#instances').change(() => {
             let value = $('select#instances option:selected').val()
             let uidStr = '';
@@ -2184,7 +2175,7 @@ $tableCSS
     dfn=function(obj){
         let objta = '#'+obj+' td:nth-of-type(4) .tnote';
         obj = '#'+obj+' .dfn';
-        if($(obj).attr('src') === '".Application::link("mentor/img/images/dfb_off_03.png" )."'){
+        if($(obj).attr('src') === '".Application::link("mentor/img/images/dfb_off_03.png")."'){
             $(obj).attr('src','".Application::link("mentor/img/images/dfb_on_03.png")."');
             $(objta).removeClass('tnote_d');
             $(objta).addClass('tnote_e');
@@ -2308,32 +2299,32 @@ $tableCSS
 </script>
 $commentJS
 ";
-    }
+	}
 
-    private static function getPercentCompleteBySections(string $recordId, $pid): int {
-        $step = $_GET['step'] ?? "initial";
-        if ($step == "initial") {
-            return 0;
-        }
-        $enqueuedSections = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?? [];
-        if (empty($enqueuedSections)) {
-            return 0;
-        }
-        $pos = array_search($step, $enqueuedSections);
-        if ($pos === FALSE) {
-            return 0;
-        } else {
-            return ceil($pos * 100 / count($enqueuedSections));
-        }
-    }
+	private static function getPercentCompleteBySections(string $recordId, $pid): int {
+		$step = $_GET['step'] ?? "initial";
+		if ($step == "initial") {
+			return 0;
+		}
+		$enqueuedSections = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?? [];
+		if (empty($enqueuedSections)) {
+			return 0;
+		}
+		$pos = array_search($step, $enqueuedSections);
+		if ($pos === false) {
+			return 0;
+		} else {
+			return ceil($pos * 100 / count($enqueuedSections));
+		}
+	}
 
-    public static function makeSurveyHTML(string $partners, string $partnerRelationship, string $menteeRecordId, $pid): string {
-        $html = "";
-        $imageLink = Application::link("mentor/img/temp_image.jpg");
-        $scriptLink = Application::link("mentor/js/jquery.easypiechart.min.js");
-        $percComplete = self::getPercentCompleteBySections($menteeRecordId, $pid);
+	public static function makeSurveyHTML(string $partners, string $partnerRelationship, string $menteeRecordId, $pid): string {
+		$html = "";
+		$imageLink = Application::link("mentor/img/temp_image.jpg");
+		$scriptLink = Application::link("mentor/js/jquery.easypiechart.min.js");
+		$percComplete = self::getPercentCompleteBySections($menteeRecordId, $pid);
 
-        $html .= "
+		$html .= "
 <p><div>
     <div style='float: right; margin-left: 39px; width: 147px; margin-top: 16px;'>
         <span class='chart' data-percent='$percComplete'>
@@ -2342,12 +2333,12 @@ $commentJS
         <div style='text-align: center;margin-top: 0;font-size: 13px;width: 115px;'>(complete)</div>
     </div>
 </div></p>";
-        $html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentee-mentor relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your $partnerRelationship ($partners) will also complete a survey.</p>";
-        $html .= "<p><img alt='Welcome!' src='$imageLink' style='float: left; margin-right: 39px;width: 296px;' />The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
-        $html .= "<p>Each section below will explore expectations and goals regarding relevant topics for the relationship, such as the approach to direct one-on-one meetings.</p>";
+		$html .= "<p>Welcome to the Mentoring Agreement. The first step to completing the Mentoring Agreement is to reflect on what is important to you in a successful mentee-mentor relationship. Through a series of questions on topics such as meetings, communication, research, and approach to scholarly products, to name a few, this survey will help guide you through that process and provide you with a tool to capture your thoughts. The survey should take about 30 minutes to complete. Your $partnerRelationship ($partners) will also complete a survey.</p>";
+		$html .= "<p><img alt='Welcome!' src='$imageLink' style='float: left; margin-right: 39px;width: 296px;' />The mentee should complete the agreement first. An email will alert the mentor(s) whenever the agreement is submitted. The mentor(s) should arrange a time to meet with the mentee to fill out their part of the agreement, which will act as the final authorized/completed agreement. Then the completed agreement can be viewed, signed, and printed. A follow-up email will be scheduled for when the agreement should be revisited.</p>";
+		$html .= "<p>Each section below will explore expectations and goals regarding relevant topics for the relationship, such as the approach to direct one-on-one meetings.</p>";
 
-        $html .= "<script src='$scriptLink'></script>";
-        $html .= "<script>
+		$html .= "<script src='$scriptLink'></script>";
+		$html .= "<script>
     $(document).ready(function() {
         $('.chart').easyPieChart({
             easing: 'easeOutElastic',
@@ -2372,220 +2363,219 @@ $commentJS
     });
     </script>";
 
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function agreementSigned($redcapData, $menteeRecordId, $currInstance) {
-        $row = REDCapManagement::getRow($redcapData, $menteeRecordId, self::INSTRUMENT, $currInstance);
-        $fields = [
-            "mentoring_sig_mentee",
-            "mentoring_sig_mentee_date",
-            "mentoring_sig_mentor",
-            "mentoring_sig_mentor_date",
-        ];
-        foreach ($fields as $field) {
-            if (!$row[$field]) {
-                return FALSE;
-            }
-        }
-        return TRUE;
-    }
+	public static function agreementSigned($redcapData, $menteeRecordId, $currInstance) {
+		$row = REDCapManagement::getRow($redcapData, $menteeRecordId, self::INSTRUMENT, $currInstance);
+		$fields = [
+			"mentoring_sig_mentee",
+			"mentoring_sig_mentee_date",
+			"mentoring_sig_mentor",
+			"mentoring_sig_mentor_date",
+		];
+		foreach ($fields as $field) {
+			if (!$row[$field]) {
+				return false;
+			}
+		}
+		return true;
+	}
 
-    public static function getMySurveys($username, $token, $server, $currentRecordId, $currentInstance) {
-        $redcapData = Download::fields($token, $server, ["record_id", "mentoring_userid", "mentoring_last_update"]);
-        $names = self::downloadAndMakeNames($token, $server);
-        if (self::isValidHash($username)) {
-            $userids = [];
-        } else {
-            $userids = Download::userids($token, $server);
-        }
-        $surveyLocations = [];
-        foreach ($redcapData as $row) {
-            if(($row['mentoring_userid'] == $username) && (($row['record_id'] != $currentRecordId) || ($row['redcap_repeat_instance'] != $currentInstance))) {
-                $recordUserids = self::getUserids($userids[$row['record_id']] ?? "");
-                if (in_array(strtolower($username), $recordUserids)) {
-                    $menteeName = "yourself";
-                } else {
-                    $menteeName = "mentee ".$names[$row['record_id']];
-                }
-                $surveyLocations[$row['record_id'].":".$row['redcap_repeat_instance']] = "For ".$menteeName." (".$row['mentoring_last_update'].")";
-            }
-        }
-        return $surveyLocations;
-    }
+	public static function getMySurveys($username, $token, $server, $currentRecordId, $currentInstance) {
+		$redcapData = Download::fields($token, $server, ["record_id", "mentoring_userid", "mentoring_last_update"]);
+		$names = self::downloadAndMakeNames($token, $server);
+		if (self::isValidHash($username)) {
+			$userids = [];
+		} else {
+			$userids = Download::userids($token, $server);
+		}
+		$surveyLocations = [];
+		foreach ($redcapData as $row) {
+			if (($row['mentoring_userid'] == $username) && (($row['record_id'] != $currentRecordId) || ($row['redcap_repeat_instance'] != $currentInstance))) {
+				$recordUserids = self::getUserids($userids[$row['record_id']] ?? "");
+				if (in_array(strtolower($username), $recordUserids)) {
+					$menteeName = "yourself";
+				} else {
+					$menteeName = "mentee ".$names[$row['record_id']];
+				}
+				$surveyLocations[$row['record_id'].":".$row['redcap_repeat_instance']] = "For ".$menteeName." (".$row['mentoring_last_update'].")";
+			}
+		}
+		return $surveyLocations;
+	}
 
-    public static function makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $instance) {
-        $priorNotes = [];
-        foreach ($notesFields as $field) {
-            $priorNotes[$field] = "";
-        }
-        $instances = [];
-        foreach ($redcapData as $row) {
-            if (($row['record_id'] == $menteeRecordId) && ($row['redcap_repeat_instrument'] == self::INSTRUMENT)) {
-                if ($row['redcap_repeat_instance'] == $instance) {
-                    foreach ($notesFields as $field) {
-                        $priorNotes[$field] = $row[$field];
+	public static function makePriorNotesAndInstances($redcapData, $notesFields, $menteeRecordId, $instance) {
+		$priorNotes = [];
+		foreach ($notesFields as $field) {
+			$priorNotes[$field] = "";
+		}
+		$instances = [];
+		foreach ($redcapData as $row) {
+			if (($row['record_id'] == $menteeRecordId) && ($row['redcap_repeat_instrument'] == self::INSTRUMENT)) {
+				if ($row['redcap_repeat_instance'] == $instance) {
+					foreach ($notesFields as $field) {
+						$priorNotes[$field] = $row[$field];
 
-                        # import from old, hidden fields if relevant
-                        if (($field == "mentoring_idp_scientific_skills_short") && ($row[$field] === "")) {
-                            $backupField = "mentoring_short_term_goals";
-                        } else if (($field == "mentoring_idp_scientific_skills_long") && ($row[$field] === "")) {
-                            $backupField = "mentoring_long_term_goals";
-                        } else {
-                            $backupField = "";
-                        }
-                        if ($backupField && $row[$backupField]) {
-                            $priorNotes[$field] = $row[$backupField];
-                        }
-                    }
-                }
-                $instances[$row['redcap_repeat_instance']] = $row['mentoring_last_update'];
-            }
-        }
-        return [$priorNotes, $instances];
-    }
+						# import from old, hidden fields if relevant
+						if (($field == "mentoring_idp_scientific_skills_short") && ($row[$field] === "")) {
+							$backupField = "mentoring_short_term_goals";
+						} elseif (($field == "mentoring_idp_scientific_skills_long") && ($row[$field] === "")) {
+							$backupField = "mentoring_long_term_goals";
+						} else {
+							$backupField = "";
+						}
+						if ($backupField && $row[$backupField]) {
+							$priorNotes[$field] = $row[$backupField];
+						}
+					}
+				}
+				$instances[$row['redcap_repeat_instance']] = $row['mentoring_last_update'];
+			}
+		}
+		return [$priorNotes, $instances];
+	}
 
-    public static function getBase64OfFile($recordId, $instance, $field, $pid) {
-        $params = [$pid, $recordId, $field];
-        $module = Application::getModule();
-        if ($instance == 1) {
-            $instanceClause = "instance IS NULL";
-        } else {
-            $instanceClause = "instance = ?";
-            $params[] = $instance;
-        }
-        $dataTable = Application::getDataTable($pid);
-        $sql = "SELECT value FROM $dataTable
+	public static function getBase64OfFile($recordId, $instance, $field, $pid) {
+		$params = [$pid, $recordId, $field];
+		$module = Application::getModule();
+		if ($instance == 1) {
+			$instanceClause = "instance IS NULL";
+		} else {
+			$instanceClause = "instance = ?";
+			$params[] = $instance;
+		}
+		$dataTable = Application::getDataTable($pid);
+		$sql = "SELECT value FROM $dataTable
             WHERE project_id = ?
             AND record=?
             AND field_name=?
             AND $instanceClause";
-        $q = $module->query($sql, $params);
-        if ($row = $q->fetch_assoc()) {
-            $fileId = $row['value'];
-            $sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = ? LIMIT 1";
-            $q2 = $module->query($sql, [$fileId]);
-            if ($row2 = $q2->fetch_assoc()) {
-                $filename = EDOC_PATH . $row2['stored_name'];
-                $mimeType = $row2['mime_type'];
-                if (file_exists($filename)) {
-                    $header = "data:$mimeType;base64,";
-                    return $header . base64_encode(file_get_contents($filename));
-                }
-            }
-        }
-        return "";
-    }
+		$q = $module->query($sql, $params);
+		if ($row = $q->fetch_assoc()) {
+			$fileId = $row['value'];
+			$sql = "SELECT stored_name, mime_type from redcap_edocs_metadata WHERE doc_id = ? LIMIT 1";
+			$q2 = $module->query($sql, [$fileId]);
+			if ($row2 = $q2->fetch_assoc()) {
+				$filename = EDOC_PATH . $row2['stored_name'];
+				$mimeType = $row2['mime_type'];
+				if (file_exists($filename)) {
+					$header = "data:$mimeType;base64,";
+					return $header . base64_encode(file_get_contents($filename));
+				}
+			}
+		}
+		return "";
+	}
 
-    public static function getUseridsForRecord($token, $server, $recordId, $recipientType) {
-        $userids = [];
-        if (in_array($recipientType, ["mentee", "all"])) {
-            $menteeUserids = Download::userids($token, $server);
-            if ($menteeUserids[$recordId]) {
-                $userids = array_unique(array_merge($userids, self::getUserids($menteeUserids[$recordId])));
-            }
-        }
-        if (in_array($recipientType, ["mentor", "mentors", "all"])) {
-            $mentorUserids = Download::primaryMentorUserids($token, $server);
-            if ($mentorUserids[$recordId]) {
-                $userids = array_unique(array_merge($userids, $mentorUserids[$recordId]));
-            }
-        }
-        return $userids;
-    }
+	public static function getUseridsForRecord($token, $server, $recordId, $recipientType) {
+		$userids = [];
+		if (in_array($recipientType, ["mentee", "all"])) {
+			$menteeUserids = Download::userids($token, $server);
+			if ($menteeUserids[$recordId]) {
+				$userids = array_unique(array_merge($userids, self::getUserids($menteeUserids[$recordId])));
+			}
+		}
+		if (in_array($recipientType, ["mentor", "mentors", "all"])) {
+			$mentorUserids = Download::primaryMentorUserids($token, $server);
+			if ($mentorUserids[$recordId]) {
+				$userids = array_unique(array_merge($userids, $mentorUserids[$recordId]));
+			}
+		}
+		return $userids;
+	}
 
-    public static function getEmailAddressesForRecord($userids) {
-        $emails = [];
-        foreach ($userids as $userid) {
-            $email = REDCapManagement::getEmailFromUseridFromREDCap($userid);
-            if ($email) {
-                $emails[] = $email;
-            }
-        }
-        return array_unique($emails);
-    }
+	public static function getEmailAddressesForRecord($userids) {
+		$emails = [];
+		foreach ($userids as $userid) {
+			$email = REDCapManagement::getEmailFromUseridFromREDCap($userid);
+			if ($email) {
+				$emails[] = $email;
+			}
+		}
+		return array_unique($emails);
+	}
 
-    public static function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId, $currInstance) {
-        if (self::isValidHash($username)) {
-            $sectionsToShow = [];
-            foreach ($secHeaders as $secHeader) {
-                $sectionsToShow[] = REDCapManagement::makeHTMLId($secHeader);
-            }
-            return $sectionsToShow;
-        }
+	public static function getSectionsToShow($username, $secHeaders, $redcapData, $menteeRecordId, $currInstance) {
+		if (self::isValidHash($username)) {
+			$sectionsToShow = [];
+			foreach ($secHeaders as $secHeader) {
+				$sectionsToShow[] = REDCapManagement::makeHTMLId($secHeader);
+			}
+			return $sectionsToShow;
+		}
 
-        $fillOutOnce = [
-            "h3Mentoring_Panelh3" => "mentoring_panel_names",
-        ];
-        $sectionsToShow = [];
-        foreach ($secHeaders as $secHeader) {
-            $encodedSection = REDCapManagement::makeHTMLId($secHeader);
-            $sectionsToShow[] = $encodedSection;
-        }
-        foreach ($fillOutOnce as $section => $fieldToCheck) {
-            $value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, self::INSTRUMENT, $currInstance);
-            if (!$value && !in_array($section, $sectionsToShow)) {
-                $sectionsToShow[] = $section;
-            }
-        }
-        return $sectionsToShow;
-    }
+		$fillOutOnce = [
+			"h3Mentoring_Panelh3" => "mentoring_panel_names",
+		];
+		$sectionsToShow = [];
+		foreach ($secHeaders as $secHeader) {
+			$encodedSection = REDCapManagement::makeHTMLId($secHeader);
+			$sectionsToShow[] = $encodedSection;
+		}
+		foreach ($fillOutOnce as $section => $fieldToCheck) {
+			$value = REDCapManagement::findField($redcapData, $menteeRecordId, $fieldToCheck, self::INSTRUMENT, $currInstance);
+			if (!$value && !in_array($section, $sectionsToShow)) {
+				$sectionsToShow[] = $section;
+			}
+		}
+		return $sectionsToShow;
+	}
 
-    public static function isLastStep(string $step, string $recordId, $pid): bool {
-        $enqueuedSteps = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?: [];
-        $index = array_search($step, $enqueuedSteps);
-        if ($index === FALSE) {
-            return FALSE;
-        } else {
-            return ($index === count($enqueuedSteps) - 1);
-        }
-    }
+	public static function isLastStep(string $step, string $recordId, $pid): bool {
+		$enqueuedSteps = $_SESSION[self::STEPS_KEY] ?? self::getCurrentDatabaseSession($recordId, $pid)[self::STEPS_KEY] ?: [];
+		$index = array_search($step, $enqueuedSteps);
+		if ($index === false) {
+			return false;
+		} else {
+			return ($index === count($enqueuedSteps) - 1);
+		}
+	}
 
-    public static function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage, $hasEvaluationComponent, $pid)
-    {
-        $html = "";
-        $uidString = "";
-        if (isset($_GET['uid'])) {
-            $uidString = "&uid=$username";
-        } else if (self::isValidHash($username)) {
-            $uidString = "&hash=$username";
-        }
-        $verticalOffset = 50;
-        $recordString = "&record=" . $menteeRecordId;
+	public static function makeCommentJS($username, $menteeRecordId, $menteeInstance, $currentInstance, $priorNotes, $menteeName, $dateToRemind, $isMenteePage, $hasEvaluationComponent, $pid) {
+		$html = "";
+		$uidString = "";
+		if (isset($_GET['uid'])) {
+			$uidString = "&uid=$username";
+		} elseif (self::isValidHash($username)) {
+			$uidString = "&hash=$username";
+		}
+		$verticalOffset = 50;
+		$recordString = "&record=" . $menteeRecordId;
 
-        if (self::isValidHash($username)) {
-            if (self::isMentee($menteeRecordId)) {
-                $role = "mentee";
-            } else {
-                $role = "mentor";
-            }
-        } else {
-            $role = $username;
-        }
+		if (self::isValidHash($username)) {
+			if (self::isMentee($menteeRecordId)) {
+				$role = "mentee";
+			} else {
+				$role = "mentor";
+			}
+		} else {
+			$role = $username;
+		}
 
-        if ($isMenteePage) {
-            if (self::isLastStep($_GET['step'] ?? "initial", $menteeRecordId, $pid)) {
-                $functionToCall = "scheduleMentorEmail";
-            } else {
-                $functionToCall = "";
-            }
-        } else {
-            $functionToCall = "scheduleReminderEmail";
-        }
+		if ($isMenteePage) {
+			if (self::isLastStep($_GET['step'] ?? "initial", $menteeRecordId, $pid)) {
+				$functionToCall = "scheduleMentorEmail";
+			} else {
+				$functionToCall = "";
+			}
+		} else {
+			$functionToCall = "scheduleReminderEmail";
+		}
 
-        $mainScheduleEmailCall = "scheduleEmail('mentee', menteeRecord, subject, message, dateToSend, cb);";
-        if (
-            $hasEvaluationComponent
-            && REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "10.4.0")
-        ) {
-            # getSurveyLink has the fifth parameter in REDCap versions >= 10.4.0
-            $menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, self::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentee"), $pid);
-            $mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, self::EVAL_INSTRUMENT, NULL, self::getEvalInstance("mentor"), $pid);
-            $menteeEvalMessage = self::makeEvaluationMessage($menteeEvalLink);
-            $mentorEvalMessage = self::makeEvaluationMessage($mentorEvalLink);
-            $evalSubject = "Short Feedback Survey for Mentee-Mentor Agreements";
-            $evalSendTime = "now";
-            $scheduleEmailHTML = "
+		$mainScheduleEmailCall = "scheduleEmail('mentee', menteeRecord, subject, message, dateToSend, cb);";
+		if (
+			$hasEvaluationComponent
+			&& REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "10.4.0")
+		) {
+			# getSurveyLink has the fifth parameter in REDCap versions >= 10.4.0
+			$menteeEvalLink = \REDCap::getSurveyLink($menteeRecordId, self::EVAL_INSTRUMENT, null, self::getEvalInstance("mentee"), $pid);
+			$mentorEvalLink = \REDCap::getSurveyLink($menteeRecordId, self::EVAL_INSTRUMENT, null, self::getEvalInstance("mentor"), $pid);
+			$menteeEvalMessage = self::makeEvaluationMessage($menteeEvalLink);
+			$mentorEvalMessage = self::makeEvaluationMessage($mentorEvalLink);
+			$evalSubject = "Short Feedback Survey for Mentee-Mentor Agreements";
+			$evalSendTime = "now";
+			$scheduleEmailHTML = "
             const mainCallback = function() {
                 $mainScheduleEmailCall
             }
@@ -2601,19 +2591,19 @@ $commentJS
             const evalSendTime = '$evalSendTime';
             scheduleEmail('mentee', menteeRecord, evalSubject, evalMessage, evalSendTime, mentorCallback);
             ";
-        } else {
-            $scheduleEmailHTML = $mainScheduleEmailCall;
-        }
+		} else {
+			$scheduleEmailHTML = $mainScheduleEmailCall;
+		}
 
-        if (self::isValidHash($username)) {
-            $entryPageURL = Application::link("mentor/index_mentorview.php").$uidString."&menteeRecord=".$menteeRecordId;
-            $menteeEntryPageURL = Application::link("mentor/index_menteeview.php").$uidString."&menteeRecord=".$menteeRecordId;
-        } else {
-            $entryPageURL = Application::link("mentor/index.php");
-            $menteeEntryPageURL = $entryPageURL;
-        }
-        if ($functionToCall) {
-            $postSaveJS = "
+		if (self::isValidHash($username)) {
+			$entryPageURL = Application::link("mentor/index_mentorview.php").$uidString."&menteeRecord=".$menteeRecordId;
+			$menteeEntryPageURL = Application::link("mentor/index_menteeview.php").$uidString."&menteeRecord=".$menteeRecordId;
+		} else {
+			$entryPageURL = Application::link("mentor/index.php");
+			$menteeEntryPageURL = $entryPageURL;
+		}
+		if ($functionToCall) {
+			$postSaveJS = "
                 $functionToCall(\"$menteeRecordId\", \"$menteeName\", \"$dateToRemind\", (json) => {
                     console.log(json);
                     $('.sweet-modal-overlay').remove();
@@ -2632,16 +2622,16 @@ $commentJS
                         });
                     }
                 });";
-        } else {
-            $postSaveJS = "cb();";
-        }
+		} else {
+			$postSaveJS = "cb();";
+		}
 
-        $agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
-        $priorNotesJSON = json_encode($priorNotes);
+		$agreementSaveURL = Application::link("mentor/_agreement_save.php").$uidString.$recordString;
+		$priorNotesJSON = json_encode($priorNotes);
 
-        $completedPageURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=".$menteeRecordId."&instance=2";
-        $changeURL = Application::link("mentor/change.php").$uidString.$recordString;
-        $html .="
+		$completedPageURL = Application::link("mentor/index_complete.php").$uidString."&menteeRecord=".$menteeRecordId."&instance=2";
+		$changeURL = Application::link("mentor/change.php").$uidString.$recordString;
+		$html .= "
 <script>
     let currcomment = '0';
     const priorNotes = $priorNotesJSON;
@@ -2730,6 +2720,7 @@ $commentJS
             .replace(/exampleTextareash/g, '')
             .replace(/=on/g, '=1')
             .replace(/=off/g, '=0');
+        
         $.ajax({
             url: '$agreementSaveURL',
             type : 'POST',
@@ -2814,8 +2805,8 @@ $commentJS
         const paragraph2 = '<p><a href=\"'+link+'\">'+linktext+'</a></p>';
         const completedParagraph = '<p>After the mentor completes the agreement, <a href=\"'+completedLink+'\">click here for the finalized agreement.</a></p>';
         ";
-        if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
-            $html .= "  const paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in a mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee to follow up and finalize this agreement.</p>';
+		if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
+			$html .= "  const paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in a mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee to follow up and finalize this agreement.</p>';
                         const menteeEmailCB = function() {
                             const mentee_link = getLinkForMenteeEntryPage();
                             const mentee_linktext = 'Click here to revise.';
@@ -2825,12 +2816,12 @@ $commentJS
                         }
                         const mentorMessage = paragraph1 + paragraph2 + completedParagraph;
                         scheduleEmail('mentor', menteeRecord, subject, mentorMessage, dateToRemind, menteeEmailCB);";
-        } else {
-            $html .= "  const paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in a mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
+		} else {
+			$html .= "  const paragraph1 = '<p>Your mentee ('+menteeName+') has completed an entry in a mentoring agreement and would like you to review the following Mentee-Mentor Agreement. Please schedule a time with your mentee (included on this email) to follow up and finalize this agreement.</p>';
                         const message = paragraph1 + paragraph2 + completedParagraph;
                         scheduleEmail('all', menteeRecord, subject, message, dateToRemind, cb);";
-        }
-        $html .= "
+		}
+		$html .= "
     }
     
     function getLinkText(link) {
@@ -2849,20 +2840,20 @@ $commentJS
     }
     
 </script>";
-        $html .= self::makeEmailJS($username);
-        return $html;
-    }
+		$html .= self::makeEmailJS($username);
+		return $html;
+	}
 
-    public static function makeEmailJS($username) {
-        $uidString = "";
-        if (isset($_GET['uid'])) {
-            $uidString = "&uid=$username";
-        } else if (self::isValidHash($username)) {
-            $uidString = "&hash=$username";
-        }
-        $recordString = "&record=";
-        $emailSendURL = Application::link("mentor/schedule_email.php").$uidString.$recordString;
-        $html = "<script>
+	public static function makeEmailJS($username) {
+		$uidString = "";
+		if (isset($_GET['uid'])) {
+			$uidString = "&uid=$username";
+		} elseif (self::isValidHash($username)) {
+			$uidString = "&hash=$username";
+		}
+		$recordString = "&record=";
+		$emailSendURL = Application::link("mentor/schedule_email.php").$uidString.$recordString;
+		$html = "<script>
     function scheduleEmail(recipientType, menteeRecord, subject, message, dateToSend, cb) {
         const datetimeToSend = (dateToSend === 'now') ? 'now' : dateToSend+' 09:00';
         const postdata = { 'redcap_csrf_token': '".Application::generateCSRFToken()."', menteeRecord: menteeRecord, recipients: recipientType, subject: subject, message: message, datetime: datetimeToSend };
@@ -2895,17 +2886,17 @@ $commentJS
         );
     }
 </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function makeEvaluationMessage($evalLink) {
-        # REMINDER: No single quotes because of the way the JS is formed
-        return "Thank you for filling out a mentee-mentor agreement. We are interested in your feedback. Can you fill out the following short survey?<br/><a href=\"$evalLink\">$evalLink</a><br/><br/>Thanks!<br/>The Flight Tracker Team";
-    }
+	public static function makeEvaluationMessage($evalLink) {
+		# REMINDER: No single quotes because of the way the JS is formed
+		return "Thank you for filling out a mentee-mentor agreement. We are interested in your feedback. Can you fill out the following short survey?<br/><a href=\"$evalLink\">$evalLink</a><br/><br/>Thanks!<br/>The Flight Tracker Team";
+	}
 
-    # handle branching logic manually for now
-    public static function getBranchingJS() {
-        $html = "
+	# handle branching logic manually for now
+	public static function getBranchingJS() {
+		$html = "
     function doMMABranching() {
         const checkPrefix = 'exampleChecksh';
         const evalChecked = $('#'+checkPrefix+'mentoring_evaluation___99').is(':checked');
@@ -2915,62 +2906,63 @@ $commentJS
             $('#mentoring_other_evaluation-tr').hide();
         }
     }";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function getSectionHeadersWithMenteeQuestions($metadata) {
-        $sectionHeaderCounts = [];
-        $skipFieldTypes = ["notes", "file", "text"];
-        if (!$metadata[0]['section_header']) {
-            throw new \Exception("The first item of metadata should have a section header");
-        }
-        $lastSectionHeader = "";
-        foreach ($metadata as $row) {
-            if ($row['section_header']) {
-                $sectionHeaderCounts[$row['section_header']] = 0;
-                $lastSectionHeader = $row['section_header'];
-            }
-            if (!in_array($row['field_type'], $skipFieldTypes)) {
-                $sectionHeaderCounts[$lastSectionHeader]++;
-            }
-        }
-        $sectionHeaders = [];
-        foreach ($sectionHeaderCounts as $header => $numMenteeItems) {
-            if ($numMenteeItems > 0) {
-                list($secHeader, $secDescript) = self::parseSectionHeader($header);
-                $sectionHeaders[] = $secHeader;
-            }
-        }
-        return $sectionHeaders;
-    }
+	public static function getSectionHeadersWithMenteeQuestions($metadata) {
+		$sectionHeaderCounts = [];
+		$skipFieldTypes = ["notes", "file", "text"];
+		if (!$metadata[0]['section_header']) {
+			throw new \Exception("The first item of metadata should have a section header");
+		}
+		$lastSectionHeader = "";
+		foreach ($metadata as $row) {
+			if ($row['section_header']) {
+				$sectionHeaderCounts[$row['section_header']] = 0;
+				$lastSectionHeader = $row['section_header'];
+			}
+			if (!in_array($row['field_type'], $skipFieldTypes)) {
+				$sectionHeaderCounts[$lastSectionHeader]++;
+			}
+		}
+		$sectionHeaders = [];
+		foreach ($sectionHeaderCounts as $header => $numMenteeItems) {
+			if ($numMenteeItems > 0) {
+				list($secHeader, $secDescript) = self::parseSectionHeader($header);
+				$sectionHeaders[] = $secHeader;
+			}
+		}
+		$sectionHeaders[] = "<h3>Custom Questions</h3>";
+		return $sectionHeaders;
+	}
 
-    public static function makeNotesHTML($field, $redcapData, $recordId, $instance, $notesFields) {
-        $notesField = $field."_notes";
-        $html = "";
-        if (in_array($notesField, $notesFields)) {
-            $html .= "<td class='tcomments'>\n";
-            $notesData = REDCapManagement::findField($redcapData, $recordId, $notesField, self::INSTRUMENT, $instance);
-            if ($notesData == "") {
-                $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'>add note</a>\n";
-            } else {
-                $notesData = preg_replace("/\n/", "<br>", $notesData);
-                $html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'><div class='tnote'>".$notesData."</div></a>\n";
-            }
-            $html .= "</td>\n";
-        }
-        return $html;
-    }
-    public static function makePrefillHTML($surveysAvailableToPrefill, $uidString = "") {
-        $link = Application::link("mentor/importData.php").$uidString;
-        $html = "";
-        $html .= "<div style='margin: 0 auto; width: 100%;'>Pre-fill from Another Survey: ";
-        $html .= "<select id='prefill' name='prefill' onchange='prefill();' style='margin-left: 1em;'>\n";
-        $html .= "<option value=''>--- select ---</option>\n";
-        foreach ($surveysAvailableToPrefill as $location => $description) {
-            $html .= "<option value='$location'>$description</option>\n";
-        }
-        $html .= "</select></div>\n";
-        $html .= "
+	public static function makeNotesHTML($field, $redcapData, $recordId, $instance, $notesFields) {
+		$notesField = $field."_notes";
+		$html = "";
+		if (in_array($notesField, $notesFields)) {
+			$html .= "<td class='tcomments'>\n";
+			$notesData = REDCapManagement::findField($redcapData, $recordId, $notesField, self::INSTRUMENT, $instance);
+			if ($notesData == "") {
+				$html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'>add note</a>\n";
+			} else {
+				$notesData = preg_replace("/\n/", "<br>", $notesData);
+				$html .= "<a href='javascript:void(0)' onclick='showcomment($(this).closest(\"tr\").attr(\"id\"), true)'><div class='tnote'>".$notesData."</div></a>\n";
+			}
+			$html .= "</td>\n";
+		}
+		return $html;
+	}
+	public static function makePrefillHTML($surveysAvailableToPrefill, $uidString = "") {
+		$link = Application::link("mentor/importData.php").$uidString;
+		$html = "";
+		$html .= "<div style='margin: 0 auto; width: 100%;'>Pre-fill from Another Survey: ";
+		$html .= "<select id='prefill' name='prefill' onchange='prefill();' style='margin-left: 1em;'>\n";
+		$html .= "<option value=''>--- select ---</option>\n";
+		foreach ($surveysAvailableToPrefill as $location => $description) {
+			$html .= "<option value='$location'>$description</option>\n";
+		}
+		$html .= "</select></div>\n";
+		$html .= "
 <script>
     function clearAll() {
         $('input[type=radio]').each(function(idx, ob) {
@@ -3027,36 +3019,36 @@ $commentJS
     }
 
 </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function getEmailFromREDCap($userid) {
-        $module = Application::getModule();
-        $sql = "select user_email from redcap_user_information WHERE username = ?";
-        $q = $module->query($sql, [$userid]);
-        while ($row = $q->fetch_assoc()) {
-            if ($row['user_email']) {
-                return $row['user_email'];
-            }
-        }
-        return "";
-    }
+	public static function getEmailFromREDCap($userid) {
+		$module = Application::getModule();
+		$sql = "select user_email from redcap_user_information WHERE username = ?";
+		$q = $module->query($sql, [$userid]);
+		while ($row = $q->fetch_assoc()) {
+			if ($row['user_email']) {
+				return $row['user_email'];
+			}
+		}
+		return "";
+	}
 
-    public static function beautifyHeader($str) {
-        $str = preg_replace("/Career and Professional Development/i", "Career Dev't", $str);
-        $str = preg_replace("/Approach to Scholarly Products/i", "Scholarship", $str);
-        $str = preg_replace("/Scientific Development/i", "Scientific Dev't", $str);
-        $str = preg_replace("/Financial Support/i", "Financials", $str);
-        $str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
-        $str = preg_replace("/Individual Development Plan/i", "IDP", $str);
-        $str = preg_replace("/Getting Started/i", "", $str);
-        $str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);
-        return $str;
-    }
+	public static function beautifyHeader($str) {
+		$str = preg_replace("/Career and Professional Development/i", "Career Dev't", $str);
+		$str = preg_replace("/Approach to Scholarly Products/i", "Scholarship", $str);
+		$str = preg_replace("/Scientific Development/i", "Scientific Dev't", $str);
+		$str = preg_replace("/Financial Support/i", "Financials", $str);
+		$str = preg_replace("/Mentee-Mentor 1:1 Meetings/i", "Meetings", $str);
+		$str = preg_replace("/Individual Development Plan/i", "IDP", $str);
+		$str = preg_replace("/Getting Started/i", "", $str);
+		$str = preg_replace("/Next/i", "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Next", $str);
+		return $str;
+	}
 
-    public static function makeReminderJS($from) {
-        $html = "";
-        $html .= "<script>
+	public static function makeReminderJS($from) {
+		$html = "";
+		$html .= "<script>
 
     function makeList(names) {
         if (!names) {
@@ -3111,277 +3103,595 @@ $commentJS
         }
     }
     </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    public static function getEvalInstance($type) {
-        if ($type == "mentee") {
-            return 1;
-        } else if ($type == "mentor") {
-            return 2;
-        } else {
-            return "";
-        }
-    }
+	public static function getEvalInstance($type) {
+		if ($type == "mentee") {
+			return 1;
+		} elseif ($type == "mentor") {
+			return 2;
+		} else {
+			return "";
+		}
+	}
 
-    public static function makeSpoofingNotice($userid) {
-        return "<p style='text-align: center; font-size: 12px;'><strong>Spoofing user $userid</strong></p>";
-    }
+	public static function makeSpoofingNotice($userid) {
+		return "<p style='text-align: center; font-size: 12px;'><strong>Spoofing user $userid</strong></p>";
+	}
 
-    public static function getREDCapUsers($pid) {
-        $rights = \UserRights::getPrivileges($pid)[$pid];
-        return array_keys($rights);
-    }
+	public static function getREDCapUsers($pid) {
+		$rights = \UserRights::getPrivileges($pid)[$pid];
+		return array_keys($rights);
+	}
 
-    public static function transformCheckboxes($row, $metadata) {
-        $indexedMetadata = REDCapManagement::indexMetadata($metadata);
-        $newUploadRow = [];
-        foreach ($row as $key => $value) {
-            if ($indexedMetadata[$key]) {
-                $metadataRow = $indexedMetadata[$key];
-                if ($metadataRow['field_type'] == "checkbox") {
-                    $key = $key."___".$value;
-                    $value = "1";
-                }
-            }
-            $newUploadRow[$key] = $value;
-        }
-        return $newUploadRow;
-    }
+	public static function transformCheckboxes($row, $metadata) {
+		$indexedMetadata = REDCapManagement::indexMetadata($metadata);
+		$newUploadRow = [];
+		foreach ($row as $key => $value) {
+			if ($indexedMetadata[$key]) {
+				$metadataRow = $indexedMetadata[$key];
+				if ($metadataRow['field_type'] == "checkbox") {
+					$key = $key."___".$value;
+					$value = "1";
+				}
+				$newUploadRow[$key] = $value;
+			} elseif (in_array($key, ["redcap_repeat_instance", "record_id"])) {
+				$newUploadRow[$key] = $value;
+			}
+		}
+		return $newUploadRow;
+	}
 
-    public static function handleTimestamps($row, $token, $server, $metadata) {
-        $agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, self::INSTRUMENT);
-        $instance = $row['redcap_repeat_instance'];
-        $recordId = $row['record_id'];
-        $redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
-        if (REDCapManagement::findField($redcapData, $recordId, "mentoring_start", $instance)) {
-            unset($row['mentoring_start']);
-        }
-        $row['mentoring_end'] = date("Y-m-d H:i:s");
-        $row["mentoring_last_update"] = date("Y-m-d");
-        return $row;
-    }
+	public static function handleTimestamps($row, $token, $server, $metadata) {
+		$agreementFields = REDCapManagement::getFieldsFromMetadata($metadata, self::INSTRUMENT);
+		$instance = $row['redcap_repeat_instance'];
+		$recordId = $row['record_id'];
+		$redcapData = Download::fieldsForRecords($token, $server, $agreementFields, [$recordId]);
+		if (REDCapManagement::findField($redcapData, $recordId, "mentoring_start", $instance)) {
+			unset($row['mentoring_start']);
+		}
+		$row['mentoring_end'] = date("Y-m-d H:i:s");
+		$row["mentoring_last_update"] = date("Y-m-d");
+		return $row;
+	}
 
-    public static function hasDataInSection($metadata, $sectionHeader, $recordId, $instance, $instrument, $dataRow) {
-        $sectionFields = REDCapManagement::getFieldsUnderSection($metadata, $sectionHeader);
-        $indexedMetadata = REDCapManagement::indexMetadata($metadata);
-        $choices = REDCapManagement::getChoices($metadata);
-        foreach ($sectionFields as $field) {
-            if ($indexedMetadata[$field]['field_type'] == "checkbox") {
-                foreach ($choices[$field] as $index => $value) {
-                    $value = REDCapManagement::findField([$dataRow], $recordId, $field."___".$index, $instrument, $instance);
-                    if ($value) {
-                        return TRUE;
-                    }
-                }
-            } else {
-                $value = REDCapManagement::findField([$dataRow], $recordId, $field, $instrument, $instance);
-                if ($value) {
-                    return TRUE;
-                }
-            }
-        }
-        return FALSE;
-    }
+	public static function hasDataInSection($metadata, $sectionHeader, $recordId, $instance, $instrument, $dataRow) {
+		$sectionFields = REDCapManagement::getFieldsUnderSection($metadata, $sectionHeader);
+		if (empty($sectionFields)) {
+			return false;
+		} elseif (preg_match("/Custom Questions/", $sectionHeader)) {
+			return true;
+		}
+		$indexedMetadata = REDCapManagement::indexMetadata($metadata);
+		$choices = REDCapManagement::getChoices($metadata);
+		foreach ($sectionFields as $field) {
+			if ($indexedMetadata[$field]['field_type'] == "checkbox") {
+				foreach ($choices[$field] as $index => $value) {
+					$value = REDCapManagement::findField([$dataRow], $recordId, $field."___".$index, $instrument, $instance);
+					if ($value) {
+						return true;
+					}
+				}
+			} else {
+				$value = REDCapManagement::findField([$dataRow], $recordId, $field, $instrument, $instance);
+				if ($value) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
 
-    public static function getTotalCount($ary) {
-        $n = 0;
-        foreach (array_values($ary) as $valueAry) {
-            $n += count($valueAry);
-        }
-        return $n;
-    }
+	public static function getTotalCount($ary) {
+		$n = 0;
+		foreach (array_values($ary) as $valueAry) {
+			$n += count($valueAry);
+		}
+		return $n;
+	}
 
-    public static function makeAnswerTableRow($fieldLabel, $answerLabel, $positives, $n) {
-        $html = "";
-        $html .= "<tr>";
-        $html .= "<th>$fieldLabel</th>";
-        $html .= "<td>$answerLabel</td>";
-        $html .= "<td>$positives</td>";
-        $html .= "<td>$n</td>";
-        if ($n > 0) {
-            $frac = $positives / $n;
-            $percentage = REDCapManagement::pretty($frac * 100, 1)."%";
-            $html .= "<td>$percentage</td>";
-        } else {
-            $html .= "<td></td>";
-        }
-        $html .= "</tr>";
-        return $html;
-    }
+	public static function makeAnswerTableRow($fieldLabel, $answerLabel, $positives, $n) {
+		$html = "";
+		$html .= "<tr>";
+		$html .= "<th>$fieldLabel</th>";
+		$html .= "<td>$answerLabel</td>";
+		$html .= "<td>$positives</td>";
+		$html .= "<td>$n</td>";
+		if ($n > 0) {
+			$frac = $positives / $n;
+			$percentage = REDCapManagement::pretty($frac * 100, 1)."%";
+			$html .= "<td>$percentage</td>";
+		} else {
+			$html .= "<td></td>";
+		}
+		$html .= "</tr>";
+		return $html;
+	}
 
-    public static function makeDropdownTableRow($pid, $event_id, $title, $menteeOptions) {
-        if (!empty($menteeOptions)) {
-            $html = "";
-            $html .= "<tr>";
-            $html .= "<th>$title</th>";
-            $html .= "<td colspan='2'>";
-            $html .= "Select Mentees' Agreements<br>";
+	public static function makeDropdownTableRow($pid, $event_id, $title, $menteeOptions) {
+		if (!empty($menteeOptions)) {
+			$html = "";
+			$html .= "<tr>";
+			$html .= "<th>$title</th>";
+			$html .= "<td colspan='2'>";
+			$html .= "Select Mentees' Agreements<br>";
 
-            $link = Links::makeMenteeAgreementUrl($pid, 1, $event_id);
-            $link = preg_replace("/&id=\d+/", "", $link);
-            $html .= "<select onchange='if ($(this).val() !== \"\") { location.href = \"$link&id=\"+$(this).val(); }'>";
-            $html .= "<option value='' selected>---SELECT---</option>";
-            foreach ($menteeOptions as $recordId => $name) {
-                $html .= "<option value='$recordId'>$name</option>";
-            }
-            $html .= "</select>";
-            $html .= "</td>";
-            $html .= "</tr>";
-            return $html;
-        } else {
-            return "";
-        }
-    }
+			$link = Links::makeMenteeAgreementUrl($pid, 1, $event_id);
+			$link = preg_replace("/&id=\d+/", "", $link);
+			$html .= "<select onchange='if ($(this).val() !== \"\") { location.href = \"$link&id=\"+$(this).val(); }'>";
+			$html .= "<option value='' selected>---SELECT---</option>";
+			foreach ($menteeOptions as $recordId => $name) {
+				$html .= "<option value='$recordId'>$name</option>";
+			}
+			$html .= "</select>";
+			$html .= "</td>";
+			$html .= "</tr>";
+			return $html;
+		} else {
+			return "";
+		}
+	}
 
-    public static function makeGeneralTableRow($title, $values, $units = "", $makeAverage = FALSE, $names = [], $mentors = []) {
-        if ($units && !preg_match("/^\s/", $units)) {
-            $unitsWithSpace = " ".$units;
-        } else {
-            $unitsWithSpace = $units;
-        }
-        $html = "";
-        $html .= "<tr>";
-        $html .= "<th>$title</th>";
-        if (is_numeric($values)) {
-            $html .= "<td colspan='2' class='centered'>".REDCapManagement::pretty($values, 0).$unitsWithSpace."</td>";
-        } else if (is_array($values)) {
-            if (is_array($values["mentees"]) && is_array($values["mentors"])) {
-                $valueNames = [];
-                foreach ($values as $type => $records) {
-                    $valueNames[$type] = [];
-                    foreach ($records as $recordId) {
-                        if ($type == "mentees") {
-                            $valueNames[$type][] = $names[$recordId] ?? "";
-                        } else if ($type == "mentors") {
-                            $mentorNamesAry = $mentors[$recordId] ?? [];
-                            $valueNames[$type][] = implode(", ", $mentorNamesAry);
-                        } else {
-                            throw new \Exception("Invalid type $type");
-                        }
-                    }
-                }
-                if (!empty($values['mentees'])) {
-                    $menteeNameId = "mentees_".REDCapManagement::makeHTMLId($title);
-                    if (!empty($names)) {
-                        $menteeExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valueNames["mentees"])."</span>";
-                    } else {
-                        $valuesWithUnits = [];
-                        foreach ($values["mentees"] as $val) {
-                            $valuesWithUnits[] = REDCapManagement::pretty($val, 1)." ".$units;
-                        }
-                        $menteeExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show $units</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valuesWithUnits)."</span>";
-                    }
-                } else {
-                    $menteeExplodeStr = "";
-                }
-                if (!empty($values['mentors'])) {
-                    $mentorNameId = "mentors_".REDCapManagement::makeHTMLId($title);
-                    if (!empty($mentors)) {
-                        $mentorExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valueNames["mentors"])."</span>";
-                    } else {
-                        $valuesWithUnits = [];
-                        foreach ($values["mentors"] as $val) {
-                            $valuesWithUnits[] = REDCapManagement::pretty($val, 1)." ".$units;
-                        }
-                        $mentorExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show $units</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valuesWithUnits)."</span>";
-                    }
-                } else {
-                    $mentorExplodeStr = "";
-                }
-                if ($makeAverage) {
-                    if (count($values["mentees"]) > 0) {
-                        $menteeVal = REDCapManagement::pretty(array_sum($values["mentees"]) / count($values["mentees"]), 1);
-                    } else {
-                        $menteeVal = "NA";
-                    }
-                    if (count($values["mentors"]) > 0) {
-                        $mentorVal = REDCapManagement::pretty(array_sum($values["mentors"]) / count($values["mentors"]), 1);
-                    } else {
-                        $mentorVal = "NA";
-                    }
-                } else {
-                    $menteeVal = REDCapManagement::pretty(count($values["mentees"]), 0);
-                    $mentorVal = REDCapManagement::pretty(count($values["mentors"]), 0);
-                }
-                $html .= "<td>".$menteeVal.$unitsWithSpace.$menteeExplodeStr."</td>";
-                $html .= "<td>".$mentorVal.$unitsWithSpace.$mentorExplodeStr."</td>";
-            } else {
-                $html .= "<td>".REDCapManagement::pretty($values["mentees"], 0).$unitsWithSpace."</td>";
-                $html .= "<td>".REDCapManagement::pretty($values["mentors"], 0).$unitsWithSpace."</td>";
-            }
-        } else {
-            $html .= "<td colspan='2' class='centered'>".$values.$unitsWithSpace."</td>";
-        }
-        $html .= "</tr>";
-        return $html;
-    }
+	public static function makeGeneralTableRow($title, $values, $units = "", $makeAverage = false, $names = [], $mentors = []) {
+		if ($units && !preg_match("/^\s/", $units)) {
+			$unitsWithSpace = " ".$units;
+		} else {
+			$unitsWithSpace = $units;
+		}
+		$html = "";
+		$html .= "<tr>";
+		$html .= "<th>$title</th>";
+		if (is_numeric($values)) {
+			$html .= "<td colspan='2' class='centered'>".REDCapManagement::pretty($values, 0).$unitsWithSpace."</td>";
+		} elseif (is_array($values)) {
+			if (is_array($values["mentees"]) && is_array($values["mentors"])) {
+				$valueNames = [];
+				foreach ($values as $type => $records) {
+					$valueNames[$type] = [];
+					foreach ($records as $recordId) {
+						if ($type == "mentees") {
+							$valueNames[$type][] = $names[$recordId] ?? "";
+						} elseif ($type == "mentors") {
+							$mentorNamesAry = $mentors[$recordId] ?? [];
+							$valueNames[$type][] = implode(", ", $mentorNamesAry);
+						} else {
+							throw new \Exception("Invalid type $type");
+						}
+					}
+				}
+				if (!empty($values['mentees'])) {
+					$menteeNameId = "mentees_".REDCapManagement::makeHTMLId($title);
+					if (!empty($names)) {
+						$menteeExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valueNames["mentees"])."</span>";
+					} else {
+						$valuesWithUnits = [];
+						foreach ($values["mentees"] as $val) {
+							$valuesWithUnits[] = REDCapManagement::pretty($val, 1)." ".$units;
+						}
+						$menteeExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$menteeNameId\").show(); $(this).hide();'>Show $units</a><span class='smaller' id='$menteeNameId' style='display: none;'>".implode("<br>", $valuesWithUnits)."</span>";
+					}
+				} else {
+					$menteeExplodeStr = "";
+				}
+				if (!empty($values['mentors'])) {
+					$mentorNameId = "mentors_".REDCapManagement::makeHTMLId($title);
+					if (!empty($mentors)) {
+						$mentorExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show Names</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valueNames["mentors"])."</span>";
+					} else {
+						$valuesWithUnits = [];
+						foreach ($values["mentors"] as $val) {
+							$valuesWithUnits[] = REDCapManagement::pretty($val, 1)." ".$units;
+						}
+						$mentorExplodeStr = "<br><a href='javascript:;' onclick='$(\"#$mentorNameId\").show(); $(this).hide();'>Show $units</a><span class='smaller' id='$mentorNameId' style='display: none;'>".implode("<br>", $valuesWithUnits)."</span>";
+					}
+				} else {
+					$mentorExplodeStr = "";
+				}
+				if ($makeAverage) {
+					if (count($values["mentees"]) > 0) {
+						$menteeVal = REDCapManagement::pretty(array_sum($values["mentees"]) / count($values["mentees"]), 1);
+					} else {
+						$menteeVal = "NA";
+					}
+					if (count($values["mentors"]) > 0) {
+						$mentorVal = REDCapManagement::pretty(array_sum($values["mentors"]) / count($values["mentors"]), 1);
+					} else {
+						$mentorVal = "NA";
+					}
+				} else {
+					$menteeVal = REDCapManagement::pretty(count($values["mentees"]), 0);
+					$mentorVal = REDCapManagement::pretty(count($values["mentors"]), 0);
+				}
+				$html .= "<td>".$menteeVal.$unitsWithSpace.$menteeExplodeStr."</td>";
+				$html .= "<td>".$mentorVal.$unitsWithSpace.$mentorExplodeStr."</td>";
+			} else {
+				$html .= "<td>".REDCapManagement::pretty($values["mentees"], 0).$unitsWithSpace."</td>";
+				$html .= "<td>".REDCapManagement::pretty($values["mentors"], 0).$unitsWithSpace."</td>";
+			}
+		} else {
+			$html .= "<td colspan='2' class='centered'>".$values.$unitsWithSpace."</td>";
+		}
+		$html .= "</tr>";
+		return $html;
+	}
 
-    public static function getElementCount($elements) {
-        $useridList = [];
-        foreach (array_values($elements) as $relatedUserids) {
-            if ($relatedUserids === "") {
-                $relatedUserids = [];
-            }
-            if (is_string($relatedUserids)) {
-                $relatedUserids = [$relatedUserids];
-            }
-            foreach ($relatedUserids as $relatedUserid) {
-                if (($relatedUserid !== "") && !in_array($relatedUserid, $useridList)) {
-                    $useridList[] = $relatedUserid;
-                }
-            }
-        }
-        return count($useridList);
-    }
+	public static function getElementCount($elements) {
+		$useridList = [];
+		foreach (array_values($elements) as $relatedUserids) {
+			if ($relatedUserids === "") {
+				$relatedUserids = [];
+			}
+			if (is_string($relatedUserids)) {
+				$relatedUserids = [$relatedUserids];
+			}
+			foreach ($relatedUserids as $relatedUserid) {
+				if (($relatedUserid !== "") && !in_array($relatedUserid, $useridList)) {
+					$useridList[] = $relatedUserid;
+				}
+			}
+		}
+		return count($useridList);
+	}
 
-    public static function stripPiping($text) {
-        while (preg_match("/\[\w+\]\[previous-instance\]/", $text, $matches)) {
-            $text = str_replace($matches[0], "", $text);
-        }
-        return $text;
-    }
+	public static function stripPiping($text) {
+		while (preg_match("/\[\w+\]\[previous-instance\]/", $text, $matches)) {
+			$text = str_replace($matches[0], "", $text);
+		}
+		return $text;
+	}
 
-    public static function getPriorValue($token, $server, $field, $recordId, $thisInstance, $username) {
-        $redcapData = Download::fieldsForRecords($token, $server, ["record_id", $field, "mentoring_userid"], [$recordId]);
-        $instancesForUser = [];
-        foreach ($redcapData as $row) {
-            if (($row['mentoring_userid'] == $username) && ($row['redcap_repeat_instance'] < $thisInstance)) {
-                $instancesForUser[] = $row['redcap_repeat_instance'];
-            }
-        }
-        if (!empty($instancesForUser)) {
-            rsort($instancesForUser);
-            $previousInstanceForUser = $instancesForUser[0];
-            $priorText = REDCapManagement::findField($redcapData, $recordId, $field, TRUE, $previousInstanceForUser);
-            if ($priorText) {
-                $replacementValue = "<br/>Prior: $priorText";
-            } else {
-                $replacementValue = "";
-            }
-        } else {
-            $replacementValue = "";
-        }
-        return $replacementValue;
-    }
+	public static function getPriorValue($token, $server, $field, $recordId, $thisInstance, $username) {
+		$redcapData = Download::fieldsForRecords($token, $server, ["record_id", $field, "mentoring_userid"], [$recordId]);
+		$instancesForUser = [];
+		foreach ($redcapData as $row) {
+			if (($row['mentoring_userid'] == $username) && ($row['redcap_repeat_instance'] < $thisInstance)) {
+				$instancesForUser[] = $row['redcap_repeat_instance'];
+			}
+		}
+		if (!empty($instancesForUser)) {
+			rsort($instancesForUser);
+			$previousInstanceForUser = $instancesForUser[0];
+			$priorText = REDCapManagement::findField($redcapData, $recordId, $field, true, $previousInstanceForUser);
+			if ($priorText) {
+				$replacementValue = "<br/>Prior: $priorText";
+			} else {
+				$replacementValue = "";
+			}
+		} else {
+			$replacementValue = "";
+		}
+		return $replacementValue;
+	}
 
-    public static function pipeIfApplicable($token, $server, $text, $recordId, $thisInstance, $username) {
-        while (preg_match("/\[(\w+)\]\[previous-instance\]/", $text, $matches)) {
-            $matchString = $matches[0];
-            $field = $matches[1];
-            $replacementValue = self::getPriorValue($token, $server, $field, $recordId, $thisInstance, $username);
-            $text = str_replace($matchString, $replacementValue, $text);
-        }
-        return $text;
-    }
+	public static function pipeIfApplicable($token, $server, $text, $recordId, $thisInstance, $username) {
+		while (preg_match("/\[(\w+)\]\[previous-instance\]/", $text, $matches)) {
+			$matchString = $matches[0];
+			$field = $matches[1];
+			$replacementValue = self::getPriorValue($token, $server, $field, $recordId, $thisInstance, $username);
+			$text = str_replace($matchString, $replacementValue, $text);
+		}
+		return $text;
+	}
 
-    public static function getMMADebug() {
-        return self::$isDebug;
-    }
+	public static function getMMADebug() {
+		return self::$isDebug;
+	}
 
-    public static function setMMADebug($b) {
-        self::$isDebug = $b;
-    }
+	public static function setMMADebug($b) {
+		self::$isDebug = $b;
+	}
 
-    protected static $isDebug = FALSE;
+	protected static $isDebug = false;
+
+	public static function getAgreementSectionsEnabledStatusForProject($pid): array {
+		$agreementStatus = Application::getSetting('mma_agreements_status', $pid);
+		if ($agreementStatus == "") {
+			self::intializeAgreementSectionsForProject($pid);
+			$agreementStatus = Application::getSetting('mma_agreements_status', $pid);
+		}
+		return $agreementStatus;
+	}
+
+	public static function updateAgreementSectionsEnabledStatusForProject($pid, $agreementStatusInput): void {
+		$agreementStatusesTemp = self::getDefaultAgreementSections();
+		foreach (array_keys($agreementStatusesTemp) as $section) {
+			$agreementStatusesTemp[$section] = in_array($section, $agreementStatusInput);
+		}
+		Application::saveSetting('mma_agreements_status', $agreementStatusesTemp, $pid);
+	}
+
+	private static function intializeAgreementSectionsForProject($pid) {
+		Application::saveSetting('mma_agreements_status', self::getDefaultAgreementSections(), $pid);
+	}
+
+	private static function getDefaultAgreementSections(): array {
+		return  [
+			"Lab_Meetings" => true,
+			"Communication" => true,
+			"Mentoring_Panel" => true,
+			"Financial_Support" => true,
+			"Scientific_Development" => true,
+			"Approach_to_Scholarly_Products" => true,
+			"Career_and_Professional_Development" => true,
+			"Individual_Development_Plan" => true,
+			"Mentee_Mentor_11_Meetings" => true,
+		];
+	}
+
+	public static function getEnabledSections($pid, $mentorId = null): array {
+		$enabledSections = self::getAgreementSectionsEnabledStatusForProject($pid);
+		$allSections = self::getAllSections();
+		$mentorOverrides = self::getMentorOverrides($pid, $mentorId);
+		$returnArray = array_filter($allSections, function ($key) use ($enabledSections, $mentorOverrides) {
+			if (array_key_exists($key, $mentorOverrides)) {
+				return $mentorOverrides[$key];
+			} elseif (array_key_exists($key, $enabledSections)) {
+				return $enabledSections[$key];
+			}
+			return false;
+		}, ARRAY_FILTER_USE_KEY);
+		return $returnArray;
+	}
+
+	private static function getMentorOverrides($pid, $mentorId): array {
+		if (is_null($mentorId)) {
+			return ['Lab_Meetings' => false, 'Mentoring_Panel' => false];
+		}
+		return ['Lab_Meetings' => false, 'Mentoring_Panel' => false];
+	}
+
+	public static function sendInitialEmails($requestedRecords, $pid, $token, $server, $customizeAgreement = false, $mentorUserIds = []) {
+		$allRecords = Download::recordIdsByPid($pid);
+		$userids = Download::userids($token, $server);
+		$menteeNames = Download::names($token, $server);
+		$menteeEmails = Download::emails($token, $server);
+		$primaryMentors = Download::primaryMentors($token, $server);
+		$matchedRecords = [];
+		if (is_array($requestedRecords)) {
+			foreach ($requestedRecords as $recordId) {
+				$sanitizedRecord = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+				if ($sanitizedRecord) {
+					$matchedRecords[] = $sanitizedRecord;
+				} else {
+					return ["error" => "Not all records could be matched. There might be multiple users accessing these data at the same time."];
+				}
+			}
+		}
+		$emails = [];
+		foreach ($matchedRecords as $recordId) {
+			$userid = $userids[$recordId] ?? "";
+			if (!$userid) {
+				return ["error" => "Not all user-ids are available. This should never happen. You might want to restart the process."];
+			}
+			if (($menteeNames[$recordId] ?? "") && REDCapManagement::isEmailOrEmails($menteeEmails[$recordId] ?? "")) {
+				$name = $menteeNames[$recordId];
+				$email = $menteeEmails[$recordId];
+			} else {
+				$lookup = new REDCapLookupByUserid($userid);
+				$name = $lookup->getName();
+				$email = $lookup->getEmail();
+			}
+			$emails[$email] = [
+				"name" => $name,
+				"mentors" => $primaryMentors[$recordId] ?? [],
+			];
+		}
+		$homeLink = Application::getMenteeAgreementLink($pid);
+		if (false) {
+			error_log("Notifying with $homeLink: ".implode(", ", array_keys($emails)));
+		} else {
+			$defaultFrom = Application::getSetting("default_from", $pid) ?: "noreply.flighttracker@vumc.org";
+			$base64 = Application::getBase64("img/flight_tracker_logo_medium_white_bg.png");
+			$logo = "<p><img src='$base64' alt='Flight Tracker for Scholars' /></p>";
+			if ($customizeAgreement) {
+				$mentorConfigureLandingPageLink = Application::link("mentor/mentorConfigure.php", $pid);
+				$emails = [];
+				foreach ($mentorUserIds as $mentorUserId) {
+					$redcapUserLookup = new REDCapLookupByUserid($mentorUserId);
+					$emails[$redcapUserLookup->getEmail()] = $redcapUserLookup->getName();
+				}
+				foreach ($emails as $mentorEmail => $mentorName) {
+					$msg = "$logo<p>Dear $mentorName,</p><p>Your mentee has been requested to fill out a mentee-mentor agreement with you. You can configure custom questions if you desire. Either way, please use the following link to initiate the process. Thank you!</p><p><a href='$mentorConfigureLandingPageLink'>$mentorConfigureLandingPageLink</a></p>";
+					\REDCap::email($mentorEmail, $defaultFrom, "Mentee-Mentor Agreement", $msg);
+				}
+			} else {
+				foreach ($emails as $email => $info) {
+					$mentorNames = REDCapManagement::makeConjunction($info['mentors']);
+					$name = $info['name'];
+					$mssg = "$logo<p>Dear $name,</p><p>You have been requested to form a mentee-mentor agreement with $mentorNames. To configure your custom REDCap-based agreement, please use the following link to customize it electronically. Thank you!</p><p><a href='$homeLink'>$homeLink</a></p>";
+					\REDCap::email($email, $defaultFrom, "Mentee-Mentor Agreement", $mssg);
+				}
+			}
+		}
+		return count($emails);
+	}
+
+	public static function getCustomQuestions($pid, $myMentors = null) {
+		if (empty($myMentors)) {
+			return [];
+		}
+		$customQuestionsArray = Application::getSetting("adminCustomQuestions_mma", $pid) ?: [];
+		foreach ($myMentors['uid'] as $mentor) {
+			$customQuestion = Application::getSetting("customQuestions_mma_$mentor", $pid);
+			if ($customQuestion) {
+				$customQuestionsArray = array_merge($customQuestionsArray, $customQuestion);
+			}
+		}
+		return $customQuestionsArray;
+	}
+
+	public static function getMetadataForCustomQuestions($customQuestionData) {
+		#TODO: Doublecheck that this function returns blank arrays when logged in as admin user (no mentor configured)
+		if (empty($customQuestionData)) {
+			return [[], []];
+		};
+		$notesFields = [];
+		$customQuestionMetadata = [];
+
+		foreach ($customQuestionData as $questionNum => $questionData) {
+			$customQuestionMetadataRow = [];
+			if ($questionNum === array_key_first($customQuestionData)) {
+				$customQuestionMetadataRow['section_header'] = "<h3>Custom Questions</h3>";
+			} else {
+				$customQuestionMetadataRow['section_header'] = "";
+			}
+			$customQuestionMetadataRow['form_name'] = "custom_questions";
+			$customQuestionMetadataRow['field_name'] = $questionData['questionSource'] ."_" . $questionData['questionNumber'];
+			switch ($questionData['questionType']) {
+				case "multiChoice":
+					$customQuestionMetadataRow['field_type'] = "radio";
+					$customQuestionMetadataRow['select_choices_or_calculations'] = self::parseChoicesToRedcapSelectChoicesString($questionData['choices']);
+					break;
+				case "multiSelect":
+					$customQuestionMetadataRow['field_type'] = "checkbox";
+					$customQuestionMetadataRow['select_choices_or_calculations'] = self::parseChoicesToRedcapSelectChoicesString($questionData['choices']);
+					break;
+				case "boolean":
+					$customQuestionMetadataRow['field_type'] = "yesno";
+					$customQuestionMetadataRow['select_choices_or_calculations'] = "";
+					break;
+				default:
+					$customQuestionMetadataRow['field_type'] = "notes";
+					$customQuestionMetadataRow['select_choices_or_calculations'] = "";
+					break;
+			}
+			$customQuestionMetadataRow['field_label'] = $questionData['questionText'];
+			$customQuestionMetadata[] = $customQuestionMetadataRow;
+			$notesRow = [];
+			$notesFieldName = "$customQuestionMetadataRow[field_name]_notes";
+			$notesRow['field_name'] = $notesFieldName;
+			$notesRow['field_type'] = "notes";
+			$notesFields[] = $notesFieldName;
+			$customQuestionMetadata[] = $notesRow;
+		}
+		return [$customQuestionMetadata, $notesFields];
+	}
+
+	private static function parseChoicesToRedcapSelectChoicesString($choices): string {
+		$string = "";
+		foreach ($choices as $choiceNum => $choice) {
+			$string .= "$choiceNum, $choice | ";
+		}
+		$string = trim($string, "| ");
+		return $string;
+	}
+
+	public static function getCustomQuestionData($pid, $recordId, $instance, $adminField = false) {
+		$instanceRow = Download::getInstanceRow($pid, self::PREFIX, "mentoring_agreement", $recordId, $instance);
+		$addAdmin = "";
+		if ($adminField) {
+			$addAdmin = "_admin";
+		}
+		return array_merge(json_decode($instanceRow["mentoring_custom_question_json$addAdmin"], true) ?: []);
+	}
+
+	public static function getcustomQuestionResponsesForDisplay($pid, $recordId, $instance) {
+		$instanceRow = Download::getInstanceRow($pid, self::PREFIX, "mentoring_agreement", $recordId, $instance);
+
+		return json_decode($instanceRow['mentoring_custom_question_json'], true);
+	}
+
+	public static function getCustomQuestionsReadable($customQuestionData, $customQuestionResponses) {
+		$readable = '';
+		$answeredQuestions = [];
+		$customQuestionInformation = [];
+		foreach ($customQuestionData as $index => $questionData) {
+			$customQuestionInformation[$questionData['questionSource']][$questionData['questionNumber']] = $questionData;
+		}
+		foreach ($customQuestionResponses as $questionKey => $questionResponse) {
+			list($questionSource, $questionNumber) = explode("_", $questionKey);
+			$answeredQuestions[$questionSource][$questionNumber] = $questionResponse;
+		}
+		foreach ($answeredQuestions as $questionSource => $questionResponses) {
+			if (array_key_first($answeredQuestions) !== $questionSource) {
+				$readable .= "\n\n";
+			}
+			if (!preg_match("/^".MMAHelper::CUSTOM_QUESTIONS_SOURCE_KEY."/", $questionSource)) {
+				$redcapLookup = new REDCapLookupByUserid($questionSource);
+				$sourceName = $redcapLookup->getName() . " (" . $questionSource . ")";
+			} else {
+				$sourceName = MMAHelper::CUSTOM_QUESTIONS_SOURCE_READABLE;
+			}
+			$readable .= "$sourceName\n------------\n\n";
+			foreach ($questionResponses as $questionNumber => $questionResponse) {
+				$questionData = $customQuestionInformation[$questionSource][$questionNumber];
+				switch ($questionData['questionType']) {
+					case "multiChoice":
+						$questionResponse = (int)trim($questionResponse);
+						$response = $questionData['choices'][$questionResponse];
+						$readable .= "$questionData[questionText]: $response\n";
+						break;
+					case "multiSelect":
+						$selectedResponses = [];
+						foreach ($questionResponse as $choiceNum => $choice) {
+							if ($choice == "1") {
+								$selectedResponses[] = $questionData['choices'][(int)$choiceNum];
+							}
+						}
+						$response = implode(", ", $selectedResponses);
+						$readable .= "$questionData[questionText]: $response\n";
+						break;
+					case "boolean":
+						$response = $questionResponse ? "Yes" : "No";
+						$readable .= "$questionData[questionText]: $response\n";
+						break;
+					default:
+						$readable .= "$questionData[questionText]: $questionResponse\n";
+				}
+			}
+		}
+		return $readable;
+	}
+
+	public static function parseCustomQuestionResponsesFromFullForm($postData, $customQuestionsData) {
+		$relevantFields = [];
+		$customQuestionsByFieldName = [];
+		foreach ($customQuestionsData as $questionData) {
+			$relevantFields[] = $questionData['questionSource'] . "_" . $questionData['questionNumber'];
+			$customQuestionsByFieldName[$questionData['questionSource'] . "_" . $questionData['questionNumber']] = $questionData;
+		}
+
+		$parsedResponses = [];
+		$parsedResponses['admin'] = [];
+		$parsedResponses['mentor'] = [];
+		foreach ($postData as $key => $value) {
+			if (in_array($key, $relevantFields)) {
+				if (preg_match("/^".MMAHelper::CUSTOM_QUESTIONS_SOURCE_KEY."/", $key)) {
+					$arrayKey = "admin";
+				} else {
+					$arrayKey = "mentor";
+				}
+				if (is_array($value)) {
+					$parsedResponses[$arrayKey][$key] = [];
+					foreach ($customQuestionsByFieldName[$key]['choices'] as $choiceNum => $label) {
+						if (in_array($choiceNum, $value)) {
+							$parsedResponses[$arrayKey][$key][$choiceNum] = "1";
+						} else {
+							$parsedResponses[$arrayKey][$key][$choiceNum] = "0";
+						}
+					}
+				} else {
+					$parsedResponses[$arrayKey][$key] = $value;
+				}
+			}
+		}
+		return [$parsedResponses['admin'], $parsedResponses['mentor']];
+	}
+
+	public static function removeCustomQuestionFieldsFromMetadata($metadata) {
+		$nonCustomQuestionFields = [];
+		$customQuestionFieldKeys = [
+			"mentoring_custom_question_json",
+			"mentoring_custom_question_readable",
+			"mentoring_custom_question_json_admin",
+			"mentoring_custom_question_readable_admin"
+		];
+		foreach ($metadata as $row) {
+			if (!in_array($row['field_name'], $customQuestionFieldKeys)) {
+				$nonCustomQuestionFields[] = $row;
+			}
+		}
+		return $nonCustomQuestionFields;
+	}
 }

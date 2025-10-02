@@ -28,15 +28,15 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class TblWidth extends AbstractEnum
 {
-    //No Width
-    const NIL = 'nil';
+	//No Width
+	public const NIL = 'nil';
 
-    //Automatically Determined Width
-    const AUTO = 'auto';
+	//Automatically Determined Width
+	public const AUTO = 'auto';
 
-    //Width in Fiftieths of a Percent
-    const PERCENT = 'pct';
+	//Width in Fiftieths of a Percent
+	public const PERCENT = 'pct';
 
-    //Width in Twentieths of a Point
-    const TWIP = 'dxa';
+	//Width in Twentieths of a Point
+	public const TWIP = 'dxa';
 }

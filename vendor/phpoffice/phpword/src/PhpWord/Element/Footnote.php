@@ -22,43 +22,41 @@ use PhpOffice\PhpWord\Style\Paragraph;
 
 class Footnote extends AbstractContainer
 {
-    /**
-     * @var string Container type
-     */
-    protected $container = 'Footnote';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'Footnote';
 
-    /**
-     * Paragraph style.
-     *
-     * @var null|Paragraph|string
-     */
-    protected $paragraphStyle;
+	/**
+	 * Paragraph style.
+	 *
+	 * @var null|Paragraph|string
+	 */
+	protected $paragraphStyle;
 
-    /**
-     * Is part of collection.
-     *
-     * @var bool
-     */
-    protected $collectionRelation = true;
+	/**
+	 * Is part of collection.
+	 *
+	 * @var bool
+	 */
+	protected $collectionRelation = true;
 
-    /**
-     * Create new instance.
-     *
-     * @param array|Paragraph|string $paragraphStyle
-     */
-    public function __construct($paragraphStyle = null)
-    {
-        $this->paragraphStyle = $this->setNewStyle(new Paragraph(), $paragraphStyle);
-        $this->setDocPart($this->container);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param array|Paragraph|string $paragraphStyle
+	 */
+	public function __construct($paragraphStyle = null) {
+		$this->paragraphStyle = $this->setNewStyle(new Paragraph(), $paragraphStyle);
+		$this->setDocPart($this->container);
+	}
 
-    /**
-     * Get paragraph style.
-     *
-     * @return null|Paragraph|string
-     */
-    public function getParagraphStyle()
-    {
-        return $this->paragraphStyle;
-    }
+	/**
+	 * Get paragraph style.
+	 *
+	 * @return null|Paragraph|string
+	 */
+	public function getParagraphStyle() {
+		return $this->paragraphStyle;
+	}
 }

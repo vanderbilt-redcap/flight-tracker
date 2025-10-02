@@ -25,19 +25,18 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Element;
  */
 class TextRun extends Text
 {
-    /**
-     * Write textrun element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
+	/**
+	 * Write textrun element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
 
-        $this->startElementP();
+		$this->startElementP();
 
-        $containerWriter = new Container($xmlWriter, $element);
-        $containerWriter->write();
+		$containerWriter = new Container($xmlWriter, $element);
+		$containerWriter->write();
 
-        $this->endElementP(); // w:p
-    }
+		$this->endElementP(); // w:p
+	}
 }

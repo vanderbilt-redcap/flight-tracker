@@ -1,11 +1,11 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\Filter;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\Filter;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -14,7 +14,7 @@ $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
 $cohorts = new Cohorts($token, $server, CareerDev::getModule());
 if ($cohort) {
 	if ($cohorts->isIn($cohort)) {
-	    $module = CareerDev::getModule();
+		$module = CareerDev::getModule();
 		$names = Download::names($token, $server);
 		$records = Download::cohortRecordIds($token, $server, $module, $cohort);
 		header('Content-Type: text/plain; charset=utf-8');

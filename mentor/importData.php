@@ -19,14 +19,14 @@ $redcapData = Download::fieldsForRecords($token, $server, array_unique(array_mer
 $skip = array_merge(["record_id", "redcap_repeat_instance", "redcap_repeat_instrument"], $notesFields);
 $outputData = [];
 foreach ($redcapData as $row) {
-    if (($row['redcap_repeat_instrument'] == "mentoring_agreement") && ($row['redcap_repeat_instance'] == $instance)) {
-        $outputData = [];
-        foreach ($row as $field => $value) {
-            if (!in_array($field, $skip)) {
-                $outputData[$field] = $value;
-            }
-        }
-        break;
-    }
+	if (($row['redcap_repeat_instrument'] == "mentoring_agreement") && ($row['redcap_repeat_instance'] == $instance)) {
+		$outputData = [];
+		foreach ($row as $field => $value) {
+			if (!in_array($field, $skip)) {
+				$outputData[$field] = $value;
+			}
+		}
+		break;
+	}
 }
 echo json_encode($outputData);

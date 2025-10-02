@@ -30,65 +30,63 @@ use PhpOffice\PhpWord\Shared\XMLWriter;
  */
 class Container extends AbstractElement
 {
-    /**
-     * Namespace; Can't use __NAMESPACE__ in inherited class (ODText).
-     *
-     * @var string
-     */
-    protected $namespace = 'PhpOffice\\PhpWord\\Writer\\Word2007\\Element';
+	/**
+	 * Namespace; Can't use __NAMESPACE__ in inherited class (ODText).
+	 *
+	 * @var string
+	 */
+	protected $namespace = 'PhpOffice\\PhpWord\\Writer\\Word2007\\Element';
 
-    /**
-     * @var array<string>
-     */
-    protected $containerWithoutP = ['TextRun', 'Footnote', 'Endnote', 'ListItemRun'];
+	/**
+	 * @var array<string>
+	 */
+	protected $containerWithoutP = ['TextRun', 'Footnote', 'Endnote', 'ListItemRun'];
 
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $container = $this->getElement();
-        if (!$container instanceof ContainerElement) {
-            return;
-        }
-        $containerClass = substr(get_class($container), strrpos(get_class($container), '\\') + 1);
-        $withoutP = in_array($containerClass, $this->containerWithoutP);
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$container = $this->getElement();
+		if (!$container instanceof ContainerElement) {
+			return;
+		}
+		$containerClass = substr(get_class($container), strrpos(get_class($container), '\\') + 1);
+		$withoutP = in_array($containerClass, $this->containerWithoutP);
+		$xmlWriter = $this->getXmlWriter();
 
-        // Loop through elements
-        $elements = $container->getElements();
-        $elementClass = '';
-        foreach ($elements as $element) {
-            $elementClass = $this->writeElement($xmlWriter, $element, $withoutP);
-        }
+		// Loop through elements
+		$elements = $container->getElements();
+		$elementClass = '';
+		foreach ($elements as $element) {
+			$elementClass = $this->writeElement($xmlWriter, $element, $withoutP);
+		}
 
-        // Special case for Cell: They have to contain a w:p element at the end.
-        // The $elementClass contains the last element name. If it's empty string
-        // or Table, the last element is not w:p
-        $writeLastTextBreak = ($containerClass == 'Cell') && ($elementClass == '' || $elementClass == 'Table');
-        if ($writeLastTextBreak) {
-            $writerClass = $this->namespace . '\\TextBreak';
-            /** @var AbstractElement $writer Type hint */
-            $writer = new $writerClass($xmlWriter, new TextBreakElement(), $withoutP);
-            $writer->write();
-        }
-    }
+		// Special case for Cell: They have to contain a w:p element at the end.
+		// The $elementClass contains the last element name. If it's empty string
+		// or Table, the last element is not w:p
+		$writeLastTextBreak = ($containerClass == 'Cell') && ($elementClass == '' || $elementClass == 'Table');
+		if ($writeLastTextBreak) {
+			$writerClass = $this->namespace . '\\TextBreak';
+			/** @var AbstractElement $writer Type hint */
+			$writer = new $writerClass($xmlWriter, new TextBreakElement(), $withoutP);
+			$writer->write();
+		}
+	}
 
-    /**
-     * Write individual element.
-     */
-    private function writeElement(XMLWriter $xmlWriter, Element $element, bool $withoutP): string
-    {
-        $elementClass = substr(get_class($element), strrpos(get_class($element), '\\') + 1);
-        $writerClass = $this->namespace . '\\' . $elementClass;
+	/**
+	 * Write individual element.
+	 */
+	private function writeElement(XMLWriter $xmlWriter, Element $element, bool $withoutP): string {
+		$elementClass = substr(get_class($element), strrpos(get_class($element), '\\') + 1);
+		$writerClass = $this->namespace . '\\' . $elementClass;
 
-        if (class_exists($writerClass)) {
-            /** @var AbstractElement $writer Type hint */
-            $writer = new $writerClass($xmlWriter, $element, $withoutP);
-            $writer->setPart($this->getPart());
-            $writer->write();
-        }
+		if (class_exists($writerClass)) {
+			/** @var AbstractElement $writer Type hint */
+			$writer = new $writerClass($xmlWriter, $element, $withoutP);
+			$writer->setPart($this->getPart());
+			$writer->write();
+		}
 
-        return $elementClass;
-    }
+		return $elementClass;
+	}
 }

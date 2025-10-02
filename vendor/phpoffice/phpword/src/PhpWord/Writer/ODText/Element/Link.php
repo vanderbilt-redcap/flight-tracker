@@ -25,29 +25,28 @@ namespace PhpOffice\PhpWord\Writer\ODText\Element;
  */
 class Link extends AbstractElement
 {
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\Link) {
-            return;
-        }
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\Link) {
+			return;
+		}
 
-        if (!$this->withoutP) {
-            $xmlWriter->startElement('text:p'); // text:p
-        }
+		if (!$this->withoutP) {
+			$xmlWriter->startElement('text:p'); // text:p
+		}
 
-        $xmlWriter->startElement('text:a');
-        $xmlWriter->writeAttribute('xlink:type', 'simple');
-        $xmlWriter->writeAttribute('xlink:href', ($element->isInternal() ? '#' : '') . $element->getSource());
-        $this->writeText($element->getText());
-        $xmlWriter->endElement(); // text:a
+		$xmlWriter->startElement('text:a');
+		$xmlWriter->writeAttribute('xlink:type', 'simple');
+		$xmlWriter->writeAttribute('xlink:href', ($element->isInternal() ? '#' : '') . $element->getSource());
+		$this->writeText($element->getText());
+		$xmlWriter->endElement(); // text:a
 
-        if (!$this->withoutP) {
-            $xmlWriter->endElement(); // text:p
-        }
-    }
+		if (!$this->withoutP) {
+			$xmlWriter->endElement(); // text:p
+		}
+	}
 }

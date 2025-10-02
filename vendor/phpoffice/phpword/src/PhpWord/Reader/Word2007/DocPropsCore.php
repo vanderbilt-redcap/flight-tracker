@@ -28,55 +28,54 @@ use PhpOffice\PhpWord\Shared\XMLReader;
  */
 class DocPropsCore extends AbstractPart
 {
-    /**
-     * Property mapping.
-     *
-     * @var array
-     */
-    protected $mapping = [
-        'dc:creator' => 'setCreator',
-        'dc:title' => 'setTitle',
-        'dc:description' => 'setDescription',
-        'dc:subject' => 'setSubject',
-        'cp:keywords' => 'setKeywords',
-        'cp:category' => 'setCategory',
-        'cp:lastModifiedBy' => 'setLastModifiedBy',
-        'dcterms:created' => 'setCreated',
-        'dcterms:modified' => 'setModified',
-    ];
+	/**
+	 * Property mapping.
+	 *
+	 * @var array
+	 */
+	protected $mapping = [
+		'dc:creator' => 'setCreator',
+		'dc:title' => 'setTitle',
+		'dc:description' => 'setDescription',
+		'dc:subject' => 'setSubject',
+		'cp:keywords' => 'setKeywords',
+		'cp:category' => 'setCategory',
+		'cp:lastModifiedBy' => 'setLastModifiedBy',
+		'dcterms:created' => 'setCreated',
+		'dcterms:modified' => 'setModified',
+	];
 
-    /**
-     * Callback functions.
-     *
-     * @var array
-     */
-    protected $callbacks = ['dcterms:created' => 'strtotime', 'dcterms:modified' => 'strtotime'];
+	/**
+	 * Callback functions.
+	 *
+	 * @var array
+	 */
+	protected $callbacks = ['dcterms:created' => 'strtotime', 'dcterms:modified' => 'strtotime'];
 
-    /**
-     * Read core/extended document properties.
-     */
-    public function read(PhpWord $phpWord): void
-    {
-        $xmlReader = new XMLReader();
-        $xmlReader->getDomFromZip($this->docFile, $this->xmlFile);
+	/**
+	 * Read core/extended document properties.
+	 */
+	public function read(PhpWord $phpWord): void {
+		$xmlReader = new XMLReader();
+		$xmlReader->getDomFromZip($this->docFile, $this->xmlFile);
 
-        $docProps = $phpWord->getDocInfo();
+		$docProps = $phpWord->getDocInfo();
 
-        $nodes = $xmlReader->getElements('*');
-        if ($nodes->length > 0) {
-            foreach ($nodes as $node) {
-                if (!isset($this->mapping[$node->nodeName])) {
-                    continue;
-                }
-                $method = $this->mapping[$node->nodeName];
-                $value = $node->nodeValue == '' ? null : $node->nodeValue;
-                if (isset($this->callbacks[$node->nodeName])) {
-                    $value = $this->callbacks[$node->nodeName]($value);
-                }
-                if (method_exists($docProps, $method)) {
-                    $docProps->$method($value);
-                }
-            }
-        }
-    }
+		$nodes = $xmlReader->getElements('*');
+		if ($nodes->length > 0) {
+			foreach ($nodes as $node) {
+				if (!isset($this->mapping[$node->nodeName])) {
+					continue;
+				}
+				$method = $this->mapping[$node->nodeName];
+				$value = $node->nodeValue == '' ? null : $node->nodeValue;
+				if (isset($this->callbacks[$node->nodeName])) {
+					$value = $this->callbacks[$node->nodeName]($value);
+				}
+				if (method_exists($docProps, $method)) {
+					$docProps->$method($value);
+				}
+			}
+		}
+	}
 }

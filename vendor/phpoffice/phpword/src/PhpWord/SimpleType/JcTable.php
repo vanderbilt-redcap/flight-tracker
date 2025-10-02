@@ -29,7 +29,7 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class JcTable extends AbstractEnum
 {
-    const START = 'start';
-    const CENTER = 'center';
-    const END = 'end';
+	public const START = 'start';
+	public const CENTER = 'center';
+	public const END = 'end';
 }

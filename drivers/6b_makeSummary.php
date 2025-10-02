@@ -59,7 +59,7 @@ if (!isset($_GET['pid'])) {
 	}
 }
 
-$errors = array();
+$errors = [];
 $_GLOBAL["errors"] = $errors;
 $_GLOBAL["echoToScreen"] = $echoToScreen;
 
@@ -70,7 +70,7 @@ function testOutput($jsonStr) {
 	$data = json_decode($jsonStr, true);
 	if ($data && isset($data['count'])) {
 		return;
-	} else if ($jsonStr) {
+	} elseif ($jsonStr) {
 		$errors[] = $jsonStr;
 	}
 }
@@ -110,12 +110,12 @@ function transformSelectDegree($num) {
 	if (!$num) {
 		return "";
 	}
-	$transform = array(
+	$transform = [
 			1 => 5,   #MS
 			2 => 4,   # MSCI
 			3 => 3,   # MPH
 			4 => 6,   # other
-			);
+			];
 	return $transform[$num];
 }
 
@@ -132,13 +132,13 @@ function formatEmail($email) {
 function findVariableWhenLeftVU($normativeRow, $rows) {
 	$followupRows = selectFollowupRows($rows);
 	foreach ($followupRows as $instance => $row) {
-		$prefices = array(
+		$prefices = [
 					"followup_prev1" => "followup",
 					"followup_prev2" => "followup",
 					"followup_prev3" => "followup",
 					"followup_prev4" => "followup",
 					"followup_prev5" => "followup",
-				);
+				];
 		foreach ($prefices as $prefix => $type) {
 			$variable = $prefix."_institution";
 			$variable_date = $prefix."_academic_rank_enddt";
@@ -147,19 +147,19 @@ function findVariableWhenLeftVU($normativeRow, $rows) {
 				isset($row[$variable_date]) &&
 				($row[$variable_date] != "")) {
 
-				return array($variable_date, $type);
+				return [$variable_date, $type];
 			}
 		}
 	}
 
 	if ($normativeRow['check_institution'] != 1) {
-		$prefices = array(
+		$prefices = [
 					"check_prev1" => "scholars",
 					"check_prev2" => "scholars",
 					"check_prev3" => "scholars",
 					"check_prev4" => "scholars",
 					"check_prev5" => "scholars",
-				);
+				];
 		foreach ($prefices as $prefix => $type) {
 			$variable = $prefix."_institution";
 			$variable_date = $prefix."_academic_rank_enddt";
@@ -168,12 +168,12 @@ function findVariableWhenLeftVU($normativeRow, $rows) {
 				isset($normativeRow[$variable_date]) &&
 				($normativeRow[$variable_date] != "")) {
 
-				return array($variable_date, $type);
+				return [$variable_date, $type];
 			}
 		}
 	}
 
-	return array("", "");
+	return ["", ""];
 }
 
 # key = instance; value = REDCap data row
@@ -200,8 +200,8 @@ function findNextMax($rows, $instrument, $skip) {
 
 # calculate the primary mentor
 function calculatePrimaryMentor($rows) {
-	$repeatingForms = array("followup");
-	$order = array(
+	$repeatingForms = ["followup"];
+	$order = [
 			"override_mentor" => "override",
 			"followup_primary_mentor" => "followup",
 			"check_primary_mentor" => "scholars",
@@ -209,10 +209,10 @@ function calculatePrimaryMentor($rows) {
 			"newman_data_mentor1" => "data",
 			"newman_sheet2_mentor1" => "sheet2",
 			"newman_new_mentor1" => "new2017",
-			);
+			];
 	foreach ($order as $field => $src) {
 		if (in_array($src, $repeatingForms)) {
-			$processed = array();	// keep track of prior instances processed
+			$processed = [];	// keep track of prior instances processed
 			$max = findNextMax($rows, $src, $processed);
 
 			// stop when all instances processed   ==> stop when $max == 0
@@ -221,7 +221,7 @@ function calculatePrimaryMentor($rows) {
 					if (($row['redcap_repeat_instrument'] == $src) && ($row['redcap_repeat_instance'] == $max)) {
 						$processed[] = $row['redcap_repeat_instance'];
 						if ($row[$field]) {
-							return array($row[$field], $src);
+							return [$row[$field], $src];
 						} else {
 							$max = findNextMax($rows, $src, $processed);
 						}
@@ -230,23 +230,23 @@ function calculatePrimaryMentor($rows) {
 				}
 			}
 		} else {
-			foreach ($rows as $row) { 
-			 	if ($row['redcap_repeat_instrument'] == "") {
+			foreach ($rows as $row) {
+				if ($row['redcap_repeat_instrument'] == "") {
 					# normative row
 					if ($row[$field]) {
-						return array($row[$field], $src);
+						return [$row[$field], $src];
 					}
 					break;
 				}
 			}
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # calculate when left Vanderbilt
 function calculateLeftVanderbilt($row, $rows) {
-	$order = array();
+	$order = [];
 	$leftVUAry = findVariableWhenLeftVU($row, $rows);
 	$leftVU = $leftVUAry[0];
 	$leftVUType = $leftVUAry[1];
@@ -258,54 +258,54 @@ function calculateLeftVanderbilt($row, $rows) {
 	$order["overrides_left_vu"] = "override";
 	foreach ($order as $field => $type) {
 		if ($row[$field] && preg_match("/^\d\d\d\d-\d\d-\d\d$/", $row[$field])) {
-			return array($row[$field], $type);
+			return [$row[$field], $type];
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # calculate preferred email address
 function calculateEmail($normativeRow, $rows) {
-	$order = array(
+	$order = [
 			"override_email" => "override",
 			"followup_email" => "followup",
 			"check_email" => "scholars",
 			"vfrs_email" => "vfrs",
 			"newman_data_email" => "data",
 			"newman_sheet2_project_email" => "sheet2",
-			);
+			];
 	foreach ($order as $field => $type) {
 		if ($type == "followup") {
 			foreach ($rows as $row) {
 				if ($row['redcap_repeat_instrument'] == "followup") {
 					if ($row[$field]) {
-						return array(formatEmail($row[$field]), $type);
+						return [formatEmail($row[$field]), $type];
 					}
 				}
 			}
-		} else if ($normativeRow[$field]) {
-			return array(formatEmail($normativeRow[$field]), $type);
+		} elseif ($normativeRow[$field]) {
+			return [formatEmail($normativeRow[$field]), $type];
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # calculates the first degree
 function calculateFirstDegree($row) {
 	# move over and then down
-	$order = array(
-			array("override_degrees" => "override"),
-			array("check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"),
-			array("vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"),
-			array("newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"),
-			array("newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"),
-			array("newman_demographics_degrees" => "demographics"),
-			array("newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"),
-			);
+	$order = [
+			["override_degrees" => "override"],
+			["check_degree1" => "scholars", "check_degree2" => "scholars", "check_degree3" => "scholars", "check_degree4" => "scholars", "check_degree5" => "scholars"],
+			["vfrs_graduate_degree" => "vfrs", "vfrs_degree2" => "vfrs", "vfrs_degree3" => "vfrs", "vfrs_degree4" => "vfrs", "vfrs_degree5" => "vfrs", "vfrs_please_select_your_degree" => "vfrs"],
+			["newman_new_degree1" => "new2017", "newman_new_degree2" => "new2017", "newman_new_degree3" => "new2017"],
+			["newman_data_degree1" => "data", "newman_data_degree2" => "data", "newman_data_degree3" => "data"],
+			["newman_demographics_degrees" => "demographics"],
+			["newman_sheet2_degree1" => "sheet2", "newman_sheet2_degree2" => "sheet2", "newman_sheet2_degree3" => "sheet2"],
+			];
 
 	# combines degrees and sets up for translateFirstDegree
 	$value = "";
-	$degrees = array();
+	$degrees = [];
 	foreach ($order as $variables) {
 		foreach ($variables as $variable => $type) {
 			if ($variable == "vfrs_please_select_your_degree") {
@@ -318,51 +318,51 @@ function calculateFirstDegree($row) {
 	}
 	if (empty($degrees)) {
 		return "";
-	} else if (in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { #MD
+	} elseif (in_array(1, $degrees) || in_array(9, $degrees) || in_array(10, $degrees) || in_array(7, $degrees) || in_array(8, $degrees) || in_array(14, $degrees) || in_array(12, $degrees)) { #MD
 		if (in_array(2, $degrees) || in_array(9, $degrees) || in_array(10, $degrees)) {
 			$value = 10;  # MD/PhD
-		} else if (in_array(3, $degrees) || in_array(16, $degrees) || in_array(18, $degrees)) { #MPH
+		} elseif (in_array(3, $degrees) || in_array(16, $degrees) || in_array(18, $degrees)) { #MPH
 			$value = 7;
-		} else if (in_array(4, $degrees) || in_array(7, $degrees)) { #MSCI
+		} elseif (in_array(4, $degrees) || in_array(7, $degrees)) { #MSCI
 			$value = 8;
-		} else if (in_array(5, $degrees) || in_array(8, $degrees)) { # MS
+		} elseif (in_array(5, $degrees) || in_array(8, $degrees)) { # MS
 			$value = 9;
-		} else if (in_array(6, $degrees) || in_array(13, $degrees) || in_array(14, $degrees)) { #Other
+		} elseif (in_array(6, $degrees) || in_array(13, $degrees) || in_array(14, $degrees)) { #Other
 			$value = 7;     # MD + other
-		} else if (in_array(11, $degrees) || in_array(12, $degrees)) { #MHS
+		} elseif (in_array(11, $degrees) || in_array(12, $degrees)) { #MHS
 			$value = 12;
 		} else {
 			$value = 1;   # MD only
 		}
-	} else if (in_array(2, $degrees)) { #PhD
+	} elseif (in_array(2, $degrees)) { #PhD
 		if (in_array(11, $degrees)) {
 			$value = 10;  # MD/PhD
-		} else if (in_array(3, $degrees)) { # MPH
+		} elseif (in_array(3, $degrees)) { # MPH
 			$value = 2;
-		} else if (in_array(4, $degrees)) { # MSCI
+		} elseif (in_array(4, $degrees)) { # MSCI
 			$value = 2;
-		} else if (in_array(5, $degrees)) { # MS
+		} elseif (in_array(5, $degrees)) { # MS
 			$value = 2;
-		} else if (in_array(6, $degrees)) { # Other
+		} elseif (in_array(6, $degrees)) { # Other
 			$value = 2;
 		} else {
 			$value = 2;     # PhD only
 		}
-	} else if (in_array(6, $degrees)) {  # Other
+	} elseif (in_array(6, $degrees)) {  # Other
 		if (in_array(1, $degrees)) {   # MD
 			$value = 7;  # MD + other
-		} else if (in_array(2, $degrees)) {  #PhD
+		} elseif (in_array(2, $degrees)) {  #PhD
 			$value = 2;
 		} else {
 			$value = 6;
 		}
-	} else if (in_array(3, $degrees)) {  # MPH
+	} elseif (in_array(3, $degrees)) {  # MPH
 		$value = 6;
-	} else if (in_array(4, $degrees)) {  # MSCI
+	} elseif (in_array(4, $degrees)) {  # MSCI
 		$value = 6;
-	} else if (in_array(5, $degrees)) {  # MS
+	} elseif (in_array(5, $degrees)) {  # MS
 		$value = 6;
-	} else if (in_array(15, $degrees)) {  # PsyD
+	} elseif (in_array(15, $degrees)) {  # PsyD
 		$value = 6;
 	}
 	return $value;
@@ -376,7 +376,7 @@ function calculateFirstDegree($row) {
 # "R01" => 5,
 # "R01 Equivalent" => 6,
 function maybeReclassifyIntoType($awardNo) {
-	$translate = array(
+	$translate = [
 		"Human Frontiers in Science CDA" => "K Equivalent",
 		"VA Merit" => "R01 Equivalent",
 		"VA Career Development Award" => "K Equivalent",
@@ -450,7 +450,7 @@ function maybeReclassifyIntoType($awardNo) {
 		"1U2GGH000812-01" => "R01 Equivalent",
 		"5IK2BX002797-02" => "K Equivalent",
 		"1RC4MH092755-01" => "R01 Equivalent",
-	);
+	];
 
 	if (isset($translate[$awardNo])) {
 		return $translate[$awardNo];
@@ -461,7 +461,7 @@ function maybeReclassifyIntoType($awardNo) {
 
 # translates from innate ordering into new categories in summary_degrees
 function translateFirstDegree($num) {
-	$translate = array(
+	$translate = [
 			"" => "",
 			1 => 1,
 			2 => 4,
@@ -481,13 +481,13 @@ function translateFirstDegree($num) {
 			3 => 6,
 			4 => 6,
 			5 => 6,
-			);
+			];
 	return $translate[$num];
 }
 
 # as name states
 function calculateGender($row) {
-	$order = array(
+	$order = [
 			"override_gender" => "override",
 			"check_gender" => "scholars",
 			"vfrs_gender" => "vfrs",
@@ -495,37 +495,37 @@ function calculateGender($row) {
 			"newman_demographics_gender" => "demographics",
 			"newman_data_gender" => "data",
 			"newman_nonrespondents_gender" => "nonrespondents",
-			);
+			];
 
-	$tradOrder = array("override_gender", "check_gender");
+	$tradOrder = ["override_gender", "check_gender"];
 	foreach ($order as $variable => $type) {
 		if ($row[$variable] !== "") {
 			if (in_array($variable, $tradOrder)) {
-				return array($row[$variable], $type);
+				return [$row[$variable], $type];
 			}
 			if ($row[$variable] == 1) {  # Male
-				return array(2, $type);
-			} else if ($row[$variable] == 2) {   # Female
-				return array(1, $type);
+				return [2, $type];
+			} elseif ($row[$variable] == 2) {   # Female
+				return [1, $type];
 			}
 			# forget no-reports and others
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # returns array of 3 (overall classification, race type, ethnicity type)
 function calculateAndTranslateRaceEthnicity($row) {
-	$orderRace = array(
-				"override_race" => "override", 
-				"check_race" => "scholars", 
-				"vfrs_race" => "vfrs", 
+	$orderRace = [
+				"override_race" => "override",
+				"check_race" => "scholars",
+				"vfrs_race" => "vfrs",
 				"newman_new_race" => "new2017",
 				"newman_demographics_race" => "demographics",
 				"newman_data_race" => "data",
 				"newman_nonrespondents_race" => "nonrespondents",
-				);
-	$orderEth = array(	
+				];
+	$orderEth = [
 				"override_ethnicity" => "override",
 				"check_ethnicity" => "scholars",
 				"vfrs_ethnicity" => "vfrs",
@@ -533,7 +533,7 @@ function calculateAndTranslateRaceEthnicity($row) {
 				"newman_demographics_ethnicity" => "demographics",
 				"newman_data_ethnicity" => "data",
 				"newman_nonrespondents_ethnicity" => "nonrespondents",
-				);
+				];
 	$race = "";
 	$raceType = "";
 	foreach ($orderRace as $variable => $type) {
@@ -544,7 +544,7 @@ function calculateAndTranslateRaceEthnicity($row) {
 		}
 	}
 	if ($race === "") {
-		return array("", "", "");
+		return ["", "", ""];
 	}
 	$eth = "";
 	$ethType = "";
@@ -560,25 +560,25 @@ function calculateAndTranslateRaceEthnicity($row) {
 		$val = 5;
 	}
 	if ($eth == "") {
-		return array("", "", "");
+		return ["", "", ""];
 	}
 	if ($eth == 1) { # Hispanic
 		if ($race == 5) { # White
 			$val = 3;
-		} else if ($race == 4) { # Black
+		} elseif ($race == 4) { # Black
 			$val = 4;
 		}
-	} else if ($eth == 2) {  # non-Hisp
+	} elseif ($eth == 2) {  # non-Hisp
 		if ($race == 5) { # White
 			$val = 1;
-		} else if ($race == 4) { # Black
+		} elseif ($race == 4) { # Black
 			$val = 2;
 		}
 	}
 	if ($val === "") {
 		$val = 6;  # other
 	}
-	return array($val, $raceType, $ethType);
+	return [$val, $raceType, $ethType];
 }
 
 # convert date
@@ -603,29 +603,29 @@ function convertToYYYYMMDD($date) {
 
 # finds date-of-birth
 function calculateDOB($row) {
-	$order = array(
+	$order = [
 			"check_date_of_birth" => "scholars",
 			"vfrs_date_of_birth" => "vfrs",
 			"newman_new_date_of_birth" => "new2017",
 			"newman_demographics_date_of_birth" => "demographics",
 			"newman_data_date_of_birth" => "data",
 			"newman_nonrespondents_date_of_birth" => "nonrespondents",
-			);
+			];
 
 	foreach ($order as $variable => $type) {
 		if ($row[$variable] !== "") {
 			$date = convertToYYYYMMDD($row[$variable]);
 			if ($date) {
-				return array($date, $type);
+				return [$date, $type];
 			}
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # VFRS did not use the 6-digit classification, so we must translate
 function transferVFRSDepartment($dept) {
-	$exchange = array(
+	$exchange = [
 				1	=> 104300,
 				2	=> 104250,
 				3	=> 104785,
@@ -669,7 +669,7 @@ function transferVFRSDepartment($dept) {
 				41	=> 104366,
 				42	=> 104625,
 				43	=> 999999,
-			);
+			];
 	if (isset($exchange[$dept])) {
 		return $exchange[$dept];
 	}
@@ -680,7 +680,7 @@ function transferVFRSDepartment($dept) {
 # not used because primary department is only one needed
 # may be out of date
 function calculateSecondaryDept($row) {
-	$order = array(
+	$order = [
 			"newman_demographics_department2" => "demographics",
 			"newman_data_departments2" => "data",
 			"newman_sheet2_department2" => "sheet2",
@@ -689,7 +689,7 @@ function calculateSecondaryDept($row) {
 			"newman_demographics_department1" => "demographics",
 			"newman_data_department1" => "data",
 			"newman_sheet2_department1" => "sheet2",
-			);
+			];
 
 	$ary = calculatePrimaryDept($row);
 	$primDept = $ary[0];
@@ -699,15 +699,15 @@ function calculateSecondaryDept($row) {
 			$dept = transferVFRSDepartment($row[$variable]);
 		}
 		if (($row[$variable] !== "") && ($primDept != $dept)) {
-			return array($dept, $type);
+			return [$dept, $type];
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # calculates a primary department
 function calculatePrimaryDept($row) {
-	$order = array(
+	$order = [
 			"override_department1" => "override",
 			"check_primary_dept" => "scholars",
 			"vfrs_department" => "vfrs",
@@ -715,9 +715,9 @@ function calculatePrimaryDept($row) {
 			"newman_demographics_department1" => "demographics",
 			"newman_data_department1" => "data",
 			"newman_sheet2_department1" => "sheet2",
-			);
-	$default = array();
-	$overridable = array(104368 => 104366, 999999 => "ALL");
+			];
+	$default = [];
+	$overridable = [104368 => 104366, 999999 => "ALL"];
 
 	foreach ($order as $variable => $type) {
 		$dept = $row[$variable];
@@ -726,76 +726,76 @@ function calculatePrimaryDept($row) {
 		}
 		if ($row[$variable] !== "") {
 			if (empty($default)) {
-				$default = array($dept, $type);
+				$default = [$dept, $type];
 			} else {
 				foreach ($overridable as $oldNo => $newNo) {
 					if ($oldNo == $default[0]) {
 						if (($newNo == "ALL") || ($newNo == $dept)) {
-							$default = array($dept, $type);
+							$default = [$dept, $type];
 						}
 					}
 				}
 			}
-			
+
 		}
 	}
 	if (empty($default)) {
-		return array("", "");
+		return ["", ""];
 	}
 	return $default;
 }
 
 # calculates if citizenship asserted
 function calculateCitizenship($row) {
-	$order = array(
+	$order = [
 			"check_citizenship" => "scholars",
-			);
+			];
 
 	foreach ($order as $variable => $type) {
 		if ($row[$variable] !== "") {
-			return array($row[$variable], $type);
+			return [$row[$variable], $type];
 		}
 	}
-	return array("", "");
+	return ["", ""];
 }
 
 # calculate current rank of academic appointment
 function calculateAppointments($normativeRow, $rows) {
 	$followupRows = selectFollowupRows($rows);
-	$outputRow = array();
+	$outputRow = [];
 	$calculatePrevious = false;
 
 	# setup search variables
-	$vars = array(
-			"followup_primary_dept" => array("summary_primary_dept", "followup"),
-			"check_primary_dept" => array("summary_primary_dept", "scholars"),
-			"followup_division" => array("summary_current_division", "followup"),
-			"check_division" => array("summary_current_division", "scholars"),
-			"override_rank" => array("summary_current_rank", "override"),
-			"followup_academic_rank" => array("summary_current_rank", "followup"),
-			"check_academic_rank" => array("summary_current_rank", "scholars"),
-			"newman_new_rank" => array("summary_current_rank", "new2017"),
-			"followup_academic_rank_dt" => array("summary_current_start", "followup"),
-			"check_academic_rank_dt" => array("summary_current_start", "scholars"),
-			"followup_tenure_status" => array("summary_current_tenure", "followup"),
-			"check_tenure_status" => array("summary_current_tenure", "scholars"),
-			);
+	$vars = [
+			"followup_primary_dept" => ["summary_primary_dept", "followup"],
+			"check_primary_dept" => ["summary_primary_dept", "scholars"],
+			"followup_division" => ["summary_current_division", "followup"],
+			"check_division" => ["summary_current_division", "scholars"],
+			"override_rank" => ["summary_current_rank", "override"],
+			"followup_academic_rank" => ["summary_current_rank", "followup"],
+			"check_academic_rank" => ["summary_current_rank", "scholars"],
+			"newman_new_rank" => ["summary_current_rank", "new2017"],
+			"followup_academic_rank_dt" => ["summary_current_start", "followup"],
+			"check_academic_rank_dt" => ["summary_current_start", "scholars"],
+			"followup_tenure_status" => ["summary_current_tenure", "followup"],
+			"check_tenure_status" => ["summary_current_tenure", "scholars"],
+			];
 	if ($calculatePrevious) {
 		for ($i = 1; $i <= 5; $i++) {
-			$vars['check_prev'.$i.'_primary_dept'] = array("summary_prev".$i."_dept", "scholars");
-			$vars['check_prev'.$i.'_division'] = array("summary_prev".$i."_division", "scholars");
-			$vars['check_prev'.$i.'_institution'] = array("summary_prev".$i."_institution", "scholars");
-			$vars['check_prev'.$i.'_academic_rank'] = array("summary_prev".$i."_rank", "scholars");
-			$vars['check_prev'.$i.'_academic_rank_stdt'] = array("summary_prev".$i."_start", "scholars");
-			$vars['check_prev'.$i.'_academic_rank_enddt'] = array("summary_prev".$i."_end", "scholars");
+			$vars['check_prev'.$i.'_primary_dept'] = ["summary_prev".$i."_dept", "scholars"];
+			$vars['check_prev'.$i.'_division'] = ["summary_prev".$i."_division", "scholars"];
+			$vars['check_prev'.$i.'_institution'] = ["summary_prev".$i."_institution", "scholars"];
+			$vars['check_prev'.$i.'_academic_rank'] = ["summary_prev".$i."_rank", "scholars"];
+			$vars['check_prev'.$i.'_academic_rank_stdt'] = ["summary_prev".$i."_start", "scholars"];
+			$vars['check_prev'.$i.'_academic_rank_enddt'] = ["summary_prev".$i."_end", "scholars"];
 		}
 		for ($i = 1; $i <= 5; $i++) {
-			$vars['followup_prev'.$i.'_primary_dept'] = array("summary_prev".$i."_dept", "followup");
-			$vars['followup_prev'.$i.'_division'] = array("summary_prev".$i."_division", "followup");
-			$vars['followup_prev'.$i.'_institution'] = array("summary_prev".$i."_institution", "followup");
-			$vars['followup_prev'.$i.'_academic_rank'] = array("summary_prev".$i."_rank", "followup");
-			$vars['followup_prev'.$i.'_academic_rank_stdt'] = array("summary_prev".$i."_start", "followup");
-			$vars['followup_prev'.$i.'_academic_rank_enddt'] = array("summary_prev".$i."_end", "followup");
+			$vars['followup_prev'.$i.'_primary_dept'] = ["summary_prev".$i."_dept", "followup"];
+			$vars['followup_prev'.$i.'_division'] = ["summary_prev".$i."_division", "followup"];
+			$vars['followup_prev'.$i.'_institution'] = ["summary_prev".$i."_institution", "followup"];
+			$vars['followup_prev'.$i.'_academic_rank'] = ["summary_prev".$i."_rank", "followup"];
+			$vars['followup_prev'.$i.'_academic_rank_stdt'] = ["summary_prev".$i."_start", "followup"];
+			$vars['followup_prev'.$i.'_academic_rank_enddt'] = ["summary_prev".$i."_end", "followup"];
 		}
 	}
 
@@ -803,16 +803,16 @@ function calculateAppointments($normativeRow, $rows) {
 	if ($row['check_institution'] != "") {
 		$outVar = "summary_current_institution";
 		if ($row['check_institution'] == 1) {
-			$outputRow[$outVar] = array("Vanderbilt", "scholars");
-		} else if ($row['check_institution'] == 2) {
-			$outputRow[$outVar] = array("Meharry", "scholars");
-		} else if ($row['check_institution_oth']) {
-			$outputRow[$outVar] = array($row['check_institution_oth'], "scholars");
+			$outputRow[$outVar] = ["Vanderbilt", "scholars"];
+		} elseif ($row['check_institution'] == 2) {
+			$outputRow[$outVar] = ["Meharry", "scholars"];
+		} elseif ($row['check_institution_oth']) {
+			$outputRow[$outVar] = [$row['check_institution_oth'], "scholars"];
 		} else {
-			$outputRow[$outVar] = array("Other", "scholars");
+			$outputRow[$outVar] = ["Other", "scholars"];
 		}
 	}
-	$indexedRows = array();
+	$indexedRows = [];
 	foreach ($vars as $src => $ary) {
 		$dest = $ary[0];
 		$srcType = $ary[1];
@@ -832,7 +832,7 @@ function calculateAppointments($normativeRow, $rows) {
 		$row = $indexedRows[$src];
 		if ($row[$src] != "") {
 			if (preg_match("/_end$/", $dest) || preg_match("/_start$/", $dest)) {
-				$outputRow[$dest] = array(convertToYYYYMMDD($row[$src]), $srcType);
+				$outputRow[$dest] = [convertToYYYYMMDD($row[$src]), $srcType];
 			} else {
 				$seen = false;
 				foreach ($vars as $src2 => $ary2) {
@@ -847,10 +847,10 @@ function calculateAppointments($normativeRow, $rows) {
 					}
 				}
 				if (!$seen) {
-					$outputRow[$dest] = array($row[$src], $srcType);
-				} else if (!isset($outputRow[$dest]) || ($outputRow[$dest] == "")) {
+					$outputRow[$dest] = [$row[$src], $srcType];
+				} elseif (!isset($outputRow[$dest]) || ($outputRow[$dest] == "")) {
 					# blank => overwrite
-					$outputRow[$dest] = array($row[$src], $srcType);
+					$outputRow[$dest] = [$row[$src], $srcType];
 				}
 			}
 		}
@@ -866,23 +866,23 @@ function calculateCDAType($data, $row, $index) {
 	$cdav = getOrderedCDAVariables($data, $row['record_id']);
 	$variables = $cdav[0];
 	if (count($variables) <= $index) {
-		return array($awardTypes["N/A"], getBlankSpecs());
+		return [$awardTypes["N/A"], getBlankSpecs()];
 	}
 	if ($index < 0) {
-		return array($awardTypes["N/A"], getBlankSpecs());
+		return [$awardTypes["N/A"], getBlankSpecs()];
 	}
-	$skip = array("modify", "custom");
+	$skip = ["modify", "custom"];
 	if (in_array($variables[$index]["source"], $skip)) {
-		$awardType = array($variables[$index]["redcap_type"], $variables[$index]);
+		$awardType = [$variables[$index]["redcap_type"], $variables[$index]];
 	} else {
 		// $echoToScreen .= "calculateCDAType 1: ".json_encode($variables[$index])."$br";
 		$awardType = calculateAwardType($variables[$index]);
 		// $echoToScreen .= "calculateCDAType 2: ".json_encode($awardType)."$br";
 	}
 	if (isset($awardTypes[$awardType[0]])) {
-		return array($awardTypes[$awardType[0]], $awardType[1]);
+		return [$awardTypes[$awardType[0]], $awardType[1]];
 	}
-	return array($awardTypes["N/A"], getBlankSpecs());
+	return [$awardTypes["N/A"], getBlankSpecs()];
 }
 
 function makeUpper($str) {
@@ -940,7 +940,7 @@ function converted($row, $typeOfK) {
 				return 2;
 			}
 		}
-	} else if ($row['summary_'.$typeOfK.'_k']) {
+	} elseif ($row['summary_'.$typeOfK.'_k']) {
 		if (preg_match('/last_/', $typeOfK)) {
 			$prefix = "last";
 		} else {
@@ -971,7 +971,7 @@ function converted($row, $typeOfK) {
 # downloads the record id's for a list
 $recordIds = Download::recordIds($token, $server);
 if ($selectRecord) {
-	$recordIds = array($selectRecord);
+	$recordIds = [$selectRecord];
 }
 error_log("6b CareerDev downloaded ".json_encode($recordIds));
 
@@ -982,24 +982,26 @@ if (count($recordIds) == 0) {
 
 # uses all of the above functions to assign to REDCap variables
 # done in batches
-$total = array();
-$found = array();
-$total['demographics'] = 0; $found['demographics'] = 0;
-$total['CDAs'] = 0; $found['CDAs'] = 0;
-$cdaType = array();
+$total = [];
+$found = [];
+$total['demographics'] = 0;
+$found['demographics'] = 0;
+$total['CDAs'] = 0;
+$found['CDAs'] = 0;
+$cdaType = [];
 for ($i = 1; $i <= 7; $i++) {
 	$cdaType[$i] = 0;
 }
 $cdaType[99] = 0;
-$manuals = array();
-$awards = array();
+$manuals = [];
+$awards = [];
 
 if (!$selectRecord) {
 	$echoToScreen .= "Changing metadata (downloading)...$br";
 	$metadata = Download::metadata($token, $server);
 	error_log("6b CareerDev downloaded metadata: ".count($metadata));
 	$awardTypes = getAwardTypes();
-	$awardTypesIntermediate = array();
+	$awardTypesIntermediate = [];
 	foreach ($awardTypes as $label => $value) {
 		$awardTypesIntermediate[] = $value.", ".$label;
 	}
@@ -1026,7 +1028,7 @@ if ($selectRecord) {
 	$numPulls = 1;
 }
 for ($pull = 0; $pull < $numPulls; $pull++) {
-	$records = array();
+	$records = [];
 	$thisPullSize = $pullSize;
 	if (count($recordIds) < $thisPullSize * ($pull + 1)) {
 		$thisPullSize = count($recordIds) % $pullSize;
@@ -1046,13 +1048,13 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 	$echoToScreen .= "Pull ".($pull + 1)." downloaded ".count($redcapData)." rows of REDCap data.$br";
 
 	$i = 0;
-	$newData = array();
+	$newData = [];
 	// $echoToScreen .= "Making data set$br";
 	$maxAwards = 15;
-	$redcapDataRows = array();
+	$redcapDataRows = [];
 	foreach ($redcapData as $row) {
 		if (!isset($redcapDataRows[$row['record_id']])) {
-			$redcapDataRows[$row['record_id']] = array();
+			$redcapDataRows[$row['record_id']] = [];
 		}
 		$redcapDataRows[$row['record_id']][] = $row;
 	}
@@ -1070,23 +1072,23 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 
 		# update rows with new data
 		error_log("6b CareerDev downloading all data for record $recordId");
-		$rows = Download::records($token, $server, array($recordId));
-		$newData = array();
+		$rows = Download::records($token, $server, [$recordId]);
+		$newData = [];
 		foreach ($rows as $row) {
 			if (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "custom_grant")) {
 				// $newData[] = $row;
-			} else if (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "summary_grants")) {
+			} elseif (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "summary_grants")) {
 				// $newData[] = $row;
-			} else if (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "reporter")) {
+			} elseif (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "reporter")) {
 				// $newData[] = $row;
-			} else if (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "exporter")) {
+			} elseif (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "exporter")) {
 				// $newData[] = $row;
-			} else if (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "followup")) {
+			} elseif (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "followup")) {
 				// $newData[] = $row;
-			} else if (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "coeus")) {
+			} elseif (isset($row['redcap_repeat_instrument']) && ($row['redcap_repeat_instrument'] == "coeus")) {
 				// $newData[] = $row;
-			} else if (!isset($row['redcap_repeat_instrument']) || ($row['redcap_repeat_instrument'] == "")) {
-				$comments = array();
+			} elseif (!isset($row['redcap_repeat_instrument']) || ($row['redcap_repeat_instrument'] == "")) {
+				$comments = [];
 
 				$na = 99;
 				$row2 = $row;
@@ -1099,9 +1101,9 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 
 				if ($row['identifier_vunet']) {
 					$row2['identifier_vunet'] = strtolower($row['identifier_vunet']);
-				} else if ($row['vunetid']) {
+				} elseif ($row['vunetid']) {
 					$row2['identifier_vunet'] = strtolower($row['vunetid']);
-				} else if ($row['vfrs_vunet_id']) {
+				} elseif ($row['vfrs_vunet_id']) {
 					$row2['identifier_vunet'] = strtolower($row['vfrs_vu_net_id']);
 				} else {
 					$row2['identifier_vunet'] = "";
@@ -1112,7 +1114,10 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 				$ary = calculateCitizenship($row);
 				$row2['summary_citizenship'] = $ary[0];
 				$row2['summary_citizenship_source'] = $ary[1];
-				$total['demographics']++; if ($row2['summary_citizenship']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_citizenship']) {
+					$found['demographics']++;
+				}
 
 				# Appointments
 				$values = calculateAppointments($row2);
@@ -1123,7 +1128,10 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 						$row2[$variable] = $value;
 					}
 					$row2[$variable."_source"] = $source;
-					$total['demographics']++; if ($row2[$variable]) { $found['demographics']++; }
+					$total['demographics']++;
+					if ($row2[$variable]) {
+						$found['demographics']++;
+					}
 				}
 
 				if (!isset($comments['summary_degrees'])) {
@@ -1131,59 +1139,77 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 					$val = translateFirstDegree($val);
 					$row2['summary_degrees'] = $val;
 				}
-				$total['demographics']++; if ($row2['summary_degrees']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_degrees']) {
+					$found['demographics']++;
+				}
 				if (!isset($comments['summary_gender'])) {
 					$ary = calculateGender($row);
 					$row2['summary_gender'] = $ary[0];
 					$row2['summary_gender_source'] = $ary[1];
 				}
-				$total['demographics']++; if ($row2['summary_gender']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_gender']) {
+					$found['demographics']++;
+				}
 				if (!isset($comments['summary_mentor'])) {
 					$ary = calculatePrimaryMentor($redcapDataRows[$row['record_id']]);
 					$row2['summary_mentor'] = $ary[0];
 					$row2['summary_mentor_source'] = $ary[1];
 				}
-				$total['demographics']++; if ($row2['summary_']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_']) {
+					$found['demographics']++;
+				}
 				if (!isset($comments['summary_race_ethnicity'])) {
 					$ary = calculateAndTranslateRaceEthnicity($row);
 					$row2['summary_race_ethnicity'] = $ary[0];
 					$row2['summary_race_source'] = $ary[1];
 					$row2['summary_ethnicity_source'] = $ary[2];
 				}
-				$total['demographics']++; if ($row2['summary_race_ethnicity']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_race_ethnicity']) {
+					$found['demographics']++;
+				}
 				if (!isset($comments['summary_dob'])) {
 					$ary = calculateDOB($row);
 					$row2['summary_dob'] = $ary[0];
 					$row2['summary_dob_source'] = $ary[1];
 				}
-				$total['demographics']++; if ($row2['summary_dob']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_dob']) {
+					$found['demographics']++;
+				}
 				if (!isset($comments['summary_primary_dept'])) {
 					$ary = calculatePrimaryDept($row);
 					$row2['summary_primary_dept'] = $ary[0];
 					$row2['summary_primary_dept_source'] = $ary[1];
 				}
-				$total['demographics']++; if ($row2['summary_primary_dept']) { $found['demographics']++; }
+				$total['demographics']++;
+				if ($row2['summary_primary_dept']) {
+					$found['demographics']++;
+				}
 				if (!isset($comments['summary_left_vanderbilt'])) {
 					$ary = calculateLeftVanderbilt($row, $redcapDataRows[$row['record_id']]);
 					$row2['summary_left_vanderbilt'] = $ary[0];
 					$row2['summary_left_vanderbilt_source'] = $ary[1];
 				}
-				$selfReported = array("scholars", "vfrs");
-				$newman = array( "data", "sheet2", "demographics", "new2017", "k12", "nonrespondents", "override" );
+				$selfReported = ["scholars", "vfrs"];
+				$newman = [ "data", "sheet2", "demographics", "new2017", "k12", "nonrespondents", "override" ];
 				foreach ($row2 as $field => $value) {
 					$newfield = "";
 					if (preg_match("/_source$/", $field)) {
 						$newfield = $field."type";
-					} else if (preg_match("/summary_award_source_/", $field)) {
+					} elseif (preg_match("/summary_award_source_/", $field)) {
 						$newfield = preg_replace("/summary_award_source_/", "summary_award_sourcetype_", $field);
 					}
 					if ($newfield) {
 						$newvalue = "";
 						if ($value == "") {
 							$newvalue = "";
-						} else if (in_array($value, $selfReported)) {
+						} elseif (in_array($value, $selfReported)) {
 							$newvalue = "1";
-						} else if (in_array($value, $newman)) {
+						} elseif (in_array($value, $newman)) {
 							$newvalue = "2";
 						} else {
 							$newvalue = "0";
@@ -1195,7 +1221,7 @@ for ($pull = 0; $pull < $numPulls; $pull++) {
 			}
 			$i++;
 		}
-	
+
 		foreach ($found as $countType => $count) {
 			$echoToScreen .= "'$countType'$br";
 			$echoToScreen .= ($pull + 1).") $countType fill percentage (cumulative): {$found[$countType]} / {$total[$countType]} = ".floor(($found[$countType] * 100) / $total[$countType])."%$br";
@@ -1227,7 +1253,7 @@ if ($screen) {
 		$successMessage = "ERRORS$br".implode($br, $errors).$br.$br;
 	}
 	echo $successMesssage;
- 	echo $echoToScreen;
+	echo $echoToScreen;
 } else {
 	if (count($errors) === 0) {
 		$successMessage = "SUCCESS";

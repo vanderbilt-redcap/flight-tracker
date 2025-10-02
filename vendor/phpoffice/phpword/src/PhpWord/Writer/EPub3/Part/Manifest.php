@@ -23,18 +23,17 @@ namespace PhpOffice\PhpWord\Writer\EPub3\Part;
  */
 class Manifest extends AbstractPart
 {
-    /**
-     * Write part content.
-     */
-    public function write(): string
-    {
-        $content = '<?xml version="1.0" encoding="UTF-8"?>';
-        $content .= '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">';
-        $content .= '<rootfiles>';
-        $content .= '<rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>';
-        $content .= '</rootfiles>';
-        $content .= '</container>';
+	/**
+	 * Write part content.
+	 */
+	public function write(): string {
+		$content = '<?xml version="1.0" encoding="UTF-8"?>';
+		$content .= '<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">';
+		$content .= '<rootfiles>';
+		$content .= '<rootfile full-path="content.opf" media-type="application/oebps-package+xml"/>';
+		$content .= '</rootfiles>';
+		$content .= '</container>';
 
-        return $content;
-    }
+		return $content;
+	}
 }

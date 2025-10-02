@@ -2,12 +2,12 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Grants;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Scholar;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -52,7 +52,7 @@ foreach ($records as $rec) {
 }
 
 $nextRecord = $records[$nextRecordIndex];
-$redcapData = Download::records($token, $server, array($record));
+$redcapData = Download::records($token, $server, [$record]);
 
 $metadata = Download::metadata($token, $server);
 $scholar = new Scholar($token, $server, $metadata);
@@ -61,21 +61,21 @@ $grants = new Grants($token, $server, $metadata);
 $grants->setRows($redcapData);
 $scholar->setGrants($grants);
 
-$inUse = array();
+$inUse = [];
 foreach ($grants->getGrants("prior") as $grant) {
 	$src = $grant->getVariable("source");
 	if (!isset($inUse[$src])) {
-		$inUse[$src] = array();
+		$inUse[$src] = [];
 	}
 
 	array_push($inUse[$src], $grant);
 }
 
-$native = array();
+$native = [];
 foreach ($grants->getGrants("native") as $grant) {
 	$src = $grant->getVariable("source");
 	if (!isset($native[$src])) {
-		$native[$src] = array();
+		$native[$src] = [];
 	}
 
 	array_push($native[$src], $grant);
@@ -104,7 +104,7 @@ echo "<tr><td colspan='2' class='centered grants'><b>Legend</b></td></tr>\n";
 echo "<tr><td class='green grants'>Grant In Use</td><td class='blue grants'>Conflict with Grant In Use</td></tr>\n";
 echo "</table>\n";
 
-$vars = array(
+$vars = [
 		"direct_budget" => "Direct Budget",
 		"budget" => "Total Budget",
 		"start" => "Start Date",
@@ -112,7 +112,7 @@ $vars = array(
 		// "fAndA" => "F &amp; A",
 		"finance_type" => "Finance Type",
 		"type" => "Grant Type",
-		);
+		];
 echo "<table style='margin-left: auto; margin-right: auto;'><tr>\n";
 $conflicts = 0;
 foreach (Grants::getSourceOrderWithLabels() as $src => $label) {
@@ -130,11 +130,11 @@ foreach (Grants::getSourceOrderWithLabels() as $src => $label) {
 			foreach ($grantsAry as $grant) {
 				if ($grant->getNumber()) {
 					echo "<div class='grant'>\n";
-					$currGrantInUse = FALSE;
+					$currGrantInUse = false;
 					foreach ($inUse[$src] as $usedGrant) {
 						if ($usedGrant->getBaseAwardNumber() == $grant->getBaseAwardNumber()) {
 							echo "<div class='green centered'>IN USE</div>\n";
-							$currGrantInUse = TRUE;
+							$currGrantInUse = true;
 							break;
 						}
 					}
@@ -150,19 +150,19 @@ foreach (Grants::getSourceOrderWithLabels() as $src => $label) {
 						$span = "";
 						$closeSpan = "";
 						if (!$currGrantInUse) {
-							$matchesOneGrant = FALSE;
-							$baseAwardNumbersSame = FALSE;
+							$matchesOneGrant = false;
+							$baseAwardNumbersSame = false;
 							foreach ($inUse as $usedSrc => $usedGrants) {
 								# used groups are combined
 								foreach ($usedGrants as $usedGrant) {
-									# now loop through pre-combined grants 
+									# now loop through pre-combined grants
 									foreach ($grants->getGrants("native") as $otherGrant) {
 										if ($grant->matchesGrant($otherGrant, $var)) {
-											$matchesOneGrant = TRUE;
+											$matchesOneGrant = true;
 										}
 									}
 									if ($usedGrant->getBaseAwardNumber() == $grant->getBaseAwardNumber()) {
-										$baseAwardNumbersSame = TRUE;
+										$baseAwardNumbersSame = true;
 									}
 								}
 							}
@@ -200,7 +200,7 @@ function getCompareSelectRecord() {
 
 	$html = "Record: <select id='refreshRecord' onchange='refreshForRecord(\"coeusFederalCompare.php\");'><option value=''>---SELECT---</option>";
 	foreach ($names as $record => $name) {
-	    $html .= "<option value='$record'>$record: $name</option>";
+		$html .= "<option value='$record'>$record: $name</option>";
 	}
 	$html .= "</select>";
 	return $html;

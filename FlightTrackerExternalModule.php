@@ -313,22 +313,27 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 
 	private static function repeatingAlreadyUploadedToPid($fields, $sourceRow, $priorDestUploads, $sourceChoices, $destChoices) {
 		if (empty($priorDestUploads)) {
-			return true;
+			# no data previously uploaded => not already uploaded
+			return false;
 		}
 		$uploadedDestData = [];
 		foreach ($priorDestUploads as $sourceLicensePlate => $rows) {
 			# it doesn't matter if a normative row is duplicated because we're looking for a repeating instrument
 			$uploadedDestData = array_merge($uploadedDestData, $rows);
 		}
-		return self::isValidToCopyRepeating($fields, $sourceRow, $priorDestUploads, $sourceChoices, $destChoices);
+		# if valid to copy repeating => not already uploaded (same logic)
+		return !self::isValidToCopyRepeating($fields, $sourceRow, $priorDestUploads, $sourceChoices, $destChoices);
 	}
 
-	private static function isValidToCopyRepeating($fields, $sourceRow, $destData, $sourceChoices, $destChoices) {
+	private static function isValidToCopyRepeating(array $fields, array $sourceRow, array $destData, array $sourceChoices, array $destChoices) {
 		if ((count($fields) == 1) && self::fieldBlank($fields[0], $sourceRow)) {
 			# one blank field => not valid enough to copy
 			// Application::log("isValidToCopyRepeating Rejecting because one field blank: ".json_encode($fields));
 			return false;
 		} else {
+			if (REDCapManagement::isAssoc($destData)) {
+				throw new \Exception("Destination data should be a traditional array!");
+			}
 			foreach ($destData as $destRow) {
 				if (
 					($destRow['redcap_repeat_instrument'] == $sourceRow['redcap_repeat_instrument'])
@@ -340,7 +345,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 				}
 			}
 		}
-		// Application::log("isValidToCopyRepeating returning TRUE");
+		// Application::log("isValidToCopyRepeating returning TRUE with ".json_encode($fields)." and destData rows: ".count($destData)." ".json_encode(array_keys($destData)));
 		return true;
 	}
 
@@ -1184,7 +1189,14 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 							Application::log("Not valid to copy repeating for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);
 						}
 						$continueToCopyFromSource = false;
-					} elseif (self::repeatingAlreadyUploadedToPid($config['test_fields'], $sourceRow, $upload[$destLicensePlate] ?? [], $sourceChoices, $destChoices)) {
+					}
+				} else {
+					# combine all upload queues to test if it's already uploaded
+					$uploadToDest = $repeatingRows;
+					foreach ($upload[$destLicensePlate] ?? [] as $srcLicensePlate => $srcRows) {
+						$uploadToDest = array_merge($uploadToDest, $srcRows);
+					}
+					if (self::repeatingAlreadyUploadedToPid($config['test_fields'], $sourceRow, $uploadToDest, $sourceChoices, $destChoices)) {
 						if ($isDebug) {
 							Application::log("Already uploaded for repeating for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $destPid);
 							Application::log("Already uploaded for repeating for $instrument in dest $destPid $destRecordId ".($completeData[$destPid][$destRecordId] ? json_encode($completeData[$destPid][$destRecordId]) : "")." and source $sourcePid $sourceRecordId ".($completeData[$sourcePid][$sourceRecordId] ? json_encode($completeData[$sourcePid][$sourceRecordId]) : ""), $sourcePid);

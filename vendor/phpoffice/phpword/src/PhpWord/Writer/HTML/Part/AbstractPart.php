@@ -26,30 +26,28 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 abstract class AbstractPart
 {
-    /**
-     * @var ?HTML
-     */
-    private $parentWriter;
+	/**
+	 * @var ?HTML
+	 */
+	private $parentWriter;
 
-    /**
-     * @return string
-     */
-    abstract public function write();
+	/**
+	 * @return string
+	 */
+	abstract public function write();
 
-    public function setParentWriter(?HTML $writer = null): void
-    {
-        $this->parentWriter = $writer;
-    }
+	public function setParentWriter(?HTML $writer = null): void {
+		$this->parentWriter = $writer;
+	}
 
-    /**
-     * @return HTML
-     */
-    public function getParentWriter()
-    {
-        if ($this->parentWriter !== null) {
-            return $this->parentWriter;
-        }
+	/**
+	 * @return HTML
+	 */
+	public function getParentWriter() {
+		if ($this->parentWriter !== null) {
+			return $this->parentWriter;
+		}
 
-        throw new Exception('No parent WriterInterface assigned.');
-    }
+		throw new Exception('No parent WriterInterface assigned.');
+	}
 }

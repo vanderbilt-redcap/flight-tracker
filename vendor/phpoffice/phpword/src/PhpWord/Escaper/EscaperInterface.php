@@ -25,10 +25,10 @@ namespace PhpOffice\PhpWord\Escaper;
  */
 interface EscaperInterface
 {
-    /**
-     * @param mixed $input
-     *
-     * @return mixed
-     */
-    public function escape($input);
+	/**
+	 * @param mixed $input
+	 *
+	 * @return mixed
+	 */
+	public function escape($input);
 }

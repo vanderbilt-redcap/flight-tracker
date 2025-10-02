@@ -21,8 +21,8 @@ if ($pid == 66635) {
 
 # downloads three fields
 echo "Downloading small copy...\n";
-$fields = array("record_id", "first_name", "last_name");
-$data = array(
+$fields = ["record_id", "first_name", "last_name"];
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -34,7 +34,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -53,8 +53,7 @@ $redcapData = json_decode($output, true);
 unset($output);
 
 # compares two names to see which comes first
-function nameCompare($a, $b)
-{
+function nameCompare($a, $b) {
 	$ln1 = strtolower($a['last_name']);
 	$ln2 = strtolower($b['last_name']);
 	$fn1 = strtolower($a['first_name']);
@@ -67,26 +66,26 @@ function nameCompare($a, $b)
 	$cmp = strcmp($ln1, $ln2);
 	if ($cmp < 0) {
 		return -1;
-	} else if ($cmp > 0) {
+	} elseif ($cmp > 0) {
 		return 1;
 	} else {
 		$cmpfn = strcmp($fn1, $fn2);
 		if ($cmpfn < 0) {
 			return -1;
-		} else if ($cmpfn > 0) {
+		} elseif ($cmpfn > 0) {
 			return 1;
 		} else {
 			# should never happen
 			return 0;
-		} 
+		}
 	}
 }
 
 
 echo "Ordering names...\n";
-$names = array();
+$names = [];
 foreach ($redcapData as $row) {
-	$nameRow = array();
+	$nameRow = [];
 	foreach ($row as $field => $value) {
 		if (in_array($field, $fields)) {
 			$nameRow[$field] = $value;
@@ -99,8 +98,8 @@ foreach ($redcapData as $row) {
 usort($names, "nameCompare");
 
 # reordering records
-$records = array();
-$translate = array();
+$records = [];
+$translate = [];
 $i = 1;
 foreach ($names as $nameRow) {
 	$translate[$nameRow['record_id']] = $i;
@@ -110,7 +109,7 @@ foreach ($names as $nameRow) {
 
 unset($redcapData);
 echo "Downloading full copy...\n";
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -121,7 +120,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -151,11 +150,11 @@ for ($i = 0; $i < count($outputAry); $i++) {
 # returns array(array(...), array(...));
 function putIntoBatches($r) {
 	$size = 50;
-	$ary = array();
+	$ary = [];
 	for ($i = 0; $i < count($r); $i++) {
 		$index = floor($i / $size);
 		if (!isset($ary[$index])) {
-			$ary[$index] = array();
+			$ary[$index] = [];
 		}
 		$ary[$index][] = $r[$i];
 	}
@@ -167,12 +166,12 @@ $recordBatches = putIntoBatches($records);
 $i = 1;
 foreach ($recordBatches as $recordBatch) {
 	echo "$i of ".count($recordBatches).") Attempting to delete ".count($recordBatch)." records\n";
-	$data = array(
+	$data = [
 		'token' => $token,
 		'content' => 'record',
 		'action' => 'delete',
 		'records' => $recordBatch
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $server);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -195,7 +194,7 @@ unset($output);
 $numRows = count($outputAry);
 echo "Translating record id's ($numRows rows)\n";
 $i = 1;
-$queue = array();
+$queue = [];
 foreach ($outputAry as $jsonRow) {
 	$row = json_decode($jsonRow, true);
 	if ($row['record_id']) {
@@ -203,7 +202,7 @@ foreach ($outputAry as $jsonRow) {
 
 		// echo "Enqueuing {$row['record_id']}";
 		// if ($row['redcap_repeat_instance']) {
-			// echo " (".$row['redcap_repeat_instance'].")";
+		// echo " (".$row['redcap_repeat_instance'].")";
 		// }
 		// echo "\n";
 		$queue[] = $row;
@@ -211,7 +210,7 @@ foreach ($outputAry as $jsonRow) {
 	# batches of 400 rows to upload
 	# one row = all non-repeating variables -OR- one instance of repeating
 	if ((count($queue) >= 400) || ($i == count($outputAry))) {
-		$data = array(
+		$data = [
 		'token' => $token,
 			'content' => 'record',
 			'format' => 'json',
@@ -220,7 +219,7 @@ foreach ($outputAry as $jsonRow) {
 			'data' => json_encode($queue),
 			'returnContent' => 'count',
 			'returnFormat' => 'json'
-		);
+		];
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $server);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -236,9 +235,8 @@ foreach ($outputAry as $jsonRow) {
 		echo "$i of $numRows - ".count($queue)." rows ".$output."\n";
 		curl_close($ch);
 
-		$queue = array();
+		$queue = [];
 	}
 
 	$i++;
 }
-

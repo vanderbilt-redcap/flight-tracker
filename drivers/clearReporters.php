@@ -3,18 +3,18 @@
 require_once(dirname(__FILE__)."/../small_base.php");
 
 echo "Downloading data\n";
-$data = array(
-    'token' => $token,
-    'content' => 'record',
-    'format' => 'json',
-    'type' => 'flat',
-    'rawOrLabel' => 'raw',
-    'rawOrLabelHeaders' => 'raw',
-    'exportCheckboxLabel' => 'false',
-    'exportSurveyFields' => 'false',
-    'exportDataAccessGroups' => 'false',
-    'returnFormat' => 'json'
-);
+$data = [
+	'token' => $token,
+	'content' => 'record',
+	'format' => 'json',
+	'type' => 'flat',
+	'rawOrLabel' => 'raw',
+	'rawOrLabelHeaders' => 'raw',
+	'exportCheckboxLabel' => 'false',
+	'exportSurveyFields' => 'false',
+	'exportDataAccessGroups' => 'false',
+	'returnFormat' => 'json'
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -30,7 +30,7 @@ $output = curl_exec($ch);
 curl_close($ch);
 
 $redcapData = json_decode($output, true);
-$deletes = array();
+$deletes = [];
 foreach ($redcapData as $row) {
 	if ($row['redcap_repeat_instrument'] == "reporter") {
 		echo "Deleting record {$row['record_id']} instance {$row['redcap_repeat_instance']}\n";
@@ -44,4 +44,3 @@ foreach ($redcapData as $row) {
 		sleep(1);
 	}
 }
-

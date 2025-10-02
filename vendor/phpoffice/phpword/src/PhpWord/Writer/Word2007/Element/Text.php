@@ -27,79 +27,76 @@ use PhpOffice\PhpWord\Element\TrackChange;
  */
 class Text extends AbstractElement
 {
-    /**
-     * Write text element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\Text) {
-            return;
-        }
+	/**
+	 * Write text element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\Text) {
+			return;
+		}
 
-        $this->startElementP();
+		$this->startElementP();
 
-        $this->writeOpeningTrackChange();
+		$this->writeOpeningTrackChange();
 
-        $xmlWriter->startElement('w:r');
+		$xmlWriter->startElement('w:r');
 
-        $this->writeFontStyle();
+		$this->writeFontStyle();
 
-        $textElement = 'w:t';
-        //'w:delText' in case of deleted text
-        $changed = $element->getTrackChange();
-        if ($changed != null && $changed->getChangeType() == TrackChange::DELETED) {
-            $textElement = 'w:delText';
-        }
-        $xmlWriter->startElement($textElement);
+		$textElement = 'w:t';
+		//'w:delText' in case of deleted text
+		$changed = $element->getTrackChange();
+		if ($changed != null && $changed->getChangeType() == TrackChange::DELETED) {
+			$textElement = 'w:delText';
+		}
+		$xmlWriter->startElement($textElement);
 
-        $xmlWriter->writeAttribute('xml:space', 'preserve');
-        $this->writeText($this->getText($element->getText()));
-        $xmlWriter->endElement();
-        $xmlWriter->endElement(); // w:r
+		$xmlWriter->writeAttribute('xml:space', 'preserve');
+		$this->writeText($this->getText($element->getText()));
+		$xmlWriter->endElement();
+		$xmlWriter->endElement(); // w:r
 
-        $this->writeClosingTrackChange();
+		$this->writeClosingTrackChange();
 
-        $this->endElementP(); // w:p
-    }
+		$this->endElementP(); // w:p
+	}
 
-    /**
-     * Write opening of changed element.
-     */
-    protected function writeOpeningTrackChange(): void
-    {
-        $changed = $this->getElement()->getTrackChange();
-        if ($changed == null) {
-            return;
-        }
+	/**
+	 * Write opening of changed element.
+	 */
+	protected function writeOpeningTrackChange(): void {
+		$changed = $this->getElement()->getTrackChange();
+		if ($changed == null) {
+			return;
+		}
 
-        $xmlWriter = $this->getXmlWriter();
+		$xmlWriter = $this->getXmlWriter();
 
-        if (($changed->getChangeType() == TrackChange::INSERTED)) {
-            $xmlWriter->startElement('w:ins');
-        } elseif ($changed->getChangeType() == TrackChange::DELETED) {
-            $xmlWriter->startElement('w:del');
-        }
-        $xmlWriter->writeAttribute('w:author', $changed->getAuthor());
-        if ($changed->getDate() != null) {
-            $xmlWriter->writeAttribute('w:date', $changed->getDate()->format('Y-m-d\TH:i:s\Z'));
-        }
-        $xmlWriter->writeAttribute('w:id', $this->getElement()->getElementId());
-    }
+		if (($changed->getChangeType() == TrackChange::INSERTED)) {
+			$xmlWriter->startElement('w:ins');
+		} elseif ($changed->getChangeType() == TrackChange::DELETED) {
+			$xmlWriter->startElement('w:del');
+		}
+		$xmlWriter->writeAttribute('w:author', $changed->getAuthor());
+		if ($changed->getDate() != null) {
+			$xmlWriter->writeAttribute('w:date', $changed->getDate()->format('Y-m-d\TH:i:s\Z'));
+		}
+		$xmlWriter->writeAttribute('w:id', $this->getElement()->getElementId());
+	}
 
-    /**
-     * Write ending.
-     */
-    protected function writeClosingTrackChange(): void
-    {
-        $changed = $this->getElement()->getTrackChange();
-        if ($changed == null) {
-            return;
-        }
+	/**
+	 * Write ending.
+	 */
+	protected function writeClosingTrackChange(): void {
+		$changed = $this->getElement()->getTrackChange();
+		if ($changed == null) {
+			return;
+		}
 
-        $xmlWriter = $this->getXmlWriter();
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->endElement(); // w:ins|w:del
-    }
+		$xmlWriter->endElement(); // w:ins|w:del
+	}
 }

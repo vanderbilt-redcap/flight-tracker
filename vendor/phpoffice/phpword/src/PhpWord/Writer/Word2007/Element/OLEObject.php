@@ -27,63 +27,62 @@ use PhpOffice\PhpWord\Writer\Word2007\Style\Image as ImageStyleWriter;
  */
 class OLEObject extends AbstractElement
 {
-    /**
-     * Write object element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\OLEObject) {
-            return;
-        }
+	/**
+	 * Write object element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\OLEObject) {
+			return;
+		}
 
-        $rIdObject = $element->getRelationId() + ($element->isInSection() ? 6 : 0);
-        $rIdImage = $element->getImageRelationId() + ($element->isInSection() ? 6 : 0);
-        $shapeId = md5($rIdObject . '_' . $rIdImage);
-        $objectId = $element->getRelationId() + 1325353440;
+		$rIdObject = $element->getRelationId() + ($element->isInSection() ? 6 : 0);
+		$rIdImage = $element->getImageRelationId() + ($element->isInSection() ? 6 : 0);
+		$shapeId = md5($rIdObject . '_' . $rIdImage);
+		$objectId = $element->getRelationId() + 1325353440;
 
-        $style = $element->getStyle();
-        $styleWriter = new ImageStyleWriter($xmlWriter, $style);
+		$style = $element->getStyle();
+		$styleWriter = new ImageStyleWriter($xmlWriter, $style);
 
-        if (!$this->withoutP) {
-            $xmlWriter->startElement('w:p');
-            $styleWriter->writeAlignment();
-        }
-        $this->writeCommentRangeStart();
+		if (!$this->withoutP) {
+			$xmlWriter->startElement('w:p');
+			$styleWriter->writeAlignment();
+		}
+		$this->writeCommentRangeStart();
 
-        $xmlWriter->startElement('w:r');
-        $xmlWriter->startElement('w:object');
-        $xmlWriter->writeAttribute('w:dxaOrig', '249');
-        $xmlWriter->writeAttribute('w:dyaOrig', '160');
+		$xmlWriter->startElement('w:r');
+		$xmlWriter->startElement('w:object');
+		$xmlWriter->writeAttribute('w:dxaOrig', '249');
+		$xmlWriter->writeAttribute('w:dyaOrig', '160');
 
-        // Icon
-        $xmlWriter->startElement('v:shape');
-        $xmlWriter->writeAttribute('id', $shapeId);
-        $xmlWriter->writeAttribute('type', '#_x0000_t75');
-        $xmlWriter->writeAttribute('style', 'width:104px;height:67px');
-        $xmlWriter->writeAttribute('o:ole', '');
+		// Icon
+		$xmlWriter->startElement('v:shape');
+		$xmlWriter->writeAttribute('id', $shapeId);
+		$xmlWriter->writeAttribute('type', '#_x0000_t75');
+		$xmlWriter->writeAttribute('style', 'width:104px;height:67px');
+		$xmlWriter->writeAttribute('o:ole', '');
 
-        $xmlWriter->startElement('v:imagedata');
-        $xmlWriter->writeAttribute('r:id', 'rId' . $rIdImage);
-        $xmlWriter->writeAttribute('o:title', '');
-        $xmlWriter->endElement(); // v:imagedata
+		$xmlWriter->startElement('v:imagedata');
+		$xmlWriter->writeAttribute('r:id', 'rId' . $rIdImage);
+		$xmlWriter->writeAttribute('o:title', '');
+		$xmlWriter->endElement(); // v:imagedata
 
-        $xmlWriter->endElement(); // v:shape
+		$xmlWriter->endElement(); // v:shape
 
-        // Object
-        $xmlWriter->startElement('o:OLEObject');
-        $xmlWriter->writeAttribute('Type', 'Embed');
-        $xmlWriter->writeAttribute('ProgID', 'Package');
-        $xmlWriter->writeAttribute('ShapeID', $shapeId);
-        $xmlWriter->writeAttribute('DrawAspect', 'Icon');
-        $xmlWriter->writeAttribute('ObjectID', '_' . $objectId);
-        $xmlWriter->writeAttribute('r:id', 'rId' . $rIdObject);
-        $xmlWriter->endElement(); // o:OLEObject
+		// Object
+		$xmlWriter->startElement('o:OLEObject');
+		$xmlWriter->writeAttribute('Type', 'Embed');
+		$xmlWriter->writeAttribute('ProgID', 'Package');
+		$xmlWriter->writeAttribute('ShapeID', $shapeId);
+		$xmlWriter->writeAttribute('DrawAspect', 'Icon');
+		$xmlWriter->writeAttribute('ObjectID', '_' . $objectId);
+		$xmlWriter->writeAttribute('r:id', 'rId' . $rIdObject);
+		$xmlWriter->endElement(); // o:OLEObject
 
-        $xmlWriter->endElement(); // w:object
-        $xmlWriter->endElement(); // w:r
+		$xmlWriter->endElement(); // w:object
+		$xmlWriter->endElement(); // w:r
 
-        $this->endElementP(); // w:p
-    }
+		$this->endElementP(); // w:p
+	}
 }

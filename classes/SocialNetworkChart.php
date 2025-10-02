@@ -4,64 +4,65 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class SocialNetworkChart extends Chart {
-    public function __construct($name, $chartData, $pid = "") {
-        $this->chartData = $chartData;
-        $this->name = $name;
-        $this->pid = $pid;
-    }
+class SocialNetworkChart extends Chart
+{
+	public function __construct($name, $chartData, $pid = "") {
+		$this->chartData = $chartData;
+		$this->name = $name;
+		$this->pid = $pid;
+	}
 
-    public function setNonRibbon($bool) {
-        $this->isNonRibbon = $bool;
-    }
+	public function setNonRibbon($bool) {
+		$this->isNonRibbon = $bool;
+	}
 
-    public function getJSLocations() {
-        $urls = [
-            Application::link("js/amcharts4/core.js"),
-            Application::link("js/amcharts4/charts.js"),
-            Application::link("js/amcharts4/animated.js"),
-        ];
-        return $urls;
-    }
+	public function getJSLocations() {
+		$urls = [
+			Application::link("js/amcharts4/core.js"),
+			Application::link("js/amcharts4/charts.js"),
+			Application::link("js/amcharts4/animated.js"),
+		];
+		return $urls;
+	}
 
-    public function getCSSLocations() {
-        return [];
-    }
+	public function getCSSLocations() {
+		return [];
+	}
 
-    private static function hasField($chartData, $field) {
-        foreach ($chartData as $row) {
-            if (isset($row[$field]) && $row[$field]) {
-                return TRUE;
-            }
-        }
-        return FALSE;
-    }
+	private static function hasField($chartData, $field) {
+		foreach ($chartData as $row) {
+			if (isset($row[$field]) && $row[$field]) {
+				return true;
+			}
+		}
+		return false;
+	}
 
-    private static function makeLegend($legendInfo, $width) {
-        if (!empty($legendInfo)) {
-            $html = "<div style='text-align: center; font-size: 12px; width: {$width}px;' class='centered'>";
-            $spans = [];
-            foreach ($legendInfo as $color => $label) {
-                $spans[] = "<span style='height: 20px; background-color: $color;'>&nbsp;&nbsp;&nbsp;</span> $label";
-            }
-            $html .= implode("&nbsp;&nbsp;&nbsp;", $spans);
-            $html .= "</div>";
-            return $html;
-        }
-        return "";
-    }
+	private static function makeLegend($legendInfo, $width) {
+		if (!empty($legendInfo)) {
+			$html = "<div style='text-align: center; font-size: 12px; width: {$width}px;' class='centered'>";
+			$spans = [];
+			foreach ($legendInfo as $color => $label) {
+				$spans[] = "<span style='height: 20px; background-color: $color;'>&nbsp;&nbsp;&nbsp;</span> $label";
+			}
+			$html .= implode("&nbsp;&nbsp;&nbsp;", $spans);
+			$html .= "</div>";
+			return $html;
+		}
+		return "";
+	}
 
-    public function getHTML($width, $height, $showLabels = TRUE, $legendInfo = [], $atBottomOfPage = FALSE) {
-        $html = "";
-        $saveDiv = REDCapManagement::makeSaveDiv("svg", $atBottomOfPage);
-        $html .= self::makeLegend($legendInfo, $width);
+	public function getHTML($width, $height, $showLabels = true, $legendInfo = [], $atBottomOfPage = false) {
+		$html = "";
+		$saveDiv = REDCapManagement::makeSaveDiv("svg", $atBottomOfPage);
+		$html .= self::makeLegend($legendInfo, $width);
 
-        $disableLabelsJS = (!$showLabels) ? "nodeTemplate.label.disabled = true;" : "";
-        $nodeColorJS = self::hasField($this->chartData, "nodeColor") ? "chart.dataFields.color = 'nodeColor';\n chart.nodes.label = { 'disabled': true };\n" : "";
-        $nonRibbonValue = json_encode($this->isNonRibbon);
-        $chartDataJSON = json_encode($this->chartData);
+		$disableLabelsJS = (!$showLabels) ? "nodeTemplate.label.disabled = true;" : "";
+		$nodeColorJS = self::hasField($this->chartData, "nodeColor") ? "chart.dataFields.color = 'nodeColor';\n chart.nodes.label = { 'disabled': true };\n" : "";
+		$nonRibbonValue = json_encode($this->isNonRibbon);
+		$chartDataJSON = json_encode($this->chartData);
 
-        $html .= "
+		$html .= "
 <div id='{$this->name}' class='centered' style='width: {$width}px; height: {$height}px; background-color: white;'></div>
 
 <script>
@@ -217,11 +218,11 @@ class SocialNetworkChart extends Chart {
         $('#{$this->name}>div>svg').attr('width', '$width').attr('height', '$height');
 })
 </script>";
-        return $html;
-    }
+		return $html;
+	}
 
-    protected $pid = "";
-    protected $name = "";
-    protected $chartData = [];
-    protected $isNonRibbon = FALSE;
+	protected $pid = "";
+	protected $name = "";
+	protected $chartData = [];
+	protected $isNonRibbon = false;
 }

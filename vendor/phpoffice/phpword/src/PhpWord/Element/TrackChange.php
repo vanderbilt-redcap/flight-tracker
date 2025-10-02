@@ -28,78 +28,74 @@ use DateTime;
  */
 class TrackChange extends AbstractContainer
 {
-    const INSERTED = 'INSERTED';
-    const DELETED = 'DELETED';
+	public const INSERTED = 'INSERTED';
+	public const DELETED = 'DELETED';
 
-    /**
-     * @var string Container type
-     */
-    protected $container = 'TrackChange';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'TrackChange';
 
-    /**
-     * The type of change, (insert or delete), not applicable for PhpOffice\PhpWord\Element\Comment.
-     *
-     * @var string
-     */
-    private $changeType;
+	/**
+	 * The type of change, (insert or delete), not applicable for PhpOffice\PhpWord\Element\Comment.
+	 *
+	 * @var string
+	 */
+	private $changeType;
 
-    /**
-     * Author.
-     *
-     * @var string
-     */
-    private $author;
+	/**
+	 * Author.
+	 *
+	 * @var string
+	 */
+	private $author;
 
-    /**
-     * Date.
-     *
-     * @var DateTime
-     */
-    private $date;
+	/**
+	 * Date.
+	 *
+	 * @var DateTime
+	 */
+	private $date;
 
-    /**
-     * Create a new TrackChange Element.
-     *
-     * @param string $changeType
-     * @param string $author
-     * @param null|bool|DateTime|int $date
-     */
-    public function __construct($changeType = null, $author = null, $date = null)
-    {
-        $this->changeType = $changeType;
-        $this->author = $author;
-        if ($date !== null && $date !== false) {
-            $this->date = ($date instanceof DateTime) ? $date : new DateTime('@' . $date);
-        }
-    }
+	/**
+	 * Create a new TrackChange Element.
+	 *
+	 * @param string $changeType
+	 * @param string $author
+	 * @param null|bool|DateTime|int $date
+	 */
+	public function __construct($changeType = null, $author = null, $date = null) {
+		$this->changeType = $changeType;
+		$this->author = $author;
+		if ($date !== null && $date !== false) {
+			$this->date = ($date instanceof DateTime) ? $date : new DateTime('@' . $date);
+		}
+	}
 
-    /**
-     * Get TrackChange Author.
-     *
-     * @return string
-     */
-    public function getAuthor()
-    {
-        return $this->author;
-    }
+	/**
+	 * Get TrackChange Author.
+	 *
+	 * @return string
+	 */
+	public function getAuthor() {
+		return $this->author;
+	}
 
-    /**
-     * Get TrackChange Date.
-     *
-     * @return DateTime
-     */
-    public function getDate()
-    {
-        return $this->date;
-    }
+	/**
+	 * Get TrackChange Date.
+	 *
+	 * @return DateTime
+	 */
+	public function getDate() {
+		return $this->date;
+	}
 
-    /**
-     * Get the Change type.
-     *
-     * @return string
-     */
-    public function getChangeType()
-    {
-        return $this->changeType;
-    }
+	/**
+	 * Get the Change type.
+	 *
+	 * @return string
+	 */
+	public function getChangeType() {
+		return $this->changeType;
+	}
 }

@@ -756,17 +756,12 @@ SELECT DISTINCT s.project_id AS pid
 		if (self::hasComposer()) {
 			require_once(self::getComposerAutoloadLocation());
 
+			$html = str_replace("<br>", "<br/>", $html);
 			$phpWord = new \PhpOffice\PhpWord\PhpWord();
 			$section = $phpWord->addSection();
 			\PhpOffice\PhpWord\Shared\Html::addHtml($section, $html);
-			$saveFilename = APP_PATH_TEMP."publications_".bin2hex(random_bytes(10)).".docx";
-			$phpWord->save($saveFilename, 'Word2007');
-
 			$filename = REDCapManagement::makeSafeFilename($filename);
-			header('Content-Type: application/octet-stream');
-			header('Content-Disposition: attachment;filename="'.$filename.'"');
-			readfile($saveFilename);
-			unlink($saveFilename);
+			$phpWord->save($filename, 'Word2007', true);
 		}
 	}
 

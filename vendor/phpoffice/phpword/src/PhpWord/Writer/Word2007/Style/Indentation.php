@@ -25,31 +25,30 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class Indentation extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Indentation) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Indentation) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('w:ind');
+		$xmlWriter->startElement('w:ind');
 
-        $xmlWriter->writeAttribute('w:left', $this->convertTwip($style->getLeft()));
-        $xmlWriter->writeAttribute('w:right', $this->convertTwip($style->getRight()));
+		$xmlWriter->writeAttribute('w:left', $this->convertTwip($style->getLeft()));
+		$xmlWriter->writeAttribute('w:right', $this->convertTwip($style->getRight()));
 
-        $firstLine = $style->getFirstLine();
-        $xmlWriter->writeAttributeIf(null !== $firstLine, 'w:firstLine', $this->convertTwip($firstLine));
+		$firstLine = $style->getFirstLine();
+		$xmlWriter->writeAttributeIf(null !== $firstLine, 'w:firstLine', $this->convertTwip($firstLine));
 
-        $firstLineChars = $style->getFirstLineChars();
-        $xmlWriter->writeAttributeIf(0 !== $firstLineChars, 'w:firstLineChars', $this->convertTwip($firstLineChars));
+		$firstLineChars = $style->getFirstLineChars();
+		$xmlWriter->writeAttributeIf(0 !== $firstLineChars, 'w:firstLineChars', $this->convertTwip($firstLineChars));
 
-        $hanging = $style->getHanging();
-        $xmlWriter->writeAttributeIf(null !== $hanging, 'w:hanging', $this->convertTwip($hanging));
+		$hanging = $style->getHanging();
+		$xmlWriter->writeAttributeIf(null !== $hanging, 'w:hanging', $this->convertTwip($hanging));
 
-        $xmlWriter->endElement();
-    }
+		$xmlWriter->endElement();
+	}
 }

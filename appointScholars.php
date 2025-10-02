@@ -2,13 +2,13 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
-use \Vanderbilt\CareerDevLibrary\Conversion;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Upload;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\Conversion;
 
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 require_once(dirname(__FILE__)."/small_base.php");
@@ -19,111 +19,111 @@ require_once(dirname(__FILE__)."/small_base.php");
 
 $input = Sanitizer::sanitize($_GET['input'] ?? "None Provided");
 $textAssociations = [
-    "green" => "Currently Has<br><strong>Appointment</strong>",
-    "red" => "Currently Has<br><span class='nowrap bolded'>No Appointment</span>",
-    "light_green" => "Ready to Save<br><strong>Appointment</strong>",
-    "light_red" => "Ready to Save<br><span class='nowrap bolded'>No Appointment</span>",
+	"green" => "Currently Has<br><strong>Appointment</strong>",
+	"red" => "Currently Has<br><span class='nowrap bolded'>No Appointment</span>",
+	"light_green" => "Ready to Save<br><strong>Appointment</strong>",
+	"light_red" => "Ready to Save<br><span class='nowrap bolded'>No Appointment</span>",
 ];
 $engagedTextAssociations = [
-    "white" => "<span class='nowrap'>Not Affiliated</span><br><span class='nowrap'>with CTSA</span>",
-    "green" => "Currently<br><strong>Engaged</strong>",
-    "red" => "Currently<br><span class='nowrap bolded'>Not Engaged</span>",
-    "light_green" => "Ready to Save<br><strong>Engaged</strong>",
-    "light_red" => "Ready to Save<br><span class='nowrap bolded'>Not Engaged</span>",
+	"white" => "<span class='nowrap'>Not Affiliated</span><br><span class='nowrap'>with CTSA</span>",
+	"green" => "Currently<br><strong>Engaged</strong>",
+	"red" => "Currently<br><span class='nowrap bolded'>Not Engaged</span>",
+	"light_green" => "Ready to Save<br><strong>Engaged</strong>",
+	"light_red" => "Ready to Save<br><span class='nowrap bolded'>Not Engaged</span>",
 ];
 $kClasses = array_merge(Conversion::INTERNALLY_GRANTED_KS, [4]);
 
 if (count($_POST) > 0) {
-    $toDelete = [
-        "deletedPredocs" => Conversion::PREDOC_INDEX,
-        "deletedPostdocs" => Conversion::POSTDOC_INDEX,
-        "deletedKCareers" => $kClasses,
-    ];
-    $toChange = [
-        "changedPredocs" => Conversion::PREDOC_INDEX,
-        "changedPostdocs" => Conversion::POSTDOC_INDEX,
-        "changedKCareers" => $kClasses,
-    ];
-    $engagedValues = ["1" => "changedYesEngaged", "2" => "changedNoEngaged"];
-    $upload = [];
+	$toDelete = [
+		"deletedPredocs" => Conversion::PREDOC_INDEX,
+		"deletedPostdocs" => Conversion::POSTDOC_INDEX,
+		"deletedKCareers" => $kClasses,
+	];
+	$toChange = [
+		"changedPredocs" => Conversion::PREDOC_INDEX,
+		"changedPostdocs" => Conversion::POSTDOC_INDEX,
+		"changedKCareers" => $kClasses,
+	];
+	$engagedValues = ["1" => "changedYesEngaged", "2" => "changedNoEngaged"];
+	$upload = [];
 
-    $allRecords = Download::recordIdsByPid($pid);
-    foreach ($engagedValues as $val => $field) {
-        $records = Sanitizer::sanitizeArray($_POST[$field] ?? []);
-        foreach ($records as $recordId) {
-            $recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-            if ($recordId) {
-                $upload[] = [
-                    "record_id" => $recordId,
-                    "redcap_repeat_instrument" => "",
-                    "redcap_repeat_instance" => "",
-                    "identifier_is_engaged" => $val,
-                ];
-            }
-        }
-    }
+	$allRecords = Download::recordIdsByPid($pid);
+	foreach ($engagedValues as $val => $field) {
+		$records = Sanitizer::sanitizeArray($_POST[$field] ?? []);
+		foreach ($records as $recordId) {
+			$recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+			if ($recordId) {
+				$upload[] = [
+					"record_id" => $recordId,
+					"redcap_repeat_instrument" => "",
+					"redcap_repeat_instance" => "",
+					"identifier_is_engaged" => $val,
+				];
+			}
+		}
+	}
 
-    foreach ($toDelete as $field => $idx) {
-        $instancesDeleted = 0;
-        $requestedRecords = Sanitizer::sanitizeArray($_POST[$field]);
-        $records = [];
-        foreach ($requestedRecords as $recordId) {
-            $recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-            if ($recordId) {
-                $records[] = $recordId;
-            }
-        }
-        if (!empty($records)) {
-            if (is_array($idx)) {    // kCareer grant types - use different screen
-                $customTypes = Download::oneFieldWithInstancesByPid($pid, "custom_type");
-                $instancesToDelete = getInstancesToDelete($customTypes, $records, $allRecords, $idx);
-            } else {
-                $customRoles = Download::oneFieldWithInstancesByPid($pid, "custom_role");
-                $instancesToDelete = getInstancesToDelete($customRoles, $records, $allRecords, $idx);
-            }
-            foreach ($instancesToDelete as $recordId => $instances) {
-                if (!empty($instances)) {
-                    Upload::deleteFormInstances($token, $server, $pid, "custom_", $recordId, $instances);
-                    $instancesDeleted += count($instances);
-                }
-            }
-        }
-        echo "$field deleted $instancesDeleted instances\n";
-    }
+	foreach ($toDelete as $field => $idx) {
+		$instancesDeleted = 0;
+		$requestedRecords = Sanitizer::sanitizeArray($_POST[$field]);
+		$records = [];
+		foreach ($requestedRecords as $recordId) {
+			$recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+			if ($recordId) {
+				$records[] = $recordId;
+			}
+		}
+		if (!empty($records)) {
+			if (is_array($idx)) {    // kCareer grant types - use different screen
+				$customTypes = Download::oneFieldWithInstancesByPid($pid, "custom_type");
+				$instancesToDelete = getInstancesToDelete($customTypes, $records, $allRecords, $idx);
+			} else {
+				$customRoles = Download::oneFieldWithInstancesByPid($pid, "custom_role");
+				$instancesToDelete = getInstancesToDelete($customRoles, $records, $allRecords, $idx);
+			}
+			foreach ($instancesToDelete as $recordId => $instances) {
+				if (!empty($instances)) {
+					Upload::deleteFormInstances($token, $server, $pid, "custom_", $recordId, $instances);
+					$instancesDeleted += count($instances);
+				}
+			}
+		}
+		echo "$field deleted $instancesDeleted instances\n";
+	}
 
-    $maxUploadInstance = [];
-    $customGrantCompletes  = Download::oneFieldWithInstancesByPid($pid, "custom_grant_complete");    // test field
-    foreach ($toChange as $field => $idx) {
-        $recordsAndDates = Sanitizer::sanitizeArray($_POST[$field] ?? []);
-        if (!empty($recordsAndDates)) {
-            if (is_array($idx)) {    // kCareer grant types - use different screen
-                $customTypes = Download::oneFieldWithInstancesByPid($pid, "custom_type");
-                foreach ($recordsAndDates as $recordId => $dates) {
-                    $recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-                    if ($recordId) {
-                        $instanceToUploadTo = getInstanceToUploadTo($maxUploadInstance, $customGrantCompletes, $customTypes, $recordId, $idx);
-                        $upload[] = makeCustomGrantUploadRow($dates, $recordId, $instanceToUploadTo, Conversion::PI_ROLE_INDEX);
-                    }
-                }
-            } else {
-                $customRoles = Download::oneFieldWithInstancesByPid($pid, "custom_role");
-                foreach ($recordsAndDates as $recordId => $dates) {
-                    $recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-                    if ($recordId) {
-                        $instanceToUploadTo = getInstanceToUploadTo($maxUploadInstance, $customGrantCompletes, $customRoles, $recordId, $idx);
-                        # the type is always Conversion::T_TYPE = Training Appointment
-                        $upload[] = makeCustomGrantUploadRow($dates, $recordId, $instanceToUploadTo, $idx, Conversion::T_TYPE);
-                    }
-                }
-            }
-        }
-    }
+	$maxUploadInstance = [];
+	$customGrantCompletes  = Download::oneFieldWithInstancesByPid($pid, "custom_grant_complete");    // test field
+	foreach ($toChange as $field => $idx) {
+		$recordsAndDates = Sanitizer::sanitizeArray($_POST[$field] ?? []);
+		if (!empty($recordsAndDates)) {
+			if (is_array($idx)) {    // kCareer grant types - use different screen
+				$customTypes = Download::oneFieldWithInstancesByPid($pid, "custom_type");
+				foreach ($recordsAndDates as $recordId => $dates) {
+					$recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+					if ($recordId) {
+						$instanceToUploadTo = getInstanceToUploadTo($maxUploadInstance, $customGrantCompletes, $customTypes, $recordId, $idx);
+						$upload[] = makeCustomGrantUploadRow($dates, $recordId, $instanceToUploadTo, Conversion::PI_ROLE_INDEX);
+					}
+				}
+			} else {
+				$customRoles = Download::oneFieldWithInstancesByPid($pid, "custom_role");
+				foreach ($recordsAndDates as $recordId => $dates) {
+					$recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+					if ($recordId) {
+						$instanceToUploadTo = getInstanceToUploadTo($maxUploadInstance, $customGrantCompletes, $customRoles, $recordId, $idx);
+						# the type is always Conversion::T_TYPE = Training Appointment
+						$upload[] = makeCustomGrantUploadRow($dates, $recordId, $instanceToUploadTo, $idx, Conversion::T_TYPE);
+					}
+				}
+			}
+		}
+	}
 
-    echo "Uploaded ".count($upload)." rows\n";
-    if (!empty($upload)) {
-        Upload::rowsByPid($upload, $pid);
-    }
-    exit;
+	echo "Uploaded ".count($upload)." rows\n";
+	if (!empty($upload)) {
+		Upload::rowsByPid($upload, $pid);
+	}
+	exit;
 }
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
@@ -131,13 +131,13 @@ require_once(dirname(__FILE__)."/charts/baseWeb.php");
 $names = Download::namesByPid($pid);
 $metadataFields = Download::metadataFieldsByPid($pid);
 $fields = [
-    "record_id",
-    "custom_role",
-    "custom_start",
-    "custom_end",
-    "custom_title",
-    "custom_type",
-    "identifier_is_engaged",
+	"record_id",
+	"custom_role",
+	"custom_start",
+	"custom_end",
+	"custom_title",
+	"custom_type",
+	"identifier_is_engaged",
 ];
 $fields = DataDictionaryManagement::filterOutInvalidFieldsFromFieldlist($metadataFields, $fields);
 $indexedData = REDCapManagement::indexREDCapData(Download::fields($token, $server, $fields));
@@ -154,72 +154,72 @@ echo "<th class='stickyGrey'>Name</th>";
 echo "<th class='stickyGrey'>Pre-Docs$tLanguage</th>";
 echo "<th class='stickyGrey'>Post-Docs$tLanguage</th>";
 if ($input == "grant_types") {
-    echo "<th class='stickyGrey'>Early Career on K</th>";
+	echo "<th class='stickyGrey'>Early Career on K</th>";
 }
 if ($hasIsEngaged) {
-    echo "<th class='stickyGrey'>Is Engaged<br>in Research?<br>(CTSA only)</th>";
+	echo "<th class='stickyGrey'>Is Engaged<br>in Research?<br>(CTSA only)</th>";
 }
 echo "</tr></thead>";
 echo "<tbody>";
 $i = 0;
 if ($input == "grant_types") {
-    $allGrantTypes = DataDictionaryManagement::getChoicesForField($pid, "custom_type");
-    $desiredGrantIndices = array_merge(Conversion::INTERNALLY_GRANTED_KS, [4, Conversion::T_TYPE]);
-    $grantTypes = [];
-    foreach ($allGrantTypes as $index => $label) {
-        if (in_array($index, $desiredGrantIndices)) {
-            $grantTypes[$index] = $label;
-        }
-    }
+	$allGrantTypes = DataDictionaryManagement::getChoicesForField($pid, "custom_type");
+	$desiredGrantIndices = array_merge(Conversion::INTERNALLY_GRANTED_KS, [4, Conversion::T_TYPE]);
+	$grantTypes = [];
+	foreach ($allGrantTypes as $index => $label) {
+		if (in_array($index, $desiredGrantIndices)) {
+			$grantTypes[$index] = $label;
+		}
+	}
 } else {
-    $grantTypes = [];
+	$grantTypes = [];
 }
 foreach ($names as $recordId => $name) {
-    $rowClass = ($i % 2 == 0) ? "even" : "odd";
-    $i++;
-    $recordData = $indexedData[$recordId] ?? [];
+	$rowClass = ($i % 2 == 0) ? "even" : "odd";
+	$i++;
+	$recordData = $indexedData[$recordId] ?? [];
 
-    $predocClass = "red";
-    $predocRange = makeRange($recordId, FALSE, $grantTypes);
-    $postdocClass = "red";
-    $postdocRange = makeRange($recordId, FALSE, $grantTypes);
-    $kClass = "red";
-    $kRange = makeRange($recordId, TRUE, $grantTypes);
-    $isEngagedClass = "white";
-    foreach ($recordData as $row) {
-        if ($row['redcap_repeat_instrument'] == "custom_grant") {
-            if ($row['custom_role'] == Conversion::PREDOC_INDEX) {
-                $predocClass = "green";
-                $predocRange = makeCustomRange($row, FALSE, $grantTypes);
-            } else if ($row['custom_role'] == Conversion::POSTDOC_INDEX) {
-                $postdocClass = "green";
-                $postdocRange = makeCustomRange($row, FALSE, $grantTypes);
-            } else if (in_array($row['custom_type'], $kClasses)) {
-                $kClass = "green";
-                $kRange = makeCustomRange($row, TRUE, $grantTypes);
-            }
-        }
-        if (($row['redcap_repeat_instrument'] == "") && ($row['identifier_is_engaged'] == "1")) {
-            $isEngagedClass = "green";
-        } else if (($row['redcap_repeat_instrument'] == "") && ($row['identifier_is_engaged'] == "2")) {
-            $isEngagedClass = "red";
-        }
-    }
+	$predocClass = "red";
+	$predocRange = makeRange($recordId, false, $grantTypes);
+	$postdocClass = "red";
+	$postdocRange = makeRange($recordId, false, $grantTypes);
+	$kClass = "red";
+	$kRange = makeRange($recordId, true, $grantTypes);
+	$isEngagedClass = "white";
+	foreach ($recordData as $row) {
+		if ($row['redcap_repeat_instrument'] == "custom_grant") {
+			if ($row['custom_role'] == Conversion::PREDOC_INDEX) {
+				$predocClass = "green";
+				$predocRange = makeCustomRange($row, false, $grantTypes);
+			} elseif ($row['custom_role'] == Conversion::POSTDOC_INDEX) {
+				$postdocClass = "green";
+				$postdocRange = makeCustomRange($row, false, $grantTypes);
+			} elseif (in_array($row['custom_type'], $kClasses)) {
+				$kClass = "green";
+				$kRange = makeCustomRange($row, true, $grantTypes);
+			}
+		}
+		if (($row['redcap_repeat_instrument'] == "") && ($row['identifier_is_engaged'] == "1")) {
+			$isEngagedClass = "green";
+		} elseif (($row['redcap_repeat_instrument'] == "") && ($row['identifier_is_engaged'] == "2")) {
+			$isEngagedClass = "red";
+		}
+	}
 
-    echo "<tr>";
-    echo "<th class='$rowClass'>$recordId: $name</th>";
-    echo "<td class='predoc $predocClass' record='$recordId'><div class='predocText appointmentBox' record='$recordId'>".$textAssociations[$predocClass]."</div>";
-    echo "<div class='predocDates' style='text-align: right;' record='$recordId'>$predocRange</div></td>";
-    echo "<td class='postdoc $postdocClass' record='$recordId'><div class='postdocText appointmentBox' record='$recordId'>".$textAssociations[$postdocClass]."</div>";
-    echo "<div class='postdocDates' style='text-align: right;' record='$recordId'>$postdocRange</div></td>";
-    if ($input == "grant_types") {
-        echo "<td class='kCareer $kClass' record='$recordId'><div class='kCareerText appointmentBox' record='$recordId'>".$textAssociations[$kClass]."</div>";
-        echo "<div class='kCareerDates' style='text-align: right;' record='$recordId'>$kRange</div></td>";
-    }
-    if ($hasIsEngaged) {
-        echo "<td class='engaged $isEngagedClass centered' record='$recordId'>".$engagedTextAssociations[$isEngagedClass]."</td>";
-    }
-    echo "</tr>";
+	echo "<tr>";
+	echo "<th class='$rowClass'>$recordId: $name</th>";
+	echo "<td class='predoc $predocClass' record='$recordId'><div class='predocText appointmentBox' record='$recordId'>".$textAssociations[$predocClass]."</div>";
+	echo "<div class='predocDates' style='text-align: right;' record='$recordId'>$predocRange</div></td>";
+	echo "<td class='postdoc $postdocClass' record='$recordId'><div class='postdocText appointmentBox' record='$recordId'>".$textAssociations[$postdocClass]."</div>";
+	echo "<div class='postdocDates' style='text-align: right;' record='$recordId'>$postdocRange</div></td>";
+	if ($input == "grant_types") {
+		echo "<td class='kCareer $kClass' record='$recordId'><div class='kCareerText appointmentBox' record='$recordId'>".$textAssociations[$kClass]."</div>";
+		echo "<div class='kCareerDates' style='text-align: right;' record='$recordId'>$kRange</div></td>";
+	}
+	if ($hasIsEngaged) {
+		echo "<td class='engaged $isEngagedClass centered' record='$recordId'>".$engagedTextAssociations[$isEngagedClass]."</td>";
+	}
+	echo "</tr>";
 }
 echo "</tbody></table>";
 echo "<p class='submit centered'><button onclick='saveForm(); return false;'>Save Changes</button></p>";
@@ -460,93 +460,93 @@ function editCell(ob) {
 </script>";
 
 function makeRange(string $recordId, bool $showGrantTypes, array $grantTypes, string $startDate = "", string $endDate = "", string $defaultTitle = "", string $defaultGrantType = ""): string {
-    $startLine = "Start: <input type='date' class='startDate pickDate' value='$startDate' record='$recordId' />";
-    $endLine = "End: <input type='date' class='endDate pickDate' value='$endDate' record='$recordId' />";
-    $titleLine = "<textarea class='title pickDate' record='$recordId' placeholder='Research Project Topics'>$defaultTitle</textarea>";
-    if ($showGrantTypes) {
-        if ($defaultGrantType == "") {
-            $options = ["<option value='' selected>---SELECT---</option>"];
-        } else {
-            $options = [];
-        }
-        foreach ($grantTypes as $index => $label) {
-            $selected = ($index == $defaultGrantType) ? "selected" : "";
-            $options[] = "<option value='$index' $selected>$label</option>";
-        }
-        $id = "grant_type___".$recordId."_".bin2hex(random_bytes(10));
-        $titleLine = "<label for='$id'>Type: </label><select class='grantType pickDate' id='$id' record='$recordId'>".implode("", $options)."</select><br/>".$titleLine;
-    }
-    return $titleLine."<br />".$startLine."<br />".$endLine;
+	$startLine = "Start: <input type='date' class='startDate pickDate' value='$startDate' record='$recordId' />";
+	$endLine = "End: <input type='date' class='endDate pickDate' value='$endDate' record='$recordId' />";
+	$titleLine = "<textarea class='title pickDate' record='$recordId' placeholder='Research Project Topics'>$defaultTitle</textarea>";
+	if ($showGrantTypes) {
+		if ($defaultGrantType == "") {
+			$options = ["<option value='' selected>---SELECT---</option>"];
+		} else {
+			$options = [];
+		}
+		foreach ($grantTypes as $index => $label) {
+			$selected = ($index == $defaultGrantType) ? "selected" : "";
+			$options[] = "<option value='$index' $selected>$label</option>";
+		}
+		$id = "grant_type___".$recordId."_".bin2hex(random_bytes(10));
+		$titleLine = "<label for='$id'>Type: </label><select class='grantType pickDate' id='$id' record='$recordId'>".implode("", $options)."</select><br/>".$titleLine;
+	}
+	return $titleLine."<br />".$startLine."<br />".$endLine;
 }
 
 function makeCustomRange(array $row, bool $showGrantTypes, array $grantTypes): string {
-    return makeRange($row['record_id'], $showGrantTypes, $grantTypes, $row['custom_start'], $row['custom_end'], $row['custom_title'], $row['custom_type']);
+	return makeRange($row['record_id'], $showGrantTypes, $grantTypes, $row['custom_start'], $row['custom_end'], $row['custom_title'], $row['custom_type']);
 }
 
 # $idx is either a value to be matched or an array of values to be matched
 # When PHP 7 is over, update type of $idx to array|int
 function getInstanceToUploadTo(array &$maxUploadInstance, array $testFields, array $fieldsWithIdxValues, string $recordId, $idx): int {
-    if (!is_array($idx)) {
-        $idx = [$idx];
-    }
-    foreach ($fieldsWithIdxValues[$recordId] as $byInstance) {
-        foreach ($byInstance as $instance => $value) {
-            if (in_array($value, $idx)) {
-                return (int) $instance;
-            }
-        }
-    }
+	if (!is_array($idx)) {
+		$idx = [$idx];
+	}
+	foreach ($fieldsWithIdxValues[$recordId] as $byInstance) {
+		foreach ($byInstance as $instance => $value) {
+			if (in_array($value, $idx)) {
+				return (int) $instance;
+			}
+		}
+	}
 
-    $instances = array_keys($testFields[$recordId] ?? []);
-    if (isset($maxUploadInstance[$recordId])) {
-        $newInstanceToUploadTo = (int) ($maxUploadInstance[$recordId] + 1);
-    } else {
-        $newInstanceToUploadTo = empty($instances) ? 1 : (((int) max($instances)) + 1);
-    }
-    $maxUploadInstance[$recordId] = $newInstanceToUploadTo;
-    return $newInstanceToUploadTo;
+	$instances = array_keys($testFields[$recordId] ?? []);
+	if (isset($maxUploadInstance[$recordId])) {
+		$newInstanceToUploadTo = (int) ($maxUploadInstance[$recordId] + 1);
+	} else {
+		$newInstanceToUploadTo = empty($instances) ? 1 : (((int) max($instances)) + 1);
+	}
+	$maxUploadInstance[$recordId] = $newInstanceToUploadTo;
+	return $newInstanceToUploadTo;
 }
 
 function makeCustomGrantUploadRow(array $dates, string $recordId, int $instanceToUploadTo, int $roleIndex, int $typeIndex = -1): array {
-    $startDate = $dates[0] ?? "";
-    $endDate = $dates[1] ?? "";
-    $title = $dates[2] ?? "";
-    $grantType = $dates[3] ?? "";
-    return [
-        "record_id" => $recordId,
-        "redcap_repeat_instrument" => "custom_grant",
-        "redcap_repeat_instance" => $instanceToUploadTo,
-        "custom_start" => $startDate,
-        "custom_end" => $endDate,
-        "custom_title" => $title,
-        "custom_role" => $roleIndex,
-        "custom_type" => (string) (($typeIndex > 0) ? $typeIndex : $grantType),
-        "custom_created" => date("Y-m-d"),
-        "custom_last_update" => date("Y-m-d"),
-        "custom_grant_complete" => "2",
-    ];
+	$startDate = $dates[0] ?? "";
+	$endDate = $dates[1] ?? "";
+	$title = $dates[2] ?? "";
+	$grantType = $dates[3] ?? "";
+	return [
+		"record_id" => $recordId,
+		"redcap_repeat_instrument" => "custom_grant",
+		"redcap_repeat_instance" => $instanceToUploadTo,
+		"custom_start" => $startDate,
+		"custom_end" => $endDate,
+		"custom_title" => $title,
+		"custom_role" => $roleIndex,
+		"custom_type" => (string) (($typeIndex > 0) ? $typeIndex : $grantType),
+		"custom_created" => date("Y-m-d"),
+		"custom_last_update" => date("Y-m-d"),
+		"custom_grant_complete" => "2",
+	];
 }
 
 # $idx is either a value to be matched or an array of values to be matched
 # When PHP 7 is over, update type of $idx to array|int
 
 function getInstancesToDelete(array $fieldsWithIdxValues, array $records, array $allRecords, $idx): array {
-    if (!is_array($idx)) {
-        $idx = [$idx];
-    }
-    $instancesToDelete = [];
-    foreach ($fieldsWithIdxValues as $recordId => $byInstance) {
-        $recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-        if ($recordId && in_array($recordId, $records)) {
-            foreach ($byInstance as $instance => $value) {
-                if (in_array($value, $idx)) {
-                    if (!isset($instancesToDelete[$recordId])) {
-                        $instancesToDelete[$recordId] = [];
-                    }
-                    $instancesToDelete[$recordId][] = $instance;
-                }
-            }
-        }
-    }
-    return $instancesToDelete;
+	if (!is_array($idx)) {
+		$idx = [$idx];
+	}
+	$instancesToDelete = [];
+	foreach ($fieldsWithIdxValues as $recordId => $byInstance) {
+		$recordId = Sanitizer::getSanitizedRecord($recordId, $allRecords);
+		if ($recordId && in_array($recordId, $records)) {
+			foreach ($byInstance as $instance => $value) {
+				if (in_array($value, $idx)) {
+					if (!isset($instancesToDelete[$recordId])) {
+						$instancesToDelete[$recordId] = [];
+					}
+					$instancesToDelete[$recordId][] = $instance;
+				}
+			}
+		}
+	}
+	return $instancesToDelete;
 }

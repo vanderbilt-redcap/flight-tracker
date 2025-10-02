@@ -25,17 +25,17 @@ namespace PhpOffice\PhpWord\Reader\Word2007;
  */
 class Endnotes extends Footnotes
 {
-    /**
-     * Collection name.
-     *
-     * @var string
-     */
-    protected $collection = 'endnotes';
+	/**
+	 * Collection name.
+	 *
+	 * @var string
+	 */
+	protected $collection = 'endnotes';
 
-    /**
-     * Element name.
-     *
-     * @var string
-     */
-    protected $element = 'endnote';
+	/**
+	 * Element name.
+	 *
+	 * @var string
+	 */
+	protected $element = 'endnote';
 }

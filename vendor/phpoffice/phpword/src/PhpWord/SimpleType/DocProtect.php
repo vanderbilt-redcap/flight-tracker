@@ -28,28 +28,28 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class DocProtect extends AbstractEnum
 {
-    /**
-     * No Editing Restrictions.
-     */
-    const NONE = 'none';
+	/**
+	 * No Editing Restrictions.
+	 */
+	public const NONE = 'none';
 
-    /**
-     * Allow No Editing.
-     */
-    const READ_ONLY = 'readOnly';
+	/**
+	 * Allow No Editing.
+	 */
+	public const READ_ONLY = 'readOnly';
 
-    /**
-     * Allow Editing of Comments.
-     */
-    const COMMENTS = 'comments';
+	/**
+	 * Allow Editing of Comments.
+	 */
+	public const COMMENTS = 'comments';
 
-    /**
-     * Allow Editing With Revision Tracking.
-     */
-    const TRACKED_CHANGES = 'trackedChanges';
+	/**
+	 * Allow Editing With Revision Tracking.
+	 */
+	public const TRACKED_CHANGES = 'trackedChanges';
 
-    /**
-     * Allow Editing of Form Fields.
-     */
-    const FORMS = 'forms';
+	/**
+	 * Allow Editing of Form Fields.
+	 */
+	public const FORMS = 'forms';
 }

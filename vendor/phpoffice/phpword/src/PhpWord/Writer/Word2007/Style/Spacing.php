@@ -25,34 +25,33 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class Spacing extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Spacing) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Spacing) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('w:spacing');
+		$xmlWriter->startElement('w:spacing');
 
-        $before = $style->getBefore();
-        $xmlWriter->writeAttributeIf(null !== $before, 'w:before', $this->convertTwip($before));
+		$before = $style->getBefore();
+		$xmlWriter->writeAttributeIf(null !== $before, 'w:before', $this->convertTwip($before));
 
-        $after = $style->getAfter();
-        $xmlWriter->writeAttributeIf(null !== $after, 'w:after', $this->convertTwip($after));
+		$after = $style->getAfter();
+		$xmlWriter->writeAttributeIf(null !== $after, 'w:after', $this->convertTwip($after));
 
-        $line = $style->getLine();
-        //if linerule is auto, the spacing is supposed to include the height of the line itself, which is 240 twips
-        if (null !== $line && 'auto' === $style->getLineRule()) {
-            $line += \PhpOffice\PhpWord\Style\Paragraph::LINE_HEIGHT;
-        }
-        $xmlWriter->writeAttributeIf(null !== $line, 'w:line', $line);
+		$line = $style->getLine();
+		//if linerule is auto, the spacing is supposed to include the height of the line itself, which is 240 twips
+		if (null !== $line && 'auto' === $style->getLineRule()) {
+			$line += \PhpOffice\PhpWord\Style\Paragraph::LINE_HEIGHT;
+		}
+		$xmlWriter->writeAttributeIf(null !== $line, 'w:line', $line);
 
-        $xmlWriter->writeAttributeIf(null !== $line, 'w:lineRule', $style->getLineRule());
+		$xmlWriter->writeAttributeIf(null !== $line, 'w:lineRule', $style->getLineRule());
 
-        $xmlWriter->endElement();
-    }
+		$xmlWriter->endElement();
+	}
 }

@@ -9,341 +9,338 @@ require_once(__DIR__ . '/ClassLoader.php');
 
 class Upload
 {
-    const MAX_RETRIES = 3;
+	public const MAX_RETRIES = 3;
 
-    public static function adaptToUTF8(&$ary)
-    {
-        if (!json_encode($ary)) {
-            if (json_last_error() == JSON_ERROR_UTF8) {
-                $ary = self::utf8ize($ary);
-            } else {
-                throw new \Exception("Error in JSON processing: " . json_last_error_msg());
-            }
-        }
-    }
+	public static function adaptToUTF8(&$ary) {
+		if (!json_encode($ary)) {
+			if (json_last_error() == JSON_ERROR_UTF8) {
+				$ary = self::utf8ize($ary);
+			} else {
+				throw new \Exception("Error in JSON processing: " . json_last_error_msg());
+			}
+		}
+	}
 
-    public static function utf8ize($mixed)
-    {
-        if (is_array($mixed)) {
-            foreach ($mixed as $key => $value) {
-                $mixed[$key] = self::utf8ize($value);
-            }
-        } else if (is_string($mixed)) {
-            return utf8_encode($mixed);
-        }
-        return $mixed;
-    }
+	public static function utf8ize($mixed) {
+		if (is_array($mixed)) {
+			foreach ($mixed as $key => $value) {
+				$mixed[$key] = self::utf8ize($value);
+			}
+		} elseif (is_string($mixed)) {
+			return mb_convert_encoding($mixed, 'UTF-8');
+		}
+		return $mixed;
+	}
 
-    public static function userRights($userRights, $token, $server) {
-        $pid = Application::getPID($token);
-        $data = [
-            "token" => $token,
-            "content" => "user",
-            "format" => "json",
-            "data" => json_encode($userRights),
-        ];
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $server);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-        URLManagement::applyProxyIfExists($ch, $pid);
-        $output = (string) curl_exec($ch);
-        $feedback = json_decode($output, TRUE);
-        self::testFeedback($feedback, $output, $ch);
-        curl_close($ch);
-        return $feedback;
-    }
+	public static function userRights($userRights, $token, $server) {
+		$pid = Application::getPID($token);
+		$data = [
+			"token" => $token,
+			"content" => "user",
+			"format" => "json",
+			"data" => json_encode($userRights),
+		];
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $server);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_VERBOSE, 0);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+		URLManagement::applyProxyIfExists($ch, $pid);
+		$output = (string) curl_exec($ch);
+		$feedback = json_decode($output, true);
+		self::testFeedback($feedback, $output, $ch);
+		curl_close($ch);
+		return $feedback;
+	}
 
-    public static function createProject($supertoken, $server, $projectSetup, $pid) {
-        $data = [
-            'token' => $supertoken,
-            'content' => 'project',
-            'format' => 'json',
-            'data' => json_encode([$projectSetup]),
-        ];
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $server);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch, CURLOPT_VERBOSE, 0);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-        curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-        curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-        URLManagement::applyProxyIfExists($ch, $pid);
-        $newProjectToken = curl_exec($ch);
-        curl_close($ch);
-        if (REDCapManagement::isValidToken($newProjectToken)) {
-            return $newProjectToken;
-        } else {
-            Application::log("Invalid project creation: $newProjectToken");
-        }
-    }
+	public static function createProject($supertoken, $server, $projectSetup, $pid) {
+		$data = [
+			'token' => $supertoken,
+			'content' => 'project',
+			'format' => 'json',
+			'data' => json_encode([$projectSetup]),
+		];
+		$ch = curl_init();
+		curl_setopt($ch, CURLOPT_URL, $server);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_VERBOSE, 0);
+		curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+		curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+		URLManagement::applyProxyIfExists($ch, $pid);
+		$newProjectToken = curl_exec($ch);
+		curl_close($ch);
+		if (REDCapManagement::isValidToken($newProjectToken)) {
+			return $newProjectToken;
+		} else {
+			Application::log("Invalid project creation: $newProjectToken");
+		}
+	}
 
-    public static function deleteField($token, $server, $pid, $field, $recordId, $instance = NULL) {
-        $records = Download::recordIds($token, $server);
-        if (Download::isCurrentServer($server)) {
-            if (in_array($recordId, $records)) {
-                $params = [$pid, $recordId, $field];
-                $instanceClause = "";
-                if ($instance) {
-                    if ($instance == 1) {
-                        $instanceClause = " AND instance IS NULL";
-                    } else {
-                        $instanceClause = " AND instance = ?";
-                        $params[] = $instance;
-                    }
-                }
-                $dataTable = Application::getDataTable($pid);
-                $sql = "DELETE FROM $dataTable WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
-                Application::log("Running SQL $sql with ".json_encode($params));
-                $module = Application::getModule();
-                $q = $module->query($sql, $params);
-                Application::log("SQL: " . $q->affected_rows . " rows affected");
-            } else {
-                throw new \Exception("Could not find record!");
-            }
-        } else {
-            throw new \Exception("Wrong server");
-        }
-    }
+	public static function deleteField($token, $server, $pid, $field, $recordId, $instance = null) {
+		$records = Download::recordIds($token, $server);
+		if (Download::isCurrentServer($server)) {
+			if (in_array($recordId, $records)) {
+				$params = [$pid, $recordId, $field];
+				$instanceClause = "";
+				if ($instance) {
+					if ($instance == 1) {
+						$instanceClause = " AND instance IS NULL";
+					} else {
+						$instanceClause = " AND instance = ?";
+						$params[] = $instance;
+					}
+				}
+				$dataTable = Application::getDataTable($pid);
+				$sql = "DELETE FROM $dataTable WHERE project_id = ? AND record = ? AND field_name = ?".$instanceClause;
+				Application::log("Running SQL $sql with ".json_encode($params));
+				$module = Application::getModule();
+				$q = $module->query($sql, $params);
+				Application::log("SQL: " . $q->affected_rows . " rows affected");
+			} else {
+				throw new \Exception("Could not find record!");
+			}
+		} else {
+			throw new \Exception("Wrong server");
+		}
+	}
 
-    public static function copyRecord($token, $server, $oldRecordId, $newRecordId) {
-        $oldRecordData = Download::records($token, $server, [$oldRecordId]);
-        $newRecordData = [];
-        foreach ($oldRecordData as $row) {
-            $row['record_id'] = $newRecordId;
-            $newRecordData[] = $row;
-        }
-        return self::rows($newRecordData, $token, $server);
-    }
+	public static function copyRecord($token, $server, $oldRecordId, $newRecordId) {
+		$oldRecordData = Download::records($token, $server, [$oldRecordId]);
+		$newRecordData = [];
+		foreach ($oldRecordData as $row) {
+			$row['record_id'] = $newRecordId;
+			$newRecordData[] = $row;
+		}
+		return self::rows($newRecordData, $token, $server);
+	}
 
-    public static function deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instances)
-    {
-        if (method_exists("\REDCap", "deleteRecord")) {
-            $completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
-            if ($completeField) {
-                $instrument = preg_replace("/_complete$/", "", $completeField);
-                foreach ($instances as $instance) {
-                    \REDCap::deleteRecord($pid, $recordId, NULL, NULL, $instrument, $instance);
-                }
-            } else {
-                self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
-            }
-        } else {
-            self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
-        }
-    }
+	public static function deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instances) {
+		if (method_exists("\REDCap", "deleteRecord")) {
+			$completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
+			if ($completeField) {
+				$instrument = preg_replace("/_complete$/", "", $completeField);
+				foreach ($instances as $instance) {
+					\REDCap::deleteRecord($pid, $recordId, null, null, $instrument, $instance);
+				}
+			} else {
+				self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
+			}
+		} else {
+			self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
+		}
+	}
 
-    public static function deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances) {
-        $records = Download::recordIds($token, $server);
-        $batchSize = 10;
-        $dataTable = Application::getDataTable($pid);
-        if (Download::isCurrentServer($server)) {
-            if (in_array($recordId, $records)) {
-                if (!preg_match("/_$/", $prefix)) {
-                    $prefix .= "_";
-                }
-                $completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
-                $metadataFields = Download::metadataFields($token, $server);
-                $fieldsToDelete = [];
-                foreach ($metadataFields as $field) {
-                    if (preg_match("/^$prefix/", $field)) {
-                        $fieldsToDelete[] = $field;
-                    }
-                }
-                if ($completeField) {
-                    $fieldsToDelete[] = $completeField;
-                }
-                $fieldQuestionMarks = [];
-                while (count($fieldsToDelete) > count($fieldQuestionMarks)) {
-                    $fieldQuestionMarks[] = "?";
-                }
-                if (!empty($instances) && !empty($fieldsToDelete)) {
-                    Application::log("Instances not empty", $pid);
-                    $module = Application::getModule();
-                    for ($i = 0; $i < count($instances); $i += $batchSize) {
-                        $batchInstances = [];
-                        for ($j = $i; ($j < $i + $batchSize) && ($j < count($instances)); $j++) {
-                            $batchInstances[] = $instances[$j];
-                        }
-                        $instanceClause = "";
-                        $params = array_merge([$pid, $recordId], $fieldsToDelete);
-                        if (!empty($batchInstances)) {
-                            $addOnInstanceClause =  "";
-                            if (in_array(1, $batchInstances) || in_array("", $batchInstances)) {
-                                $addOnInstanceClause = " OR instance IS NULL";
-                                $filteredInstances = [];
-                                foreach ($batchInstances as $instance) {
-                                    if (!in_array($instance, ["", 1])) {
-                                        $filteredInstances[] = $instance;
-                                    }
-                                }
-                            } else {
-                                $filteredInstances = $batchInstances;
-                            }
-                            $questionMarks = [];
-                            while (count($filteredInstances) > count($questionMarks)) {
-                                $questionMarks[] = "?";
-                            }
-                            if (!empty($filteredInstances)) {
-                                $instanceClause = " AND (instance IN (".implode(",", $questionMarks).")".$addOnInstanceClause.")";
-                                $params = array_merge($params, $filteredInstances);
-                            } else if ($addOnInstanceClause) {
-                                $instanceClause = " AND instance IS NULL";
-                            }
-                        }
+	public static function deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances) {
+		$records = Download::recordIds($token, $server);
+		$batchSize = 10;
+		$dataTable = Application::getDataTable($pid);
+		if (Download::isCurrentServer($server)) {
+			if (in_array($recordId, $records)) {
+				if (!preg_match("/_$/", $prefix)) {
+					$prefix .= "_";
+				}
+				$completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
+				$metadataFields = Download::metadataFields($token, $server);
+				$fieldsToDelete = [];
+				foreach ($metadataFields as $field) {
+					if (preg_match("/^$prefix/", $field)) {
+						$fieldsToDelete[] = $field;
+					}
+				}
+				if ($completeField) {
+					$fieldsToDelete[] = $completeField;
+				}
+				$fieldQuestionMarks = [];
+				while (count($fieldsToDelete) > count($fieldQuestionMarks)) {
+					$fieldQuestionMarks[] = "?";
+				}
+				if (!empty($instances) && !empty($fieldsToDelete)) {
+					Application::log("Instances not empty", $pid);
+					$module = Application::getModule();
+					for ($i = 0; $i < count($instances); $i += $batchSize) {
+						$batchInstances = [];
+						for ($j = $i; ($j < $i + $batchSize) && ($j < count($instances)); $j++) {
+							$batchInstances[] = $instances[$j];
+						}
+						$instanceClause = "";
+						$params = array_merge([$pid, $recordId], $fieldsToDelete);
+						if (!empty($batchInstances)) {
+							$addOnInstanceClause =  "";
+							if (in_array(1, $batchInstances) || in_array("", $batchInstances)) {
+								$addOnInstanceClause = " OR instance IS NULL";
+								$filteredInstances = [];
+								foreach ($batchInstances as $instance) {
+									if (!in_array($instance, ["", 1])) {
+										$filteredInstances[] = $instance;
+									}
+								}
+							} else {
+								$filteredInstances = $batchInstances;
+							}
+							$questionMarks = [];
+							while (count($filteredInstances) > count($questionMarks)) {
+								$questionMarks[] = "?";
+							}
+							if (!empty($filteredInstances)) {
+								$instanceClause = " AND (instance IN (".implode(",", $questionMarks).")".$addOnInstanceClause.")";
+								$params = array_merge($params, $filteredInstances);
+							} elseif ($addOnInstanceClause) {
+								$instanceClause = " AND instance IS NULL";
+							}
+						}
 
-                        $whereClause = "WHERE project_id = ? AND record = ? AND field_name IN (".implode(",", $fieldQuestionMarks).")".$instanceClause;
-                        do {
+						$whereClause = "WHERE project_id = ? AND record = ? AND field_name IN (".implode(",", $fieldQuestionMarks).")".$instanceClause;
+						do {
 
-                            $startTs = time();
-                            $sql = "DELETE FROM $dataTable ".$whereClause." LIMIT 1000";
-                            Application::log("Running SQL $sql with ".json_encode($params));
-                            $module->query($sql, $params);
-                            $numSecs = time() - $startTs;
-                            Application::log("In $numSecs seconds, ran SQL $sql with ".json_encode($params), $pid);
+							$startTs = time();
+							$sql = "DELETE FROM $dataTable ".$whereClause." LIMIT 1000";
+							Application::log("Running SQL $sql with ".json_encode($params));
+							$module->query($sql, $params);
+							$numSecs = time() - $startTs;
+							Application::log("In $numSecs seconds, ran SQL $sql with ".json_encode($params), $pid);
 
-                            $sql = "SELECT record FROM $dataTable ".$whereClause." LIMIT 1";
-                            $q = $module->query($sql, $params);
-                        } while ($q->num_rows > 0);
-                    }
-                }
-            } else {
-                throw new \Exception("Could not find record!");
-            }
-        } else {
-            throw new \Exception("Wrong server");
-        }
-    }
+							$sql = "SELECT record FROM $dataTable ".$whereClause." LIMIT 1";
+							$q = $module->query($sql, $params);
+						} while ($q->num_rows > 0);
+					}
+				}
+			} else {
+				throw new \Exception("Could not find record!");
+			}
+		} else {
+			throw new \Exception("Wrong server");
+		}
+	}
 
-    public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = NULL) {
-        $records = Download::recordIds($token, $server);
-        $dataTable = Application::getDataTable($pid);
-        if (Download::isCurrentServer($server)) {
-            if (in_array($recordId, $records)) {
-                if ($instance !== NULL) {
-                    self::deleteFormInstances($token, $server, $pid, $prefix, $recordId, [$instance]);
-                } else {
-                    $module = Application::getModule();
-                    $params = [$pid, $recordId, "$prefix%"];
-                    $sql = "DELETE FROM $dataTable WHERE project_id = ? AND record = ? AND field_name LIKE ?";
-                    Application::log("Running SQL $sql with ".json_encode($params));
-                    $q = $module->query($sql, $params);
-                    Application::log("SQL: " . $q->affected_rows . " rows affected");
-                }
-            } else {
-                throw new \Exception("Could not find record $recordId!");
-            }
-        } else {
-            throw new \Exception("Wrong server");
-        }
-    }
+	public static function deleteForm($token, $server, $pid, $prefix, $recordId, $instance = null) {
+		$records = Download::recordIds($token, $server);
+		$dataTable = Application::getDataTable($pid);
+		if (Download::isCurrentServer($server)) {
+			if (in_array($recordId, $records)) {
+				if ($instance !== null) {
+					self::deleteFormInstances($token, $server, $pid, $prefix, $recordId, [$instance]);
+				} else {
+					$module = Application::getModule();
+					$params = [$pid, $recordId, "$prefix%"];
+					$sql = "DELETE FROM $dataTable WHERE project_id = ? AND record = ? AND field_name LIKE ?";
+					Application::log("Running SQL $sql with ".json_encode($params));
+					$q = $module->query($sql, $params);
+					Application::log("SQL: " . $q->affected_rows . " rows affected");
+				}
+			} else {
+				throw new \Exception("Could not find record $recordId!");
+			}
+		} else {
+			throw new \Exception("Wrong server");
+		}
+	}
 
-    public static function deleteRecords($token, $server, $records) {
-        Application::log("Deleting ".count($records)." records");
-        if (!empty($records)) {
-            $pid = Application::getPID($token);
-            if ($pid && Download::isCurrentServer($server) && method_exists("\REDCap", "deleteRecord")) {
-                $feedback = [];
-                foreach ($records as $recordId) {
-                    $feedback[] = \REDCap::deleteRecord($pid, $recordId);
-                }
-                return $feedback;
-            } else {
-                $server = Sanitizer::sanitizeURL($server);
-                if (!$server) {
-                    throw new \Exception("Invalid URL");
-                }
-                $data = array(
-                    'token' => $token,
-                    'action' => 'delete',
-                    'content' => 'record',
-                    'records' => $records
-                );
-                $ch = curl_init();
-                curl_setopt($ch, CURLOPT_URL, $server);
-                curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-                curl_setopt($ch, CURLOPT_VERBOSE, 0);
-                curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-                curl_setopt($ch, CURLOPT_AUTOREFERER, true);
-                curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
-                curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-                curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-                URLManagement::applyProxyIfExists($ch, $pid);
-                $output = (string) curl_exec($ch);
-                $feedback = json_decode($output, TRUE);
-                self::testFeedback($feedback, $output, $ch, [], $pid);
-                curl_close($ch);
-                Application::log("Deleted ".$output);
+	public static function deleteRecords($token, $server, $records) {
+		Application::log("Deleting ".count($records)." records");
+		if (!empty($records)) {
+			$pid = Application::getPID($token);
+			if ($pid && Download::isCurrentServer($server) && method_exists("\REDCap", "deleteRecord")) {
+				$feedback = [];
+				foreach ($records as $recordId) {
+					$feedback[] = \REDCap::deleteRecord($pid, $recordId);
+				}
+				return $feedback;
+			} else {
+				$server = Sanitizer::sanitizeURL($server);
+				if (!$server) {
+					throw new \Exception("Invalid URL");
+				}
+				$data = [
+					'token' => $token,
+					'action' => 'delete',
+					'content' => 'record',
+					'records' => $records
+				];
+				$ch = curl_init();
+				curl_setopt($ch, CURLOPT_URL, $server);
+				curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+				curl_setopt($ch, CURLOPT_VERBOSE, 0);
+				curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+				curl_setopt($ch, CURLOPT_AUTOREFERER, true);
+				curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
+				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
+				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+				curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				URLManagement::applyProxyIfExists($ch, $pid);
+				$output = (string) curl_exec($ch);
+				$feedback = json_decode($output, true);
+				self::testFeedback($feedback, $output, $ch, [], $pid);
+				curl_close($ch);
+				Application::log("Deleted ".$output);
 
-                return $feedback;
-            }
-        }
-        return array();
-    }
+				return $feedback;
+			}
+		}
+		return [];
+	}
 
-    // avoids design rights and development mode issues
-    public static function metadataNoAPI($metadata, $pid) {
-        if (!is_array($metadata)) {
-            Application::log("Upload::metadataNoAPI: first parameter should be array", $pid);
-            die();
-        }
-        if (!Sanitizer::sanitizePid($pid)) {
-            throw new \Exception("Invalid pid");
-        }
+	// avoids design rights and development mode issues
+	public static function metadataNoAPI($metadata, $pid) {
+		if (!is_array($metadata)) {
+			Application::log("Upload::metadataNoAPI: first parameter should be array", $pid);
+			die();
+		}
+		if (!Sanitizer::sanitizePid($pid)) {
+			throw new \Exception("Invalid pid");
+		}
 
-        require_once(APP_PATH_DOCROOT."Classes/MetaData.php");
-        require_once(APP_PATH_DOCROOT."Classes/Logging.php");
+		require_once(APP_PATH_DOCROOT."Classes/MetaData.php");
+		require_once(APP_PATH_DOCROOT."Classes/Logging.php");
 
-        self::adaptToUTF8($metadata);
+		self::adaptToUTF8($metadata);
 
-        if (!defined("PROJECT_ID")) {
-            define("PROJECT_ID", $pid);    // to satisfy Metadata::error_checking
-        }
-        \MetaData::createDataDictionarySnapshot();
+		if (!defined("PROJECT_ID")) {
+			define("PROJECT_ID", $pid);    // to satisfy Metadata::error_checking
+		}
+		\MetaData::createDataDictionarySnapshot();
 
-        // Save a flat item-based metadata array
-        $dd_array = \MetaData::convertFlatMetadataToDDarray($metadata);
-        list ($errors, $warnings) = \MetaData::error_checking($dd_array, FALSE, FALSE);
-        if (!empty($errors)) {
-            throw new \Exception("Input errors: ".strip_tags(implode("\n", $errors)));
-        }
+		// Save a flat item-based metadata array
+		$dd_array = \MetaData::convertFlatMetadataToDDarray($metadata);
+		list($errors, $warnings) = \MetaData::error_checking($dd_array, false, false);
+		if (!empty($errors)) {
+			throw new \Exception("Input errors: ".strip_tags(implode("\n", $errors)));
+		}
 
-        $errors = \MetaData::save_metadata($dd_array, FALSE, TRUE, $pid);
-        $count = count($dd_array['A']);
+		$errors = \MetaData::save_metadata($dd_array, false, true, $pid);
+		$count = count($dd_array['A']);
 
-        $_SESSION['metadata'.$pid] = [];
-        $_SESSION['lastMetadata'.$pid] = 0;
+		$_SESSION['metadata'.$pid] = [];
+		$_SESSION['lastMetadata'.$pid] = 0;
 
-        // Return any errors found when attempting to commit
-        if (!empty($errors)) {
-            throw new \Exception("Upload errors: ".strip_tags(implode("\n", $errors)));
-        } else {
-            \Logging::logEvent("", "redcap_metadata", "MANAGE", $pid, "project_id = " . $pid, "Upload data dictionary");
+		// Return any errors found when attempting to commit
+		if (!empty($errors)) {
+			throw new \Exception("Upload errors: ".strip_tags(implode("\n", $errors)));
+		} else {
+			\Logging::logEvent("", "redcap_metadata", "MANAGE", $pid, "project_id = " . $pid, "Upload data dictionary");
 
-            return $count;
-        }
+			return $count;
+		}
 
-    }
+	}
 
-    public static function metadata($metadata, $token, $server) {
+	public static function metadata($metadata, $token, $server) {
 		self::adaptToUTF8($metadata);
 		if (!is_array($metadata)) {
 			Application::log("Upload::metadata: first parameter should be array");
@@ -352,26 +349,26 @@ class Upload
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-        $server = Sanitizer::sanitizeURL($server);
-        if (!$server) {
-            throw new \Exception("Invalid URL");
-        }
+		$server = Sanitizer::sanitizeURL($server);
+		if (!$server) {
+			throw new \Exception("Invalid URL");
+		}
 
-        $pid = Application::getPID($token);
-        if ($pid) {
-            return self::metadataNoAPI($metadata, $pid);
-        }
-        if (REDCapManagement::isInProduction($pid)) {
-            REDCapManagement::setToDevelopment($pid);
-        }
+		$pid = Application::getPID($token);
+		if ($pid) {
+			return self::metadataNoAPI($metadata, $pid);
+		}
+		if (REDCapManagement::isInProduction($pid)) {
+			REDCapManagement::setToDevelopment($pid);
+		}
 
-		$data = array(
+		$data = [
 			'token' => $token,
 			'content' => 'metadata',
 			'format' => 'json',
 			'data' => json_encode($metadata),
 			'returnFormat' => 'json'
-		);
+		];
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $server);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -381,155 +378,153 @@ class Upload
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch,CURLOPT_HTTPHEADER,array("Expect:"));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-        URLManagement::applyProxyIfExists($ch, $pid);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+		curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+		URLManagement::applyProxyIfExists($ch, $pid);
 		$output = (string) curl_exec($ch);
-        $feedback = json_decode($output, TRUE);
-        self::testFeedback($feedback, $output, $ch, $metadata, $pid);
+		$feedback = json_decode($output, true);
+		self::testFeedback($feedback, $output, $ch, $metadata, $pid);
 		curl_close($ch);
 
-        $pid = Application::getPID($token);
+		$pid = Application::getPID($token);
 
-        if ($pid) {
-            $_SESSION['metadata'.$pid] = [];
-            $_SESSION['lastMetadata'.$pid] = 0;
-        }
+		if ($pid) {
+			$_SESSION['metadata'.$pid] = [];
+			$_SESSION['lastMetadata'.$pid] = 0;
+		}
 
-		self::$useAPIOnly[$token] = TRUE;
+		self::$useAPIOnly[$token] = true;
 		Application::log("Upload::metadata returning $output", $pid);
 		return $feedback;
 	}
 
-	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = array(), $pid = NULL) {
-        if (!$feedback && ($curlHandle !== FALSE)) {
-            $returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
-            $curlError = curl_error($curlHandle);
-            if ($returnCode != 200) {
-                throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
-            }
-        } else if (isset($feedback['error']) && $feedback['error']) {
-            Application::log("Upload error: ".$feedback['error'], $pid);
-            if (preg_match("/Each multiple choice field \(radio, drop-down, checkbox, etc\.\) must have choices listed in column F, but the following\s+cells have choices missing: ([F\d\s,]+)/", $feedback['error'], $matches)) {
-                $cells = explode(", ", $matches[1]);
-                $displayRows = [];
-                foreach ($cells as $cell) {
-                    $cell = trim($cell);
-                    $lineNum = (int) str_replace("F", "", $cell);
-                    $displayRows[] = $rows[$lineNum - 2];
-                }
-                throw new \Exception("Error: ".$feedback['error']."\n".json_encode($displayRows));
-            } else {
-                throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
-            }
+	private static function testFeedback($feedback, $originalText, $curlHandle, $rows = [], $pid = null) {
+		if (!$feedback && ($curlHandle !== false)) {
+			$returnCode = curl_getinfo($curlHandle, CURLINFO_RESPONSE_CODE);
+			$curlError = curl_error($curlHandle);
+			if ($returnCode != 200) {
+				throw new \Exception("Upload error (non-JSON): $originalText [$returnCode] - $curlError");
+			}
+		} elseif (isset($feedback['error']) && $feedback['error']) {
+			Application::log("Upload error: ".$feedback['error'], $pid);
+			if (preg_match("/Each multiple choice field \(radio, drop-down, checkbox, etc\.\) must have choices listed in column F, but the following\s+cells have choices missing: ([F\d\s,]+)/", $feedback['error'], $matches)) {
+				$cells = explode(", ", $matches[1]);
+				$displayRows = [];
+				foreach ($cells as $cell) {
+					$cell = trim($cell);
+					$lineNum = (int) str_replace("F", "", $cell);
+					$displayRows[] = $rows[$lineNum - 2];
+				}
+				throw new \Exception("Error: ".$feedback['error']."\n".json_encode($displayRows));
+			} else {
+				throw new \Exception("Error: ".$feedback['error']."\n".json_encode($rows));
+			}
 		}
 		if (isset($feedback['errors']) && $feedback['errors']) {
-		    if (is_array($feedback['errors'])) {
-                Application::log("Upload errors: ".implode("; ", $feedback['errors']));
-                $errors = $feedback['errors'];
-                foreach ($errors as $i => $error) {
-                    $ary = str_getcsv($error);
-                    $errors[$i] = "<strong>Record {$ary[0]}</strong><br/>Field: {$ary[1]}<br/>Wrong Value: '{$ary[2]}'<br/>Error: {$ary[3]}";
-                }
-                throw new \Exception("<h2>".count($errors)." Errors</h2><p>".implode("</p>", $errors)."\n".json_encode($rows));
-            } else {
-                Application::log("Upload errors: ".$feedback['errors']);
-                throw new \Exception("Errors: ".$feedback['errors']."\n".json_encode($rows));
-            }
+			if (is_array($feedback['errors'])) {
+				Application::log("Upload errors: ".implode("; ", $feedback['errors']));
+				$errors = $feedback['errors'];
+				foreach ($errors as $i => $error) {
+					$ary = str_getcsv($error);
+					$errors[$i] = "<strong>Record {$ary[0]}</strong><br/>Field: {$ary[1]}<br/>Wrong Value: '{$ary[2]}'<br/>Error: {$ary[3]}";
+				}
+				throw new \Exception("<h2>".count($errors)." Errors</h2><p>".implode("</p>", $errors)."\n".json_encode($rows));
+			} else {
+				Application::log("Upload errors: ".$feedback['errors']);
+				throw new \Exception("Errors: ".$feedback['errors']."\n".json_encode($rows));
+			}
 		}
-		return TRUE;
+		return true;
 	}
 
 	public static function file($pid, $record, $field, $originalBase64, $filename, $instance = 1) {
-        $base64 = preg_replace("/^data:.+?;base64,\s?/", "", $originalBase64);
-        $base64 = str_replace(" ", "+", $base64);
-        $contents = base64_decode($base64);
-        if ($contents) {
-            $file = [];
-            $fullFilename = REDCapManagement::makeSafeFilename(substr(sha1((string) rand()), 0, 6)."_".$filename);
-            $file['tmp_name'] = APP_PATH_TEMP.$fullFilename;
-            $file['size'] = strlen($contents);
-            $file['name'] = $filename;
+		$base64 = preg_replace("/^data:.+?;base64,\s?/", "", $originalBase64);
+		$base64 = str_replace(" ", "+", $base64);
+		$contents = base64_decode($base64);
+		if ($contents) {
+			$file = [];
+			$fullFilename = REDCapManagement::makeSafeFilename(substr(sha1((string) rand()), 0, 6)."_".$filename);
+			$file['tmp_name'] = APP_PATH_TEMP.$fullFilename;
+			$file['size'] = strlen($contents);
+			$file['name'] = $filename;
 
-            file_put_contents($file['tmp_name'], $contents);
+			file_put_contents($file['tmp_name'], $contents);
 
-            $module = Application::getModule();
-            $sql = "SELECT m.event_id AS event_id FROM redcap_events_arms AS a INNER JOIN redcap_events_metadata AS m ON a.arm_id = m.arm_id WHERE a.project_id = ?";
-            $q = $module->query($sql, [$pid]);
-            if ($row = $q->fetch_assoc($q)) {
-                $event_id = $row['event_id'];
-            } else {
-                return ["error" => "Could not locate event_id!"];
-            }
+			$module = Application::getModule();
+			$sql = "SELECT m.event_id AS event_id FROM redcap_events_arms AS a INNER JOIN redcap_events_metadata AS m ON a.arm_id = m.arm_id WHERE a.project_id = ?";
+			$q = $module->query($sql, [$pid]);
+			if ($row = $q->fetch_assoc($q)) {
+				$event_id = $row['event_id'];
+			} else {
+				return ["error" => "Could not locate event_id!"];
+			}
 
-            require_once(APP_PATH_DOCROOT."Classes/Files.php");
-            $docId = \Files::uploadFile($file, $pid);
+			require_once(APP_PATH_DOCROOT."Classes/Files.php");
+			$docId = \Files::uploadFile($file, $pid);
 
-            $whereClause = "project_id = ? AND event_id = ? AND record = ? AND field_name = ? AND instance = ?";
+			$whereClause = "project_id = ? AND event_id = ? AND record = ? AND field_name = ? AND instance = ?";
 
-            $dataTable = Application::getDataTable($pid);
-            $params = [$pid, $event_id, $record, $field, $instance];
-            $sql = "SELECT `value` FROM $dataTable WHERE $whereClause";
-            $result = $module->query($sql, $params);
-            if ($result->num_rows > 0) {
-                $params = [$docId, $pid, $event_id, $record, $field, $instance];
-                $sql = "UPDATE $dataTable SET `value` = ? WHERE $whereClause";
-            } else {
-                $params = [$pid, $event_id, $record, $field, $docId, $instance];
-                $sql = "INSERT INTO $dataTable (project_id, event_id, record, field_name, `value`, `instance`)
+			$dataTable = Application::getDataTable($pid);
+			$params = [$pid, $event_id, $record, $field, $instance];
+			$sql = "SELECT `value` FROM $dataTable WHERE $whereClause";
+			$result = $module->query($sql, $params);
+			if ($result->num_rows > 0) {
+				$params = [$docId, $pid, $event_id, $record, $field, $instance];
+				$sql = "UPDATE $dataTable SET `value` = ? WHERE $whereClause";
+			} else {
+				$params = [$pid, $event_id, $record, $field, $docId, $instance];
+				$sql = "INSERT INTO $dataTable (project_id, event_id, record, field_name, `value`, `instance`)
                         VALUES (?, ?, ?, ?, ?, ?)";
-            }
+			}
 
-            $module->query($sql, $params);
-            return ["doc_id" => $docId];
-        } else {
-            return ["error" => "Could not decode base64"];
-        }
-    }
+			$module->query($sql, $params);
+			return ["doc_id" => $docId];
+		} else {
+			return ["error" => "Could not decode base64"];
+		}
+	}
 
-    public static function projectSettingsNotAPI($settings, $pid) {
-        require_once(APP_PATH_DOCROOT."Classes/Project.php");
-        require_once(APP_PATH_DOCROOT."Classes/Logging.php");
+	public static function projectSettingsNotAPI($settings, $pid) {
+		require_once(APP_PATH_DOCROOT."Classes/Project.php");
+		require_once(APP_PATH_DOCROOT."Classes/Logging.php");
 
-        $Proj = new \Project($pid);
-        \Logging::logEvent("", "redcap_projects", "MANAGE", $pid, "project_id = " . $pid, "Import project information");
+		$Proj = new \Project($pid);
+		\Logging::logEvent("", "redcap_projects", "MANAGE", $pid, "project_id = " . $pid, "Import project information");
 
-        $project_fields = \Project::getAttributesApiExportProjectInfo();
-        foreach ($project_fields as $key => $hdr)
-        {
-            if (isset($settings[$hdr]))
-            {
-                $Proj->project[$key] = $settings[$hdr];
-            }
-        }
-        $Proj->setProjectValues();
-        return count($settings);
-    }
+		$project_fields = \Project::getAttributesApiExportProjectInfo();
+		foreach ($project_fields as $key => $hdr) {
+			if (isset($settings[$hdr])) {
+				$Proj->project[$key] = $settings[$hdr];
+			}
+		}
+		$Proj->setProjectValues();
+		return count($settings);
+	}
 
-	public static function projectSettings($settings, $token, $server, $useAPIOnly = FALSE) {
+	public static function projectSettings($settings, $token, $server, $useAPIOnly = false) {
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-        if (!$useAPIOnly) {
-            $pid = Application::getPID($token);
-            if ($pid) {
-                return self::projectSettingsNotAPI($settings, $pid);
-            }
-        }
-        $server = Sanitizer::sanitizeURL($server);
-        if (!$server) {
-            throw new \Exception("Invalid URL");
-        }
-        self::adaptToUTF8($settings);
-        $data = array(
+		if (!$useAPIOnly) {
+			$pid = Application::getPID($token);
+			if ($pid) {
+				return self::projectSettingsNotAPI($settings, $pid);
+			}
+		}
+		$server = Sanitizer::sanitizeURL($server);
+		if (!$server) {
+			throw new \Exception("Invalid URL");
+		}
+		self::adaptToUTF8($settings);
+		$data = [
 			'token' => $token,
 			'content' => 'project_settings',
 			'format' => 'json',
 			'data' => json_encode($settings),
 			'returnFormat' => 'json'
-			);
+			];
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $server);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -539,44 +534,44 @@ class Upload
 		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 		curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 		curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-        curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
+		curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
 		curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-        $pid = isset($data['token']) ? Application::getPID($data['token']) : "";
-        URLManagement::applyProxyIfExists($ch, $pid);
-        $output = (string) curl_exec($ch);
-        $feedback = json_decode($output, TRUE);
-        self::testFeedback($feedback, $output, $ch, $settings);
-        curl_close($ch);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+		$pid = isset($data['token']) ? Application::getPID($data['token']) : "";
+		URLManagement::applyProxyIfExists($ch, $pid);
+		$output = (string) curl_exec($ch);
+		$feedback = json_decode($output, true);
+		self::testFeedback($feedback, $output, $ch, $settings);
+		curl_close($ch);
 
-		self::$useAPIOnly[$token] = TRUE;
+		self::$useAPIOnly[$token] = true;
 		if (isset($_GET['test'])) {
-            Application::log("Upload::projectSettings returning $output");
-        }
+			Application::log("Upload::projectSettings returning $output");
+		}
 		return $feedback;
 	}
 
 	public static function resource($recordId, $value, $token, $server, $date = "AUTOFILL", $grant = "") {
 		$redcapData = Download::resources($token, $server, [$recordId]);
-        $metadataFields = Download::metadataFields($token, $server);
+		$metadataFields = Download::metadataFields($token, $server);
 		if ($date == "AUTOFILL") {
 			$date = date("Y-m-d");
 		}
-        $maxInstance = REDCapManagement::getMaxInstance($redcapData, "resources", $recordId);
+		$maxInstance = REDCapManagement::getMaxInstance($redcapData, "resources", $recordId);
 		$maxInstance++;
 
 		$uploadRow = [
-            "record_id" => $recordId,
-            "redcap_repeat_instrument" => "resources",
-            "redcap_repeat_instance" => $maxInstance,
-            "resources_date" => $date,
-            "resources_resource" => $value,
-            "resources_complete" => "2",
-        ];
-        if ($grant && in_array("resources_grant", $metadataFields)) {
-            $uploadRow["resources_grant"] = $grant;
-        }
+			"record_id" => $recordId,
+			"redcap_repeat_instrument" => "resources",
+			"redcap_repeat_instance" => $maxInstance,
+			"resources_date" => $date,
+			"resources_resource" => $value,
+			"resources_complete" => "2",
+		];
+		if ($grant && in_array("resources_grant", $metadataFields)) {
+			$uploadRow["resources_grant"] = $grant;
+		}
 
 		return self::oneRow($uploadRow, $token, $server);
 	}
@@ -585,12 +580,12 @@ class Upload
 	public static function isolateErrors($result) {
 		if (is_array($result) && $result['errors']) {
 			return $result['errors'];
-		} else if (is_string($result)) {
+		} elseif (is_string($result)) {
 			$result = json_decode($result, true);
 			if ($result && $result['errors']) {
 				return $result['errors'];
 			} else {
-				return array();
+				return [];
 			}
 		}
 		return [];
@@ -601,7 +596,7 @@ class Upload
 			Application::log("Upload::oneRow: first parameter should be array");
 			die();
 		}
-		return self::rows(array($row), $token, $server);
+		return self::rows([$row], $token, $server);
 	}
 
 	public static function rowsAsync($rows, $token, $server) {
@@ -617,72 +612,72 @@ class Upload
 		foreach ($currFeedback as $key => $value) {
 			if (!isset($priorFeedback[$key]) || !$priorFeedback[$key]) {
 				$priorFeedback[$key] = $value;
-			} else if (is_numeric($value) && is_numeric($priorFeedback[$key])) {
+			} elseif (is_numeric($value) && is_numeric($priorFeedback[$key])) {
 				$priorFeedback[$key] = $priorFeedback[$key] + $value;
 			}
 		}
 		return $priorFeedback;
 	}
 
-    private static function filterOutDescriptiveFields(array &$rows, $pid): void {
-        if (!$pid) {
-            return;
-        }
-        $descriptiveFields = Download::metadataFieldsByPidOfType($pid, "descriptive");
-        foreach ($rows as &$row) {
-            foreach ($row as $field => $value) {
-                if (in_array($field, $descriptiveFields)) {
-                    unset($row[$field]);
-                }
-            }
-        }
-    }
+	private static function filterOutDescriptiveFields(array &$rows, $pid): void {
+		if (!$pid) {
+			return;
+		}
+		$descriptiveFields = Download::metadataFieldsByPidOfType($pid, "descriptive");
+		foreach ($rows as &$row) {
+			foreach ($row as $field => $value) {
+				if (in_array($field, $descriptiveFields)) {
+					unset($row[$field]);
+				}
+			}
+		}
+	}
 
 	public static function rowsByPid($rows, $pid) {
-        if (!self::checkRows($rows)) {
-            return "";
-        }
-        self::filterOutDescriptiveFields($rows, $pid);
-        if (!is_numeric($pid)) {
-            Application::log("Non-numeric pid $pid");
-            echo "Non-numeric pid $pid\n";
-            die();
-        }
-        if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
-            $feedback = \REDCap::saveData($pid, "json-array", $rows, "overwrite");
-        } else {
-            $feedback = \REDCap::saveData($pid, "json", json_encode($rows), "overwrite");
-        }
-        $output = json_encode($feedback);
-        self::testFeedback($feedback, $output, FALSE, [], $pid);
-        return $feedback;
-    }
+		if (!self::checkRows($rows)) {
+			return "";
+		}
+		self::filterOutDescriptiveFields($rows, $pid);
+		if (!is_numeric($pid)) {
+			Application::log("Non-numeric pid $pid");
+			echo "Non-numeric pid $pid\n";
+			die();
+		}
+		if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+			$feedback = \REDCap::saveData($pid, "json-array", $rows, "overwrite");
+		} else {
+			$feedback = \REDCap::saveData($pid, "json", json_encode($rows), "overwrite");
+		}
+		$output = json_encode($feedback);
+		self::testFeedback($feedback, $output, false, [], $pid);
+		return $feedback;
+	}
 
-    private static function checkRows($rows) {
-        if (!is_array($rows)) {
-            $rows = REDCapManagement::sanitize($rows);
-            Application::log("Upload::rows: first parameter should be array (= '$rows')");
-            echo "Upload::rows: first parameter should be array (= '$rows')!\n";
-            die();
-        }
-        if (empty($rows)) {
-            Application::log("WARNING! Upload::rows input is empty!");
-            echo "WARNING! Upload::rows input is empty!\n";
-            return "";
-        }
-        return TRUE;
-    }
+	private static function checkRows($rows) {
+		if (!is_array($rows)) {
+			$rows = REDCapManagement::sanitize($rows);
+			Application::log("Upload::rows: first parameter should be array (= '$rows')");
+			echo "Upload::rows: first parameter should be array (= '$rows')!\n";
+			die();
+		}
+		if (empty($rows)) {
+			Application::log("WARNING! Upload::rows input is empty!");
+			echo "WARNING! Upload::rows input is empty!\n";
+			return "";
+		}
+		return true;
+	}
 
 	public static function rows($rows, $token, $server, $retryCount = 0) {
-        if (!self::checkRows($rows)) {
-            if (isset($_GET['test'])) {
-                echo "Failed test<br>";
-            }
-            return "";
-        }
-        if (isset($_GET['test'])) {
-            echo "Passed test: ".count($rows)."<br>";
-        }
+		if (!self::checkRows($rows)) {
+			if (isset($_GET['test'])) {
+				echo "Failed test<br>";
+			}
+			return "";
+		}
+		if (isset($_GET['test'])) {
+			echo "Passed test: ".count($rows)."<br>";
+		}
 		if (!REDCapManagement::isValidToken($token)) {
 			Application::log("Upload::rows: second parameter should be token (= '$token')");
 			echo "Upload::rows: second parameter should be token (= '$token')\n";
@@ -691,17 +686,17 @@ class Upload
 		if (!$token || !$server) {
 			throw new \Exception("No token or server supplied!");
 		}
-        $pid = Application::getPID($token);
-        self::filterOutDescriptiveFields($rows, $pid);
-        self::adaptToUTF8($rows);
+		$pid = Application::getPID($token);
+		self::filterOutDescriptiveFields($rows, $pid);
+		self::adaptToUTF8($rows);
 		if (isset($_GET['test'])) {
-            Application::log("Upload::rows uploading ".count($rows)." rows");
-        }
+			Application::log("Upload::rows uploading ".count($rows)." rows");
+		}
 		if (count($rows) > self::getRowLimit()) {
-			$rowsOfRows = array();
+			$rowsOfRows = [];
 			$i = 0;
 			while ($i < count($rows)) {
-				$currRows = array();
+				$currRows = [];
 				$j = $i;
 				while (($j < $i + self::getRowLimit()) && ($j < count($rows))) {
 					$currRows[] = $rows[$j];
@@ -713,24 +708,24 @@ class Upload
 				$i += self::getRowLimit();
 			}
 		} else {
-			$rowsOfRows = array($rows);
+			$rowsOfRows = [$rows];
 		}
 
-        foreach (array_keys($rowsOfRows) as $i) {
-            self::handleLargeJSONs($rowsOfRows[$i], $pid);
-        }
+		foreach (array_keys($rowsOfRows) as $i) {
+			self::handleLargeJSONs($rowsOfRows[$i], $pid);
+		}
 
 		$saveDataEligible = ($pid && $_GET['pid']  && ($pid == $_GET['pid']) && method_exists('\REDCap', 'saveData'));
 		if (isset(self::$useAPIOnly[$token]) && self::$useAPIOnly[$token]) {
-			$saveDataEligible = FALSE;
+			$saveDataEligible = false;
 		}
 
-        $method = "";
-		$allFeedback = array();
+		$method = "";
+		$allFeedback = [];
 		foreach ($rowsOfRows as $rows) {
-            $method = "";
-            $feedback = [];
-			$data = array(
+			$method = "";
+			$feedback = [];
+			$data = [
 				'token' => $token,
 				'content' => 'record',
 				'format' => 'json',
@@ -738,32 +733,32 @@ class Upload
 				'overwriteBehavior' => 'overwrite',
 				'returnContent' => 'count',
 				'returnFormat' => 'json'
-				);
-			$runAPI = TRUE;
+				];
+			$runAPI = true;
 			$output = "";
-			$time2 = FALSE;
-			$time3 = FALSE;
+			$time2 = false;
+			$time3 = false;
 			if ($saveDataEligible) {
 				$method = "saveData";
-				$time2 = microtime(TRUE);
+				$time2 = microtime(true);
 				if (method_exists("\\REDCap", "saveData")) {
-                    if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
-                        $feedback = \REDCap::saveData($pid, "json-array", $rows, $data['overwriteBehavior']);
-                    } else {
-                        $feedback = \REDCap::saveData($pid, "json", json_encode($rows), $data['overwriteBehavior']);
-                    }
-                    $time3 = microtime(TRUE);
-                    $output = json_encode($feedback);
-                    self::testFeedback($feedback, $output, NULL, [], $pid);
-                    $runAPI = FALSE;
-                }
+					if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
+						$feedback = \REDCap::saveData($pid, "json-array", $rows, $data['overwriteBehavior']);
+					} else {
+						$feedback = \REDCap::saveData($pid, "json", json_encode($rows), $data['overwriteBehavior']);
+					}
+					$time3 = microtime(true);
+					$output = json_encode($feedback);
+					self::testFeedback($feedback, $output, null, [], $pid);
+					$runAPI = false;
+				}
 			}
 			if ($runAPI) {
-                $server = Sanitizer::sanitizeURL($server);
-                if (!$server) {
-                    throw new \Exception("Invalid URL");
-                }
-                $data['data'] = json_encode($rows);
+				$server = Sanitizer::sanitizeURL($server);
+				if (!$server) {
+					throw new \Exception("Invalid URL");
+				}
+				$data['data'] = json_encode($rows);
 				$method = "API";
 				$ch = curl_init();
 				curl_setopt($ch, CURLOPT_URL, $server);
@@ -774,106 +769,106 @@ class Upload
 				curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
 				curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'POST');
 				curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
-                curl_setopt($ch, CURLOPT_HTTPHEADER,array("Expect:"));
-                curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
-                curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-                curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, FALSE);
-                URLManagement::applyProxyIfExists($ch, $pid);
-                $time2 = microtime(TRUE);
+				curl_setopt($ch, CURLOPT_HTTPHEADER, ["Expect:"]);
+				curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
+				curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+				curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+				URLManagement::applyProxyIfExists($ch, $pid);
+				$time2 = microtime(true);
 				$output = (string) curl_exec($ch);
-                $feedback = json_decode($output, true);
-                curl_close($ch);
-                $time3 = microtime(TRUE);
+				$feedback = json_decode($output, true);
+				curl_close($ch);
+				$time3 = microtime(true);
 
-                try {
-                    self::testFeedback($feedback, $output, $ch, $rows, $pid);
-                } catch (\Exception $e) {
-                    if ($retryCount < self::MAX_RETRIES) {
-                        $retryCount++;
-                        if ($retryCount == self::MAX_RETRIES) {
-                            sleep(60);
-                        } else {
-                            sleep(5);
-                        }
-                        $feedback = self::rows($rows, $token, $server, $retryCount);
-                    } else {
-                        throw new \Exception($e->getMessage());
-                    }
-                }
-                Download::throttleIfNecessary($pid);
+				try {
+					self::testFeedback($feedback, $output, $ch, $rows, $pid);
+				} catch (\Exception $e) {
+					if ($retryCount < self::MAX_RETRIES) {
+						$retryCount++;
+						if ($retryCount == self::MAX_RETRIES) {
+							sleep(60);
+						} else {
+							sleep(5);
+						}
+						$feedback = self::rows($rows, $token, $server, $retryCount);
+					} else {
+						throw new \Exception($e->getMessage());
+					}
+				}
+				Download::throttleIfNecessary($pid);
 			}
 			if (isset($_GET['test']) && $time3 && $time2) {
-                if ($method == "saveData") {
-                    Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
-                } else {
-                    Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
-                }
-            }
+				if ($method == "saveData") {
+					Application::log("Upload::rows $method for pid $pid returning $output in ".($time3 - $time2)." seconds");
+				} else {
+					Application::log("Upload::rows $method returning $output in ".($time3 - $time2)." seconds");
+				}
+			}
 			if (!empty($feedback)) {
-                $allFeedback = self::combineFeedback($allFeedback, $feedback);
-            }
+				$allFeedback = self::combineFeedback($allFeedback, $feedback);
+			}
 		}
 		Application::log($method." (pid $pid): ".REDCapManagement::json_encode_with_spaces($allFeedback), $pid);
 		return $allFeedback;
 	}
 
-    private static function handleLargeJSONs(&$rows, $pid) {
-        $maxLength = 65000;
-        foreach (array_keys($rows) as $i) {
-            foreach ($rows[$i] as $field => $value) {
-                if ((strpos($field, "summary_calculate_") !== FALSE) && strlen($value) > $maxLength) {
-                    $recordId = $rows[$i]["record_id"];
-                    $key = $field."___".$recordId;
-                    Application::saveSetting($key, $value, $pid);
-                    $rows[$i][$field] = $key;
-                }
-            }
-        }
-    }
+	private static function handleLargeJSONs(&$rows, $pid) {
+		$maxLength = 65000;
+		foreach (array_keys($rows) as $i) {
+			foreach ($rows[$i] as $field => $value) {
+				if ((strpos($field, "summary_calculate_") !== false) && strlen($value) > $maxLength) {
+					$recordId = $rows[$i]["record_id"];
+					$key = $field."___".$recordId;
+					Application::saveSetting($key, $value, $pid);
+					$rows[$i][$field] = $key;
+				}
+			}
+		}
+	}
 
-    # note: do not use this with VERIFYPEER - too many servers use self-signed certificates
+	# note: do not use this with VERIFYPEER - too many servers use self-signed certificates
 	public static function isProductionServer($pid) {
-        if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isTestServer")) {
-            return !Application::isTestServer($pid);
-        }
-        return FALSE;
-    }
+		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isTestServer")) {
+			return !Application::isTestServer($pid);
+		}
+		return false;
+	}
 
-    public static function makeIds($rows) {
-        $ids = [];
-        $sep = ":";
-        foreach ($rows as $row) {
-            $instrument = $row['redcap_repeat_instrument'] ?? "";
-            $recordId = $row['record_id'];
-            $instance = $row['redcap_repeat_instance'] ?? "";
-            if (!$instance && !$instrument) {
-                $ids[] = $recordId.$sep."NORMATIVE";
-            } else {
-                $ids[] = $recordId.$sep.$instrument.$sep.$instance;
-            }
-        }
-        return $ids;
-    }
+	public static function makeIds($rows) {
+		$ids = [];
+		$sep = ":";
+		foreach ($rows as $row) {
+			$instrument = $row['redcap_repeat_instrument'] ?? "";
+			$recordId = $row['record_id'];
+			$instance = $row['redcap_repeat_instance'] ?? "";
+			if (!$instance && !$instrument) {
+				$ids[] = $recordId.$sep."NORMATIVE";
+			} else {
+				$ids[] = $recordId.$sep.$instrument.$sep.$instance;
+			}
+		}
+		return $ids;
+	}
 
 	# returns array($upload, $errors, $newCounts)
-	public static function prepareFromCSV($headers, $lines, $token, $server, $pid, $metadata = array()) {
+	public static function prepareFromCSV($headers, $lines, $token, $server, $pid, $metadata = []) {
 		if (empty($metadata)) {
 			$metadata = Download::metadata($token, $server);
 		}
 		$choices = DataDictionaryManagement::getChoices($metadata);
-        $dateFields = DataDictionaryManagement::getDateFields($metadata);
+		$dateFields = DataDictionaryManagement::getDateFields($metadata);
 
-		$errors = array();
-		$upload = array();
-		$newCounts = array("new" => 0, "existing" => 0);
+		$errors = [];
+		$upload = [];
+		$newCounts = ["new" => 0, "existing" => 0];
 
-		$headerPrefices = array();
+		$headerPrefices = [];
 		if ($headers[0] == "record_id") {
 			$headerPrefices[] = "record_id";
-		} else if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
+		} elseif (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
 			$headerPrefices[] = "identifier_last_name";
 			$headerPrefices[] = "identifier_first_name";
-		} else if (($headers[0] == "identifier_first_name") && ($headers[1] == "identifier_last_name")) {
+		} elseif (($headers[0] == "identifier_first_name") && ($headers[1] == "identifier_last_name")) {
 			$headerPrefices[] = "identifier_first_name";
 			$headerPrefices[] = "identifier_last_name";
 		} else {
@@ -894,7 +889,7 @@ class Upload
 					}
 				}
 
-				$maxInstance = FALSE;
+				$maxInstance = false;
 				$records = Download::recordIds($token, $server);
 				foreach ($lines as $i => $line) {
 					if (self::isValidCSVLine($headers, $line)) {
@@ -902,22 +897,22 @@ class Upload
 						$errors = array_merge($errors, $newErrors);
 						if ($recordId) {
 							$newCounts['existing']++;
-                            $isNewRecord = FALSE;
+							$isNewRecord = false;
 						} else {
 							$newCounts['new']++;
 							$recordId = $max + 1;
 							$max++;
-                            $isNewRecord = TRUE;
+							$isNewRecord = true;
 						}
-	
-						$uploadRow = array("record_id" => $recordId);
+
+						$uploadRow = ["record_id" => $recordId];
 						$formName = $repeatForms[0];
 						if ($formName === "") {
-                            $maxInstance = "";
-                        } else {
-						    if (!$maxInstance) {
-                                $maxInstance = Download::getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId);
-                            }
+							$maxInstance = "";
+						} else {
+							if (!$maxInstance) {
+								$maxInstance = Download::getMaxInstanceForRepeatingForm($token, $server, $formName, $recordId);
+							}
 							$maxInstance++;
 						}
 						$uploadRow['redcap_repeat_instrument'] = $formName;
@@ -927,60 +922,60 @@ class Upload
 							$j = 0;
 							foreach ($headers as $header) {
 								if (!in_array($header, $headerPrefices)) {
-								    if (isset($choices[$header])) {
-                                        if (isset($choices[$header][$line[$j]])) {
-                                            $uploadRow[$header] = $line[$j];
-                                        } else if (DateManagement::isNumericalMonth($line[$j])) {
-                                            $intMonth = (int)$line[$j];
-                                            $strMonth = "0$intMonth";
-                                            if ($intMonth && isset($choices[$header][$intMonth])) {
-                                                $uploadRow[$header] = $intMonth;
-                                            } else if ($intMonth && isset($choices[$header][$strMonth])) {
-                                                $uploadRow[$header] = $strMonth;
-                                            }
-                                        } else if (preg_match("/^\d+-\w{3}$/", $line[$j])) {
-                                            # Excel saves this for the current year
-                                            # assume that they did not last save last year
-                                            $year = date("Y");
-                                            list($day, $monthStr) = explode("-", $line[$j]);
-                                            $month = DateManagement::getMonthNumber($monthStr);
-                                            $uploadRow[$header] = "$year-$month-$day";
-                                        } else {
-                                            foreach ($choices[$header] as $idx => $val) {
-                                                if ($val == $line[$j]) {
-                                                    $uploadRow[$header] = $idx;
-                                                    break;
-                                                }
-                                            }
-                                            if (!isset($uploadRow[$header])) {
-                                                $lowerVal = strtolower($line[$j]);
-                                                foreach ($choices[$header] as $idx => $val) {
-                                                    if ($lowerVal == strtolower($val)) {
-                                                        $uploadRow[$header] = $idx;
-                                                        break;
-                                                    }
-                                                }
-                                            }
-                                            if (!isset($uploadRow[$header])) {
-                                                # invalid value
-                                                $uploadRow[$header] = $line[$j];
-                                            }
-                                        }
-                                    } else if (in_array($header, $dateFields)) {
-                                        if (DateManagement::isYear($line[$j])) {
-                                            $uploadRow[$header] = $line[$j]."-07-01";
-                                        } else if (DateManagement::isDate($line[$j])) {
-                                            $uploadRow[$header] = $line[$j];
-                                        } else {
-                                            # invalid
-                                            $uploadRow[$header] = $line[$j];
-                                        }
-                                    } else {
-                                        $uploadRow[$header] = $line[$j];
-                                    }
-								} else if (!isset($uploadRow[$header]) && $isNewRecord) {
-                                    $uploadRow[$header] = $line[$j];
-                                }
+									if (isset($choices[$header])) {
+										if (isset($choices[$header][$line[$j]])) {
+											$uploadRow[$header] = $line[$j];
+										} elseif (DateManagement::isNumericalMonth($line[$j])) {
+											$intMonth = (int)$line[$j];
+											$strMonth = "0$intMonth";
+											if ($intMonth && isset($choices[$header][$intMonth])) {
+												$uploadRow[$header] = $intMonth;
+											} elseif ($intMonth && isset($choices[$header][$strMonth])) {
+												$uploadRow[$header] = $strMonth;
+											}
+										} elseif (preg_match("/^\d+-\w{3}$/", $line[$j])) {
+											# Excel saves this for the current year
+											# assume that they did not last save last year
+											$year = date("Y");
+											list($day, $monthStr) = explode("-", $line[$j]);
+											$month = DateManagement::getMonthNumber($monthStr);
+											$uploadRow[$header] = "$year-$month-$day";
+										} else {
+											foreach ($choices[$header] as $idx => $val) {
+												if ($val == $line[$j]) {
+													$uploadRow[$header] = $idx;
+													break;
+												}
+											}
+											if (!isset($uploadRow[$header])) {
+												$lowerVal = strtolower($line[$j]);
+												foreach ($choices[$header] as $idx => $val) {
+													if ($lowerVal == strtolower($val)) {
+														$uploadRow[$header] = $idx;
+														break;
+													}
+												}
+											}
+											if (!isset($uploadRow[$header])) {
+												# invalid value
+												$uploadRow[$header] = $line[$j];
+											}
+										}
+									} elseif (in_array($header, $dateFields)) {
+										if (DateManagement::isYear($line[$j])) {
+											$uploadRow[$header] = $line[$j]."-07-01";
+										} elseif (DateManagement::isDate($line[$j])) {
+											$uploadRow[$header] = $line[$j];
+										} else {
+											# invalid
+											$uploadRow[$header] = $line[$j];
+										}
+									} else {
+										$uploadRow[$header] = $line[$j];
+									}
+								} elseif (!isset($uploadRow[$header]) && $isNewRecord) {
+									$uploadRow[$header] = $line[$j];
+								}
 								$j++;
 							}
 							$upload[] = $uploadRow;
@@ -989,17 +984,17 @@ class Upload
 						}
 					}    // no else because errors are already supplied
 				}
-			} else if (count($repeatForms) == 0) {
+			} elseif (count($repeatForms) == 0) {
 				$errors[] = "No data are specified in the table.";
 			} else {
 				$errors[] = "More than one repeating form is specified on the same row: " . implode(", ", $repeatForms);
 			}
 		}
-		return array($upload, $errors, $newCounts);
+		return [$upload, $errors, $newCounts];
 	}
 
 	private static function getRepeatFormsFromList($headers, $headerPrefices, $metadata, $pid) {
-		$repeatFormsInList = array();
+		$repeatFormsInList = [];
 		$allRepeatForms = Scholar::getRepeatingForms($pid);
 		foreach ($headers as $header) {
 			if (!in_array($header, $headerPrefices)) {
@@ -1010,9 +1005,9 @@ class Upload
 								array_push($repeatFormsInList, $row['form_name']);
 							}
 						} else {
-                            if (!in_array("", $repeatFormsInList)) {
-                                array_push($repeatFormsInList, "");   // normative row
-                            }
+							if (!in_array("", $repeatFormsInList)) {
+								array_push($repeatFormsInList, "");   // normative row
+							}
 						}
 					}
 				}
@@ -1022,20 +1017,20 @@ class Upload
 	}
 
 	private static function getInvalidHeaders($headers, $metadata) {
-		$invalid = array();
-		$found = array();
-        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
+		$invalid = [];
+		$found = [];
+		$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($metadata);
 		foreach ($headers as $header) {
-            if (preg_match("/___/", $header)) {
-                $nodes = preg_split("/___/", $header);
-                $fieldName = $nodes[0];
-            } else {
-                $fieldName = $header;
-            }
+			if (preg_match("/___/", $header)) {
+				$nodes = preg_split("/___/", $header);
+				$fieldName = $nodes[0];
+			} else {
+				$fieldName = $header;
+			}
 
 			if (!in_array($fieldName, $metadataFields)) {
 				$invalid[] = $header." (invalid)";
-			} else if (!in_array($header, $found)) {
+			} elseif (!in_array($header, $found)) {
 				$found[] = $header;
 			} else {
 				# duplicate
@@ -1048,45 +1043,45 @@ class Upload
 	public static function isValidCSVLine($headers, $line) {
 		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
-				return TRUE;
+				return true;
 			}
-		} else if (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
+		} elseif (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
-				return TRUE;
+				return true;
 			}
-		} else if ($headers[0] == "record_id") {
+		} elseif ($headers[0] == "record_id") {
 			if ($line[0]) {
-				return TRUE;
+				return true;
 			}
 		}
-		return FALSE;
+		return false;
 	}
 
 	public static function getRecordIdForCSVLine($headers, $line, $i, $token, $server, $records = []) {
-        if (empty($records)) {
-            $records = Download::recordIds($token, $server);
-        }
-		$recordId = FALSE;
-		$errors = array();
+		if (empty($records)) {
+			$records = Download::recordIds($token, $server);
+		}
+		$recordId = false;
+		$errors = [];
 		if (($headers[0] == "identifier_last_name") && ($headers[1] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
 				$recordId = NameMatcher::matchName($line[1], $line[0], $token, $server);
 			} else {
 				$errors[] = "On data line $i, you must supply a first and last name.";
 			}
-		} else if (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
+		} elseif (($headers[1] == "identifier_last_name") && ($headers[0] == "identifier_first_name")) {
 			if ($line[0] && $line[1]) {
 				$recordId = NameMatcher::matchName($line[0], $line[1], $token, $server);
 			} else {
 				$errors[] = "On data line $i, you must supply a first and last name.";
 			}
-		} else if ($headers[0] == "record_id") {
+		} elseif ($headers[0] == "record_id") {
 			if (is_numeric($line[0])) {
-			    if (REDCapManagement::exactInArray($line[0], $records)) {
-                    $recordId = $line[0];
-                } else {
-			        $errors[] = "On data line $i, your record {$line[0]} is not matching an existing record. Only existing records are supported.";
-                }
+				if (REDCapManagement::exactInArray($line[0], $records)) {
+					$recordId = $line[0];
+				} else {
+					$errors[] = "On data line $i, your record {$line[0]} is not matching an existing record. Only existing records are supported.";
+				}
 			} else {
 				$errors[] = "On data line $i, the record id must be numeric. It is {$line[0]}.";
 			}
@@ -1096,5 +1091,5 @@ class Upload
 		return [$recordId, $errors];
 	}
 
-	private static $useAPIOnly = array();
+	private static $useAPIOnly = [];
 }

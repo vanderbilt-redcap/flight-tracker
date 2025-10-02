@@ -8,108 +8,69 @@ require_once(__DIR__."/../small_base.php");
 define("DEFAULT_RESOURCE_FIELD", "resources_resource");
 
 if (!Application::has("mentoring_agreement")) {
-    throw new \Exception("The Mentoring Agreement is not set up in this project.");
+	throw new \Exception("The Mentoring Agreement is not set up in this project.");
 }
 
 if (($_POST['action'] == "updateField") && in_array($_POST['field'], ['mentor_name', 'mentor_userids', 'mentee_userid'])) {
-    $records = Download::recordIdsByPid($pid);
-    $recordId = Sanitizer::getSanitizedRecord($_POST['record'], $records);
-    $value = Sanitizer::sanitizeWithoutChangingQuotes($_POST['value']);
-    $uploadRow = [
-        "record_id" => $recordId,
-    ];
-    if ($_POST['field'] == "mentor_name") {
-        $uploadRow["summary_mentor"] = $value;
-        if (Application::isPluginProject($pid)) {
-            $uploadRow["override_mentor"] = $value;
-        } else {
-            $uploadRow["imported_mentor"] = $value;
-        }
-    } else if ($_POST['field'] == "mentor_userids") {
-        $uploadRow["summary_mentor_userid"] = $value;
-        if (Application::isPluginProject($pid)) {
-            $uploadRow["override_mentor_userid"] = $value;
-        } else {
-            $uploadRow["imported_mentor_userid"] = $value;
-        }
-    } else if ($_POST['field'] == "mentee_userid") {
-        # Every project but one uses identifier_userid; the original Newman project uses identifier_vunet
-        # I probably should convert all data into the new convention, but I've never done so
-        $useridField = Download::getUseridField($token, $server);
-        if ($useridField) {
-            $uploadRow[$useridField] = $value;
-        }
-    }
-    if (count($uploadRow) > 1) {
-        $feedback = Upload::oneRow($uploadRow, $token, $server);
-    } else {
-        $feedback = ["error" => "Could not locate field."];
-    }
-    echo json_encode($feedback);
-    exit;
-} else if (($_POST['action'] == "notifyMentees") && !empty($_POST['records'] ?? [])) {
-    $requestedRecords = $_POST['records'];
-    $allRecords = Download::recordIdsByPid($pid);
-    $userids = Download::userids($token, $server);
-    $menteeNames = Download::names($token, $server);
-    $menteeEmails = Download::emails($token, $server);
-    $primaryMentors = Download::primaryMentors($token, $server);
-    $matchedRecords = [];
-    if (is_array($requestedRecords)) {
-        foreach ($requestedRecords as $recordId) {
-            $sanitizedRecord = Sanitizer::getSanitizedRecord($recordId, $allRecords);
-            if ($sanitizedRecord) {
-                $matchedRecords[] = $sanitizedRecord;
-            } else {
-                echo json_encode(["error" => "Not all records could be matched. There might be multiple users accessing these data at the same time."]);
-                exit;
-            }
-        }
-    }
-    $emails = [];
-    foreach ($matchedRecords as $recordId) {
-        $userid = $userids[$recordId] ?? "";
-        if (!$userid) {
-            echo json_encode(["error" => "Not all user-ids are available. This should never happen. You might want to restart the process."]);
-            exit;
-        }
-        if (($menteeNames[$recordId] ?? "") && REDCapManagement::isEmailOrEmails($menteeEmails[$recordId] ?? "")) {
-            $name = $menteeNames[$recordId];
-            $email = $menteeEmails[$recordId];
-        } else {
-            $lookup = new REDCapLookupByUserid($userid);
-            $name = $lookup->getName();
-            $email = $lookup->getEmail();
-        }
-        $emails[$email] = [
-            "name" => $name,
-            "mentors" => $primaryMentors[$recordId] ?? [],
-        ];
-    }
-    $homeLink = Application::getMenteeAgreementLink($pid);
-    if (Application::isLocalhost()) {
-        error_log("Notifying with $homeLink: ".implode(", ", array_keys($emails)));
-    } else {
-        $defaultFrom = Application::getSetting("default_from", $pid) ?: "noreply.flighttracker@vumc.org";
-        $base64 = Application::getBase64("img/flight_tracker_logo_medium_white_bg.png");
-        $logo = "<p><img src='$base64' alt='Flight Tracker for Scholars' /></p>";
-        foreach ($emails as $email => $info) {
-            $mentorNames = REDCapManagement::makeConjunction($info['mentors']);
-            $name = $info['name'];
-            $mssg = "$logo<p>Dear $name,</p><p>You have been requested to form a mentee-mentor agreement with $mentorNames. To configure your custom REDCap-based agreement, please use the following link to customize it electronically. Thank you!</p><p><a href='$homeLink'>$homeLink</a></p>";
-            \REDCap::email($email, $defaultFrom, "Mentee-Mentor Agreement", $mssg);
-        }
-    }
-    echo json_encode(["result" => count($emails)." emails sent."]);
-    exit;
+	$records = Download::recordIdsByPid($pid);
+	$recordId = Sanitizer::getSanitizedRecord($_POST['record'], $records);
+	$value = Sanitizer::sanitizeWithoutChangingQuotes($_POST['value']);
+	$uploadRow = [
+		"record_id" => $recordId,
+	];
+	if ($_POST['field'] == "mentor_name") {
+		$uploadRow["summary_mentor"] = $value;
+		if (Application::isPluginProject($pid)) {
+			$uploadRow["override_mentor"] = $value;
+		} else {
+			$uploadRow["imported_mentor"] = $value;
+		}
+	} elseif ($_POST['field'] == "mentor_userids") {
+		$uploadRow["summary_mentor_userid"] = $value;
+		if (Application::isPluginProject($pid)) {
+			$uploadRow["override_mentor_userid"] = $value;
+		} else {
+			$uploadRow["imported_mentor_userid"] = $value;
+		}
+	} elseif ($_POST['field'] == "mentee_userid") {
+		# Every project but one uses identifier_userid; the original Newman project uses identifier_vunet
+		# I probably should convert all data into the new convention, but I've never done so
+		$useridField = Download::getUseridField($token, $server);
+		if ($useridField) {
+			$uploadRow[$useridField] = $value;
+		}
+	}
+	if (count($uploadRow) > 1) {
+		$feedback = Upload::oneRow($uploadRow, $token, $server);
+	} else {
+		$feedback = ["error" => "Could not locate field."];
+	}
+	echo json_encode($feedback);
+	exit;
+} elseif (($_POST['action'] == "notifyMentees") && !empty($_POST['records'] ?? [])) {
+	$result = MMAHelper::sendInitialEmails($_POST['records'], $pid, $token, $server, $_POST['customAgreement'] === 'true', $_POST['mentorUserIds']);
+	if (!is_int($result) && $result['error']) {
+		echo json_encode($result);
+		exit;
+	}
+	echo json_encode(["result" => $result." emails sent."]);
+	exit;
+}
+if (isset($_POST['custom_questions_data']) && !empty($_POST['custom_questions_data'])) {
+	$customQuestionData = json_decode($_POST['custom_questions_data'], true);
+	foreach ($customQuestionData as $questionNumber => &$question) {
+		$question['questionSource'] = MMAHelper::CUSTOM_QUESTIONS_SOURCE_KEY;
+		$question['questionNumber'] = $questionNumber;
+	}
+	Application::saveSetting("adminCustomQuestions_mma", $customQuestionData, $pid);
 }
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 
 $metadataFields = Download::metadataFieldsByPid($pid);
 $resourceField = DataDictionaryManagement::getMentoringResourceField($metadataFields);
 $choices = [
-    DEFAULT_RESOURCE_FIELD => DataDictionaryManagement::getChoicesForField($pid, DEFAULT_RESOURCE_FIELD),
-    $resourceField => DataDictionaryManagement::getChoicesForField($pid, $resourceField),
+	DEFAULT_RESOURCE_FIELD => DataDictionaryManagement::getChoicesForField($pid, DEFAULT_RESOURCE_FIELD),
+	$resourceField => DataDictionaryManagement::getChoicesForField($pid, $resourceField),
 ];
 
 $userids = Download::userids($token, $server);
@@ -118,43 +79,44 @@ $mentors = Download::primaryMentors($token, $server);
 $names = Download::names($token, $server);
 $menteeCheckboxes = [];
 foreach ($names as $recordId => $name) {
-    $id = "record_$recordId";
-    $menteeCheckboxes[] = "<input type='checkbox' class='menteeRecord' value='1' id='$id' name='$id' /> <label for='$id'>$recordId: $name</label>";
+	$id = "record_$recordId";
+	$menteeCheckboxes[] = "<input type='checkbox' class='menteeRecord' value='1' id='$id' name='$id' /> <label for='$id'>$recordId: $name</label>";
 }
 
 if (DataDictionaryManagement::isInitialSetupForResources($choices[$resourceField])) {
-    if (isset($choices[DEFAULT_RESOURCE_FIELD])) {
-        $resourceChoices = $choices[DEFAULT_RESOURCE_FIELD];
-    } else {
-        $resourceChoices = [];
-    }
+	if (isset($choices[DEFAULT_RESOURCE_FIELD])) {
+		$resourceChoices = $choices[DEFAULT_RESOURCE_FIELD];
+	} else {
+		$resourceChoices = [];
+	}
 } else {
-    $resourceChoices = $choices[$resourceField] ?? [];
+	$resourceChoices = $choices[$resourceField] ?? [];
 }
 $savedList = Application::getSetting("mentoring_local_resources", $pid);
 $defaultList = implode("\n", array_values($resourceChoices));
 if (!$defaultList) {
-    $defaultList = $savedList;
+	$defaultList = $savedList;
 }
 $rightWidth = 500;
 $defaultLink = Application::getSetting("mentee_agreement_link", $pid);
 
 $mssg = "";
 if (
-        isset($_POST['action'])
-        && ($_POST['action'] == "save")
-        && isset($_POST['linkForResources'])
-        && isset($_POST['linkForIDP'])
+	isset($_POST['action'])
+	&& ($_POST['action'] == "save")
+	&& isset($_POST['linkForResources'])
+	&& isset($_POST['linkForIDP'])
 ) {
-    $linkForResources = Sanitizer::sanitizeURL($_POST['linkForResources']);
-    $linkForIDP = Sanitizer::sanitizeURL($_POST['linkForIDP']);
-    $sanitizedList = Sanitizer::sanitize($_POST['resourceList'] ?? "");
-    $mssg = saveResourceLinks($linkForResources, $linkForIDP, $sanitizedList, $choices, $resourceField, $savedList, $defaultList, $pid);
+	$linkForResources = Sanitizer::sanitizeURL($_POST['linkForResources']);
+	$linkForIDP = Sanitizer::sanitizeURL($_POST['linkForIDP']);
+	$sanitizedList = Sanitizer::sanitize($_POST['resourceList'] ?? "");
+	MMAHelper::updateAgreementSectionsEnabledStatusForProject($pid, $_POST['enabled_mentee_section']);
+	$mssg = saveResourceLinks($linkForResources, $linkForIDP, $sanitizedList, $choices, $resourceField, $savedList, $defaultList, $pid);
 }
 $vanderbiltLinkText = "";
 if (Application::isVanderbilt()) {
-    $vumcLink = Application::getDefaultVanderbiltMenteeAgreementLink();
-    $vanderbiltLinkText = "<br/><a href='$vumcLink'>Default for Vanderbilt Medical Center</a>";
+	$vumcLink = Application::getDefaultVanderbiltMenteeAgreementLink();
+	$vanderbiltLinkText = "<br/><a href='$vumcLink'>Default for Vanderbilt Medical Center</a>";
 }
 
 echo $mssg;
@@ -162,18 +124,22 @@ echo $mssg;
 
 $dashboardLink = Application::link("mentor/dashboard.php");
 $homeLink = Application::getMenteeAgreementLink($pid);
-$menteeProgressLink = Application::link("mentor/menteeProgress.php", $pid, TRUE);
+$menteeProgressLink = Application::link("mentor/menteeProgress.php", $pid, true);
 $redcapLookupUrl = Application::link("mentor/lookupREDCapUseridFromREDCap.php");
 $driverUrl = Application::link("this");
 
+
+list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, ceil(count($menteeCheckboxes) / 2));
+$agreementSectionsEnabledStatus = MMAHelper::getAgreementSectionsEnabledStatusForProject($pid);
+$customAdminQuestions = Application::getSetting("adminCustomQuestions_mma", $pid);
 if (empty($menteeCheckboxes)) {
-    $firstHalfMenteeCheckboxes = [];
-    $secondHalfMenteeCheckboxes = [];
-} else if (count($menteeCheckboxes) == 1) {
-    $firstHalfMenteeCheckboxes = $menteeCheckboxes;
-    $secondHalfMenteeCheckboxes = [];
+	$firstHalfMenteeCheckboxes = [];
+	$secondHalfMenteeCheckboxes = [];
+} elseif (count($menteeCheckboxes) == 1) {
+	$firstHalfMenteeCheckboxes = $menteeCheckboxes;
+	$secondHalfMenteeCheckboxes = [];
 } else {
-    list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
+	list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
 }
 
 ?>
@@ -181,11 +147,13 @@ if (empty($menteeCheckboxes)) {
 <style>
     .resultsBox:empty { display: none; }
 </style>
+<script src="<?=Application::link("/mentor/js/mentorConfigure.js")?>"></script>
+
 
 <h1>Start Mentee-Mentor Agreements</h1>
 <h2>Step 1: Configure Agreements</h2>
 
-<p class="centered max-width"><a href="javascript:;" onclick="$('#configForm').slideDown();">Click here to configure</a>.</p>
+<p class="centered max-width"><a id="configureOpen" href="javascript:;" onclick="$('#configForm').slideDown();">Click here to configure</a>.</p>
 
 <form id="configForm" action="<?= Application::link("this") ?>" method="POST" style="display: none;">
     <?= Application::generateCSRFTokenHTML() ?>
@@ -203,8 +171,46 @@ if (empty($menteeCheckboxes)) {
             <td class="left-align"><label for="linkForIDP" class="bolded">Link for Further Questions for the Individual Development Plan (IDP) - optional</label><div class="smaller">If you have some program-specific questions, you can turn them into a REDCap Survey in a separate project and add the Public Survey Link here.</div></td>
             <td><input type="text" style="width: <?= $rightWidth ?>px;" name="linkForIDP" id="linkForIDP" value="<?= $defaultLink ?>"></td>
         </tr>
+        <tr>
+            <td class="left-align"><label class="bolded">Questionnaire Sections To Display</label><div class="cetnered smaller">If some sections of the agreement aren't applicable to your program you can disable them here.</div></td>
+            <td>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Mentee_Mentor_11_Meetings" <?php echo $agreementSectionsEnabledStatus['Mentee_Mentor_11_Meetings'] ? 'checked' : '' ?>> <label>Mentee-Mentor 1:1 Meetings</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Lab_Meetings" <?php echo $agreementSectionsEnabledStatus['Lab_Meetings'] ? 'checked' : '' ?>> <label>Lab Meetings</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Communication" <?php echo $agreementSectionsEnabledStatus['Communication'] ? 'checked' : '' ?>> <label>Communication</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Mentoring_Panel" <?php echo $agreementSectionsEnabledStatus['Mentoring_Panel'] ? 'checked' : '' ?>> <label>Mentoring Panel</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Financial_Support" <?php echo $agreementSectionsEnabledStatus['Financial_Support'] ? 'checked' : '' ?>> <label>Financial Support</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Scientific_Development" <?php echo $agreementSectionsEnabledStatus['Scientific_Development'] ? 'checked' : '' ?>> <label>Scientific Development</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Approach_to_Scholarly_Products" <?php echo $agreementSectionsEnabledStatus['Approach_to_Scholarly_Products'] ? 'checked' : '' ?>> <label>Approach to Scholarly Products</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Career_and_Professional_Development" <?php echo $agreementSectionsEnabledStatus['Career_and_Professional_Development'] ? 'checked' : '' ?>> <label>Career and Professional Development</label><br>
+            <input type="checkbox" name="enabled_mentee_section[]" value="Individual_Development_Plan" <?php echo $agreementSectionsEnabledStatus['Individual_Development_Plan'] ? 'checked' : '' ?>> <label>Individual Development Plan</label><br>
+            </td>
+        </tr>
+        <tr class="row">
+            <td colspan="2">
+                <label class="bolded">Custom Questions</label><div class="cetnered smaller">If You'd like to configure some custom questions that appear on all mentor/mentee agreements you can add them here.</div>
+            </td>
+        </tr>
+        <tr class="row">
+            <td colspan="2">
+                <label for="customQuestionsNum">How many custom questions would you like to ask your mentees?</label>
+                <select id="customQuestionsNum" name="num_custom_questions">
+                    <?php
+					for ($i = 0; $i <= MMAHelper::NUM_CUSTOM_QUESTIONS; $i++) {
+						echo "<option value='$i'>$i</option>";
+					}
+?>
+                </select>
+            </td>
+        </tr>
+        <tr class="row">
+            <td colspan="2">
+                <div id="customQuestionArea" class="centered">
+                </div>
+            </td>
+        </tr>
     </table>
     <p class="centered"><button class="green">Change Configuration</button></p>
+    <input type="hidden" name="custom_questions_data" id="custom_questions_data" value="<?= htmlspecialchars(json_encode($customAdminQuestions)) ?>" />
 </form>
 
 <h2>Step 2: Select &amp; Contact Mentees</h2>
@@ -244,7 +250,13 @@ if (empty($menteeCheckboxes)) {
     <p class="centered">To proceed, each mentee must have a mentor with a REDCap user-id. You can look up REDCap users' emails using the box on the right.</p>
     <div style="width: 500px;">
         <p class="left-align" id="mentorInfo"></p>
-        <p class="centered"><button class='green' onclick="if (!verifyFieldsNotBlank('#mentorInfo input[type=text]')) { alertForBlankFields(); return false; } $('#mentors').slideUp(); notifyMentees('<?= $driverUrl ?>', () => { $('#notify').slideDown(); }); ">Final Sub-Step: Notify Mentees by Email</button></p>
+        <p class="centered">If you want to allow mentors to add custom questions to their Mentor Agreements, click Notify <strong>Mentors</strong>. If you wish to skip this step, click Notify <strong>Mentees</strong>.</p>
+        <p><strong>Final Sub-Step: Notify by Email</strong></p>
+        <p class="centered">
+            <button class='ft-blue-background' onclick="if (!verifyFieldsNotBlank('#mentorInfo input[type=text]')) { alertForBlankFields(); return false; } $('#mentors').slideUp(); notifyMentees('<?= $driverUrl ?>', true, () => { $('#notify').slideDown(); }); "">Notify Mentors</button>
+            OR
+            <button class='green' onclick="if (!verifyFieldsNotBlank('#mentorInfo input[type=text]')) { alertForBlankFields(); return false; } $('#mentors').slideUp(); notifyMentees('<?= $driverUrl ?>', false, () => { $('#notify').slideDown(); }); ">Notify Mentees</button>
+        </p>
     </div>
 </div>
 
@@ -265,6 +277,7 @@ if (empty($menteeCheckboxes)) {
     <p class='centered max-width-600' style="margin-bottom: 0;"><label for="progressurl">This link will provide mentors with the ability to track their mentee:</label><br/>
         <input type='text' id='progressurl' value='<?= $menteeProgressLink ?>' onclick='this.select();' readonly='readonly' style='width: 98%; margin-right: 5px; margin-left: 5px;' /></p>
     <p style="margin-top: 0;" class='max-width-600 alignright smaller'><a href='javascript:;' onclick='copyToClipboard($("#progressurl"));'>Copy</a></p>
+    <a href="<?php echo Application::link('mentor/index_mentorcustomquestions.php')?>">Test Link to custom page</a>
 </div>
 
     <script>
@@ -274,17 +287,26 @@ if (empty($menteeCheckboxes)) {
     const allMentorUserids = <?= json_encode($mentorUserids) ?>;
     const redcap_csrf_token = '<?= Application::generateCSRFToken() ?>';
 
-    function notifyMentees(url, cb) {
+    function notifyMentees(url, customAgreement, cb) {
         const records = [];
         $('input[type=checkbox].menteeRecord:checked').each((idx, ob) => {
             const recordId = $(ob).attr("id").replace(/^record_/, '');
             records.push(recordId);
         });
 
+        const mentorUserIds = [];
+        $('input.mentorUserIdField').each((idx, ob) => {
+            if ($(ob).val() !== '') {
+                mentorUserIds.push($(ob).val());
+            }
+        })
+
         const postdata = {
             'redcap_csrf_token': redcap_csrf_token,
             action: "notifyMentees",
             records: records,
+            customAgreement: customAgreement,
+            mentorUserIds: mentorUserIds,
         }
         console.log(JSON.stringify(postdata));
         $.post(url, postdata, (json) => {
@@ -347,7 +369,7 @@ if (empty($menteeCheckboxes)) {
         let html = '<div style="margin: 1em 0;" class="centered">';
         html += "<strong>Mentee: "+menteeName+"</strong><br/>";
         html += "<label for='record_"+recordId+"_mentors'>Mentor Name(s):</label><br/><input type='text' style='width: 400px;' id='record_"+recordId+"_mentors' value='"+mentorNames+"' onblur='updateField(\"<?= $driverUrl ?>\", \""+recordId+"\", \"mentor_name\", this);' /><br/>"
-        html += "<label for='record_"+recordId+"_mentor_userids'>Mentor User-id(s) <span class='smaller'>[Comma-Separated]</span>:</label><br/><input type='text' id='record_"+recordId+"_mentor_userids' value='"+mentorUserids+"' onblur='updateField(\"<?= $driverUrl ?>\", \""+recordId+"\", \"mentor_userids\", this);' />"
+        html += "<label for='record_"+recordId+"_mentor_userids'>Mentor User-id(s) <span class='smaller'>[Comma-Separated]</span>:</label><br/><input type='text' class='mentorUserIdField' id='record_"+recordId+"_mentor_userids' value='"+mentorUserids+"' onblur='updateField(\"<?= $driverUrl ?>\", \""+recordId+"\", \"mentor_userids\", this);' />"
         html += '</div>';
         return html;
     }
@@ -424,135 +446,135 @@ if (empty($menteeCheckboxes)) {
 <?php
 
 function saveResourceLinks($linkForResources, $linkForIDP, $sanitizedList, $choices, $resourceField, $savedList, &$defaultList, $pid) {
-    $linksToSet = [
-        "mentee_agreement_link" => [
-            "link" => $linkForResources,
-            "description" => "Link for Further Resources",
-        ],
-        "idp_link" => [
-            "link" => $linkForIDP,
-            "description" => "Link for IDP",
-        ],
-    ];
-    foreach ($linksToSet as $settingName => $ary) {
-        if (isset($ary['link']) && is_string($ary['link'])) {
-            $link = $ary['link'];
-        } else {
-            $link = "";
-        }
-        $descript = $ary['description'] ?? "";
-        if ($link) {
-            if (!preg_match("/^https?:\/\//i", $link)) {
-                $link = "https://".$link;
-            }
-            if (REDCapManagement::isValidURL($link)) {
-                Application::saveSetting($settingName, $link, $pid);
-            } else {
-                return "<p class='red centered max-width'>Improper URL $descript</p>";
-            }
-        } else {
-            Application::saveSetting($settingName, "", $pid);
-        }
-    }
+	$linksToSet = [
+		"mentee_agreement_link" => [
+			"link" => $linkForResources,
+			"description" => "Link for Further Resources",
+		],
+		"idp_link" => [
+			"link" => $linkForIDP,
+			"description" => "Link for IDP",
+		],
+	];
+	foreach ($linksToSet as $settingName => $ary) {
+		if (isset($ary['link']) && is_string($ary['link'])) {
+			$link = $ary['link'];
+		} else {
+			$link = "";
+		}
+		$descript = $ary['description'] ?? "";
+		if ($link) {
+			if (!preg_match("/^https?:\/\//i", $link)) {
+				$link = "https://".$link;
+			}
+			if (REDCapManagement::isValidURL($link)) {
+				Application::saveSetting($settingName, $link, $pid);
+			} else {
+				return "<p class='red centered max-width'>Improper URL $descript</p>";
+			}
+		} else {
+			Application::saveSetting($settingName, "", $pid);
+		}
+	}
 
-    $resources = preg_split("/[\n\r]+/", $sanitizedList);
-    $resourceList = implode("\n", $resources);
-    Application::saveSetting("mentoring_resources", $resourceList);
+	$resources = preg_split("/[\n\r]+/", $sanitizedList);
+	$resourceList = implode("\n", $resources);
+	Application::saveSetting("mentoring_resources", $resourceList);
 
-    $reverseResourceChoices = [];
-    foreach ($choices[$resourceField] ?? [] as $idx => $label) {
-        $reverseResourceChoices[$label] = $idx;
-    }
+	$reverseResourceChoices = [];
+	foreach ($choices[$resourceField] ?? [] as $idx => $label) {
+		$reverseResourceChoices[$label] = $idx;
+	}
 
-    $mssg = "";
-    $newResources = [];
-    $existingResources = [];
-    foreach ($resources as $resource) {
-        if ($resource !== "") {
-            if (!isset($reverseResourceChoices[$resource])) {
-                $newResources[] = $resource;
-            } else {
-                $existingResources[] = $resource;
-            }
-        }
-    }
-    $deletedResourceIndexes = [];
-    foreach ($choices[$resourceField] as $idx => $label) {
-        if (!in_array($label, $existingResources)) {
-            $deletedResourceIndexes[] = $idx;
-        }
-    }
-    if (!empty($newResources) || !empty($deletedResourceIndexes)) {
-        $resourceIndexes = array_keys($choices[$resourceField] ?? []);
-        if (REDCapManagement::isArrayNumeric($resourceIndexes)) {
-            $maxIndex = !empty($resourceIndexes) ? max($resourceIndexes) : 0;
-        } else {
-            $numericResourceIndexes = [];
-            foreach ($resourceIndexes as $idx) {
-                if (is_numeric($idx)) {
-                    $numericResourceIndexes[] = $idx;
-                }
-            }
-            $maxIndex = !empty($numericResourceIndexes) ? max($numericResourceIndexes) : 0;
-        }
-        $resourcesByIndex = $choices[$resourceField];
-        foreach ($deletedResourceIndexes as $idx) {
-            unset($resourcesByIndex[$idx]);
-        }
-        $nextIndex = ((int) $maxIndex) + 1;
-        foreach ($newResources as $resource) {
-            $resourcesByIndex[$nextIndex] = $resource;
-            $nextIndex++;
-        }
-        if (empty($resourcesByIndex) && Application::isVanderbilt()) {
-            $resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
-            $resourceStr = DataDictionaryManagement::makeChoiceStr($resourcesByIndex);
-        } else if (empty($resourcesByIndex) && $savedList) {
-            $savedLabels = preg_split("/[\n\r]+/", $savedList);
-            $pairs = [];
-            foreach ($savedLabels as $i => $label) {
-                $pairs[] = ($i+1).", $label";
-            }
-            $resourceStr = implode(" | ", $pairs);
-        } else if (empty($resourcesByIndex) && !empty($choices[DEFAULT_RESOURCE_FIELD])) {
-            $resourceStr = REDCapManagement::makeChoiceStr($choices[DEFAULT_RESOURCE_FIELD]);
-        } else if (empty($resourcesByIndex) && !isset($choices[DEFAULT_RESOURCE_FIELD])) {
-            $resourceStr = "1, Institutional Resources Here";
-        } else {
-            $resourceStr = REDCapManagement::makeChoiceStr($resourcesByIndex);
-        }
-        $metadata = Download::metadataByPid($pid);
-        for ($i = 0; $i < count($metadata); $i++) {
-            if ($metadata[$i]['field_name'] == $resourceField) {
-                $metadata[$i]['select_choices_or_calculations'] = $resourceStr;
-            }
-        }
-        $feedback = Upload::metadataNoAPI($metadata, $pid);
-        if (!is_array($feedback) || (!$feedback['errors'] && !$feedback['error'])) {
-            $mssg = "<p class='max-width centered green'>Changes made.</p>";
-        } else {
-            if ($feedback['errors']) {
-                $error = implode("<br/>", $feedback['errors']);
-            } else if ($feedback['error']) {
-                $error = $feedback['error'];
-            } else {
-                $error = implode("<br/>", $feedback);
-            }
-            $mssg = "<p class='max-width centered red'>Error $error</p>";
-        }
-        $resourceLabels = array_values($resourcesByIndex);
-        for ($i = 0; $i < count($resourceLabels); $i++) {
-            $resourceLabels[$i] = (string) $resourceLabels[$i];
-        }
-        $defaultList = implode("\n", $resourceLabels);
-    } else {
-        $mssg = "<p class='max-width centered green'>No changes needed.</p>";
-    }
-    return $mssg;
+	$mssg = "";
+	$newResources = [];
+	$existingResources = [];
+	foreach ($resources as $resource) {
+		if ($resource !== "") {
+			if (!isset($reverseResourceChoices[$resource])) {
+				$newResources[] = $resource;
+			} else {
+				$existingResources[] = $resource;
+			}
+		}
+	}
+	$deletedResourceIndexes = [];
+	foreach ($choices[$resourceField] as $idx => $label) {
+		if (!in_array($label, $existingResources)) {
+			$deletedResourceIndexes[] = $idx;
+		}
+	}
+	if (!empty($newResources) || !empty($deletedResourceIndexes)) {
+		$resourceIndexes = array_keys($choices[$resourceField] ?? []);
+		if (REDCapManagement::isArrayNumeric($resourceIndexes)) {
+			$maxIndex = !empty($resourceIndexes) ? max($resourceIndexes) : 0;
+		} else {
+			$numericResourceIndexes = [];
+			foreach ($resourceIndexes as $idx) {
+				if (is_numeric($idx)) {
+					$numericResourceIndexes[] = $idx;
+				}
+			}
+			$maxIndex = !empty($numericResourceIndexes) ? max($numericResourceIndexes) : 0;
+		}
+		$resourcesByIndex = $choices[$resourceField];
+		foreach ($deletedResourceIndexes as $idx) {
+			unset($resourcesByIndex[$idx]);
+		}
+		$nextIndex = ((int) $maxIndex) + 1;
+		foreach ($newResources as $resource) {
+			$resourcesByIndex[$nextIndex] = $resource;
+			$nextIndex++;
+		}
+		if (empty($resourcesByIndex) && Application::isVanderbilt()) {
+			$resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
+			$resourceStr = DataDictionaryManagement::makeChoiceStr($resourcesByIndex);
+		} elseif (empty($resourcesByIndex) && $savedList) {
+			$savedLabels = preg_split("/[\n\r]+/", $savedList);
+			$pairs = [];
+			foreach ($savedLabels as $i => $label) {
+				$pairs[] = ($i + 1).", $label";
+			}
+			$resourceStr = implode(" | ", $pairs);
+		} elseif (empty($resourcesByIndex) && !empty($choices[DEFAULT_RESOURCE_FIELD])) {
+			$resourceStr = REDCapManagement::makeChoiceStr($choices[DEFAULT_RESOURCE_FIELD]);
+		} elseif (empty($resourcesByIndex) && !isset($choices[DEFAULT_RESOURCE_FIELD])) {
+			$resourceStr = "1, Institutional Resources Here";
+		} else {
+			$resourceStr = REDCapManagement::makeChoiceStr($resourcesByIndex);
+		}
+		$metadata = Download::metadataByPid($pid);
+		for ($i = 0; $i < count($metadata); $i++) {
+			if ($metadata[$i]['field_name'] == $resourceField) {
+				$metadata[$i]['select_choices_or_calculations'] = $resourceStr;
+			}
+		}
+		$feedback = Upload::metadataNoAPI($metadata, $pid);
+		if (!is_array($feedback) || (!$feedback['errors'] && !$feedback['error'])) {
+			$mssg = "<p class='max-width centered green'>Changes made.</p>";
+		} else {
+			if ($feedback['errors']) {
+				$error = implode("<br/>", $feedback['errors']);
+			} elseif ($feedback['error']) {
+				$error = $feedback['error'];
+			} else {
+				$error = implode("<br/>", $feedback);
+			}
+			$mssg = "<p class='max-width centered red'>Error $error</p>";
+		}
+		$resourceLabels = array_values($resourcesByIndex);
+		for ($i = 0; $i < count($resourceLabels); $i++) {
+			$resourceLabels[$i] = (string) $resourceLabels[$i];
+		}
+		$defaultList = implode("\n", $resourceLabels);
+	} else {
+		$mssg = "<p class='max-width centered green'>No changes needed.</p>";
+	}
+	return $mssg;
 }
 
 function makeLookupHTML($redcapLookupUrl, $suffix) {
-    return "
+	return "
 <div class='centered' style='width: 300px; float: right; background-color: rgba(191,191,191,0.5);'>
 <h4>Lookup a REDCap User ID</h4>
 <p class='centered nomargin smaller'>Please remember that some users might employ nicknames or maiden names.</p>

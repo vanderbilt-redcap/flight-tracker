@@ -26,115 +26,109 @@ use PhpOffice\PhpWord\Style\Image as ImageStyle;
  */
 class OLEObject extends AbstractElement
 {
-    /**
-     * Ole-Object Src.
-     *
-     * @var string
-     */
-    private $source;
+	/**
+	 * Ole-Object Src.
+	 *
+	 * @var string
+	 */
+	private $source;
 
-    /**
-     * Image Style.
-     *
-     * @var ?ImageStyle
-     */
-    private $style;
+	/**
+	 * Image Style.
+	 *
+	 * @var ?ImageStyle
+	 */
+	private $style;
 
-    /**
-     * Icon.
-     *
-     * @var string
-     */
-    private $icon;
+	/**
+	 * Icon.
+	 *
+	 * @var string
+	 */
+	private $icon;
 
-    /**
-     * Image Relation ID.
-     *
-     * @var int
-     */
-    private $imageRelationId;
+	/**
+	 * Image Relation ID.
+	 *
+	 * @var int
+	 */
+	private $imageRelationId;
 
-    /**
-     * Has media relation flag; true for Link, Image, and Object.
-     *
-     * @var bool
-     */
-    protected $mediaRelation = true;
+	/**
+	 * Has media relation flag; true for Link, Image, and Object.
+	 *
+	 * @var bool
+	 */
+	protected $mediaRelation = true;
 
-    /**
-     * Create a new Ole-Object Element.
-     *
-     * @param string $source
-     * @param mixed $style
-     */
-    public function __construct($source, $style = null)
-    {
-        $supportedTypes = ['xls', 'doc', 'ppt', 'xlsx', 'docx', 'pptx'];
-        $pathInfo = pathinfo($source);
+	/**
+	 * Create a new Ole-Object Element.
+	 *
+	 * @param string $source
+	 * @param mixed $style
+	 */
+	public function __construct($source, $style = null) {
+		$supportedTypes = ['xls', 'doc', 'ppt', 'xlsx', 'docx', 'pptx'];
+		$pathInfo = pathinfo($source);
 
-        if (file_exists($source) && in_array($pathInfo['extension'], $supportedTypes)) {
-            $ext = $pathInfo['extension'];
-            if (strlen($ext) == 4 && strtolower(substr($ext, -1)) == 'x') {
-                $ext = substr($ext, 0, -1);
-            }
+		if (file_exists($source) && in_array($pathInfo['extension'], $supportedTypes)) {
+			$ext = $pathInfo['extension'];
+			if (strlen($ext) == 4 && strtolower(substr($ext, -1)) == 'x') {
+				$ext = substr($ext, 0, -1);
+			}
 
-            $this->source = $source;
-            $this->style = $this->setNewStyle(new ImageStyle(), $style, true);
-            $this->icon = realpath(__DIR__ . "/../resources/{$ext}.png");
+			$this->source = $source;
+			$this->style = $this->setNewStyle(new ImageStyle(), $style, true);
+			$this->icon = realpath(__DIR__ . "/../resources/{$ext}.png");
 
-            return;
-        }
+			return;
+		}
 
-        throw new InvalidObjectException();
-    }
+		throw new InvalidObjectException();
+	}
 
-    /**
-     * Get object source.
-     *
-     * @return string
-     */
-    public function getSource()
-    {
-        return $this->source;
-    }
+	/**
+	 * Get object source.
+	 *
+	 * @return string
+	 */
+	public function getSource() {
+		return $this->source;
+	}
 
-    /**
-     * Get object style.
-     *
-     * @return ?ImageStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get object style.
+	 *
+	 * @return ?ImageStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 
-    /**
-     * Get object icon.
-     *
-     * @return string
-     */
-    public function getIcon()
-    {
-        return $this->icon;
-    }
+	/**
+	 * Get object icon.
+	 *
+	 * @return string
+	 */
+	public function getIcon() {
+		return $this->icon;
+	}
 
-    /**
-     * Get image relation ID.
-     *
-     * @return int
-     */
-    public function getImageRelationId()
-    {
-        return $this->imageRelationId;
-    }
+	/**
+	 * Get image relation ID.
+	 *
+	 * @return int
+	 */
+	public function getImageRelationId() {
+		return $this->imageRelationId;
+	}
 
-    /**
-     * Set Image Relation ID.
-     *
-     * @param int $rId
-     */
-    public function setImageRelationId($rId): void
-    {
-        $this->imageRelationId = $rId;
-    }
+	/**
+	 * Set Image Relation ID.
+	 *
+	 * @param int $rId
+	 */
+	public function setImageRelationId($rId): void {
+		$this->imageRelationId = $rId;
+	}
 }

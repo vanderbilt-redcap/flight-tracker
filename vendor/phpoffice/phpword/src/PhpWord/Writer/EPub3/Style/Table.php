@@ -23,21 +23,20 @@ namespace PhpOffice\PhpWord\Writer\EPub3\Style;
  */
 class Table extends AbstractStyle
 {
-    /**
-     * Write style content.
-     */
-    public function write(): string
-    {
-        $content = 'table {';
-        $content .= 'border-collapse: collapse;';
-        $content .= 'width: 100%;';
-        $content .= '}';
-        $content .= 'th, td {';
-        $content .= 'border: 1px solid black;';
-        $content .= 'padding: 8px;';
-        $content .= 'text-align: left;';
-        $content .= '}';
+	/**
+	 * Write style content.
+	 */
+	public function write(): string {
+		$content = 'table {';
+		$content .= 'border-collapse: collapse;';
+		$content .= 'width: 100%;';
+		$content .= '}';
+		$content .= 'th, td {';
+		$content .= 'border: 1px solid black;';
+		$content .= 'padding: 8px;';
+		$content .= 'text-align: left;';
+		$content .= '}';
 
-        return $content;
-    }
+		return $content;
+	}
 }

@@ -26,88 +26,83 @@ use PhpOffice\PhpWord\Style\ListItem as ListItemStyle;
  */
 class ListItem extends AbstractElement
 {
-    /**
-     * Element style.
-     *
-     * @var ?ListItemStyle
-     */
-    private $style;
+	/**
+	 * Element style.
+	 *
+	 * @var ?ListItemStyle
+	 */
+	private $style;
 
-    /**
-     * Text object.
-     *
-     * @var Text
-     */
-    private $textObject;
+	/**
+	 * Text object.
+	 *
+	 * @var Text
+	 */
+	private $textObject;
 
-    /**
-     * Depth.
-     *
-     * @var int
-     */
-    private $depth;
+	/**
+	 * Depth.
+	 *
+	 * @var int
+	 */
+	private $depth;
 
-    /**
-     * Create a new ListItem.
-     *
-     * @param string $text
-     * @param int $depth
-     * @param mixed $fontStyle
-     * @param null|array|string $listStyle
-     * @param mixed $paragraphStyle
-     */
-    public function __construct($text, $depth = 0, $fontStyle = null, $listStyle = null, $paragraphStyle = null)
-    {
-        $this->textObject = new Text(SharedText::toUTF8($text), $fontStyle, $paragraphStyle);
-        $this->depth = $depth;
+	/**
+	 * Create a new ListItem.
+	 *
+	 * @param string $text
+	 * @param int $depth
+	 * @param mixed $fontStyle
+	 * @param null|array|string $listStyle
+	 * @param mixed $paragraphStyle
+	 */
+	public function __construct($text, $depth = 0, $fontStyle = null, $listStyle = null, $paragraphStyle = null) {
+		$this->textObject = new Text(SharedText::toUTF8($text), $fontStyle, $paragraphStyle);
+		$this->depth = $depth;
 
-        // Version >= 0.10.0 will pass numbering style name. Older version will use old method
-        if (null !== $listStyle && is_string($listStyle)) {
-            $this->style = new ListItemStyle($listStyle); // @codeCoverageIgnore
-        } else {
-            $this->style = $this->setNewStyle(new ListItemStyle(), $listStyle, true);
-        }
-    }
+		// Version >= 0.10.0 will pass numbering style name. Older version will use old method
+		if (null !== $listStyle && is_string($listStyle)) {
+			$this->style = new ListItemStyle($listStyle); // @codeCoverageIgnore
+		} else {
+			$this->style = $this->setNewStyle(new ListItemStyle(), $listStyle, true);
+		}
+	}
 
-    /**
-     * Get style.
-     *
-     * @return ?ListItemStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get style.
+	 *
+	 * @return ?ListItemStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 
-    /**
-     * Get Text object.
-     *
-     * @return Text
-     */
-    public function getTextObject()
-    {
-        return $this->textObject;
-    }
+	/**
+	 * Get Text object.
+	 *
+	 * @return Text
+	 */
+	public function getTextObject() {
+		return $this->textObject;
+	}
 
-    /**
-     * Get depth.
-     *
-     * @return int
-     */
-    public function getDepth()
-    {
-        return $this->depth;
-    }
+	/**
+	 * Get depth.
+	 *
+	 * @return int
+	 */
+	public function getDepth() {
+		return $this->depth;
+	}
 
-    /**
-     * Get text.
-     *
-     * @return string
-     *
-     * @since 0.11.0
-     */
-    public function getText()
-    {
-        return $this->textObject->getText();
-    }
+	/**
+	 * Get text.
+	 *
+	 * @return string
+	 *
+	 * @since 0.11.0
+	 */
+	public function getText() {
+		return $this->textObject->getText();
+	}
 }

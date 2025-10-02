@@ -2,20 +2,20 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\Citation;
-use \Vanderbilt\CareerDevLibrary\CitationCollection;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \ExternalModules\ExternalModules;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Publications;
+use Vanderbilt\CareerDevLibrary\Citation;
+use Vanderbilt\CareerDevLibrary\CitationCollection;
+use Vanderbilt\CareerDevLibrary\Application;
+use ExternalModules\ExternalModules;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 global $token, $server, $pid;
 
-switch($instrument) {
+switch ($instrument) {
 	case "initial_survey":
 		$prefix = "check";
 		break;
@@ -28,7 +28,7 @@ switch($instrument) {
 }
 
 $metadata = Download::metadataByPid($pid, Application::$citationFields);
-$recordData = Download::fieldsForRecordsByPid($pid, Application::getCitationFields($metadata), array($record));
+$recordData = Download::fieldsForRecordsByPid($pid, Application::getCitationFields($metadata), [$record]);
 $pubs = new Publications($token, $server, $metadata);
 $pubs->setRows($recordData);
 $finalized = $pubs->getCitationCollection("Final");
@@ -87,7 +87,7 @@ function getLoadingImageUrlOverride() {
 }
 
 $(document).ready(function() {
-    const html = <?= json_encode(utf8_encode($html)) ?>;
+    const html = <?= json_encode(mb_convert_encoding($html, 'UTF-8')) ?>;
     const finalizedPubs = <?= json_encode($finalized->getIds()) ?>;
     const omittedPubs = <?= json_encode($omitted->getIds()) ?>;
     const skippedPubs = <?= json_encode($notDone->getIds()) ?>;
@@ -113,16 +113,16 @@ $(document).ready(function() {
 
 function makeCheckboxes($coll, $img, $divId, $style = "") {
 	$styleFiller = "";
-	if ($style) { 
+	if ($style) {
 		$styleFiller = " style='$style'";
 	}
 	$html = "";
 	$html .= "<div id='$divId'$styleFiller>\n";
-    $certifyPubURL = Application::link("wrangler/certifyPub.php")."&NOAUTH";
-    $imgURL = Application::getBase64("/wrangler/".$img.".png");
-    foreach ($coll->getCitations() as $citationObj) {
-        $pmid = $citationObj->getPMID();
-        $citationLink = $citationObj->getCitationWithLink(FALSE, TRUE);
+	$certifyPubURL = Application::link("wrangler/certifyPub.php")."&NOAUTH";
+	$imgURL = Application::getBase64("/wrangler/".$img.".png");
+	foreach ($coll->getCitations() as $citationObj) {
+		$pmid = $citationObj->getPMID();
+		$citationLink = $citationObj->getCitationWithLink(false, true);
 		$html .= "<div id='PMID$pmid' style='margin: 8px 0; min-height: 26px;'><img style='margin: 2px; width: 26px; height: 26px;' src='$imgURL' alt='$img' data-original='$divId' onclick='changeCheckboxValue(this, \"$certifyPubURL\");'> $citationLink</div>\n";
 	}
 	$html .= "</div>\n";

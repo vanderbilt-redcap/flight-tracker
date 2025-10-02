@@ -1,7 +1,7 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Upload;
+use Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(dirname(__FILE__)."/../small_base.php");
@@ -10,15 +10,15 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 # This script copies the master project to a test project
 
 if (!isset($argv[1])) {
-    $argv[1] = "test";
+	$argv[1] = "test";
 }
 if ($argv[1] == "prodtest") {
 	$info['test']['token'] = $info['prodtest']['token'];
 	$info['test']['server'] = $info['prodtest']['server'];
-} else if ($argv[1] == "dev") {
+} elseif ($argv[1] == "dev") {
 	$info['test']['token'] = $info['dev']['token'];
 	$info['test']['server'] = $info['dev']['server'];
-} else if ($argv[1] == "backup") {
+} elseif ($argv[1] == "backup") {
 	$info['test']['token'] = $info['prod']['token'];
 	$info['test']['server'] = $info['prod']['server'];
 }
@@ -49,9 +49,9 @@ echo "Uploaded metadata $output\n";
 $prodRecords = Download::recordIds($info['prod']['token'], $info['prod']['server']);
 if ($selectRecord) {
 	if (in_array($selectRecord, $prodRecords)) {
-		$prodRecords = array($selectRecord);
+		$prodRecords = [$selectRecord];
 	} else {
-		$prodRecords = array();
+		$prodRecords = [];
 	}
 }
 
@@ -77,7 +77,7 @@ if (isset($argv[1])) {
 }
 
 for ($i = 0; $i < count($prodRecords); $i += $pullSize) {
-	$records = array();
+	$records = [];
 	$j = $i;
 	$n = floor(($i + $pullSize - 1) / $pullSize) + 1;
 	while ((($j == $i) || ($j % $pullSize != 0)) && ($j < count($prodRecords))) {
@@ -89,10 +89,10 @@ for ($i = 0; $i < count($prodRecords); $i += $pullSize) {
 		$pullData = Download::records($info['prod']['token'], $info['prod']['server'], $records);
 		echo "$i. Downloaded ".count($pullData)." rows\n";
 
-		$skip = array("followup_complete");
-		$pushData = array();
+		$skip = ["followup_complete"];
+		$pushData = [];
 		foreach ($pullData as $pullRow) {
-			$pushRow = array();
+			$pushRow = [];
 			foreach ($pullRow as $field => $value) {
 				if (!in_array($field, $skip)) {
 					$pushRow[$field] = $value;
@@ -104,4 +104,4 @@ for ($i = 0; $i < count($prodRecords); $i += $pullSize) {
 		$feedback = Upload::rows($pushData, $info['test']['token'], $info['test']['server']);
 		error_log("$i. Upload ".$n." of $totalPulls: ".json_encode($feedback));
 	}
-} 
+}

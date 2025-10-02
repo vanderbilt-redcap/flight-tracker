@@ -28,15 +28,15 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class Zoom extends AbstractEnum
 {
-    //No Preset Magnification
-    const NONE = 'none';
+	//No Preset Magnification
+	public const NONE = 'none';
 
-    //Display One Full Page
-    const FULL_PAGE = 'fullPage';
+	//Display One Full Page
+	public const FULL_PAGE = 'fullPage';
 
-    //Display Page Width
-    const BEST_FIT = 'bestFit';
+	//Display Page Width
+	public const BEST_FIT = 'bestFit';
 
-    //Display Text Width
-    const TEXT_FIT = 'textFit';
+	//Display Text Width
+	public const TEXT_FIT = 'textFit';
 }

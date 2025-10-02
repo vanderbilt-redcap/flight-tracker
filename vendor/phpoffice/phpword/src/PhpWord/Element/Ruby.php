@@ -27,88 +27,81 @@ use PhpOffice\PhpWord\ComplexType\RubyProperties;
  */
 class Ruby extends AbstractElement
 {
-    /**
-     * Ruby properties.
-     *
-     * @var RubyProperties
-     */
-    protected $properties;
+	/**
+	 * Ruby properties.
+	 *
+	 * @var RubyProperties
+	 */
+	protected $properties;
 
-    /**
-     * Ruby text run.
-     *
-     * @var TextRun
-     */
-    protected $rubyTextRun;
+	/**
+	 * Ruby text run.
+	 *
+	 * @var TextRun
+	 */
+	protected $rubyTextRun;
 
-    /**
-     * Ruby base text run.
-     *
-     * @var TextRun
-     */
-    protected $baseTextRun;
+	/**
+	 * Ruby base text run.
+	 *
+	 * @var TextRun
+	 */
+	protected $baseTextRun;
 
-    /**
-     * Create a new Ruby Element.
-     */
-    public function __construct(TextRun $baseTextRun, TextRun $rubyTextRun, RubyProperties $properties)
-    {
-        $this->baseTextRun = $baseTextRun;
-        $this->rubyTextRun = $rubyTextRun;
-        $this->properties = $properties;
-    }
+	/**
+	 * Create a new Ruby Element.
+	 */
+	public function __construct(TextRun $baseTextRun, TextRun $rubyTextRun, RubyProperties $properties) {
+		$this->baseTextRun = $baseTextRun;
+		$this->rubyTextRun = $rubyTextRun;
+		$this->properties = $properties;
+	}
 
-    /**
-     * Get base text run.
-     */
-    public function getBaseTextRun(): TextRun
-    {
-        return $this->baseTextRun;
-    }
+	/**
+	 * Get base text run.
+	 */
+	public function getBaseTextRun(): TextRun {
+		return $this->baseTextRun;
+	}
 
-    /**
-     * Set the base text run.
-     */
-    public function setBaseTextRun(TextRun $textRun): self
-    {
-        $this->baseTextRun = $textRun;
+	/**
+	 * Set the base text run.
+	 */
+	public function setBaseTextRun(TextRun $textRun): self {
+		$this->baseTextRun = $textRun;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get ruby text run.
-     */
-    public function getRubyTextRun(): TextRun
-    {
-        return $this->rubyTextRun;
-    }
+	/**
+	 * Get ruby text run.
+	 */
+	public function getRubyTextRun(): TextRun {
+		return $this->rubyTextRun;
+	}
 
-    /**
-     * Set the ruby text run.
-     */
-    public function setRubyTextRun(TextRun $textRun): self
-    {
-        $this->rubyTextRun = $textRun;
+	/**
+	 * Set the ruby text run.
+	 */
+	public function setRubyTextRun(TextRun $textRun): self {
+		$this->rubyTextRun = $textRun;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get ruby properties.
-     */
-    public function getProperties(): RubyProperties
-    {
-        return $this->properties;
-    }
+	/**
+	 * Get ruby properties.
+	 */
+	public function getProperties(): RubyProperties {
+		return $this->properties;
+	}
 
-    /**
-     * Set the ruby properties.
-     */
-    public function setProperties(RubyProperties $properties): self
-    {
-        $this->properties = $properties;
+	/**
+	 * Set the ruby properties.
+	 */
+	public function setProperties(RubyProperties $properties): self {
+		$this->properties = $properties;
 
-        return $this;
-    }
+		return $this;
+	}
 }

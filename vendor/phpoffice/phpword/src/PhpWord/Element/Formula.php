@@ -27,28 +27,25 @@ use PhpOffice\Math\Math;
  */
 class Formula extends AbstractElement
 {
-    /**
-     * @var Math
-     */
-    protected $math;
+	/**
+	 * @var Math
+	 */
+	protected $math;
 
-    /**
-     * Create a new Formula Element.
-     */
-    public function __construct(Math $math)
-    {
-        $this->setMath($math);
-    }
+	/**
+	 * Create a new Formula Element.
+	 */
+	public function __construct(Math $math) {
+		$this->setMath($math);
+	}
 
-    public function setMath(Math $math): self
-    {
-        $this->math = $math;
+	public function setMath(Math $math): self {
+		$this->math = $math;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function getMath(): Math
-    {
-        return $this->math;
-    }
+	public function getMath(): Math {
+		return $this->math;
+	}
 }

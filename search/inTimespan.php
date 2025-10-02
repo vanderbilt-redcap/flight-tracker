@@ -1,10 +1,10 @@
 <?php
 
 use Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -18,7 +18,7 @@ foreach ($_POST as $variable => $value) {
 }
 
 $metadata = Download::metadata($token, $server);
-$choicesStrs = array();
+$choicesStrs = [];
 foreach ($metadata as $row) {
 	if (preg_match("/summary_award_type_/", $row['field_name'])) {
 		$choicesStrs["award_type"] = $row['select_choices_or_calculations'];
@@ -27,17 +27,17 @@ foreach ($metadata as $row) {
 		$choicesStrs["award_source"] = $row['select_choices_or_calculations'];
 	}
 }
-$choices = array();
+$choices = [];
 foreach ($choicesStrs as $type => $choicesStr) {
 	$choicePairs = preg_split("/\s*\|\s*/", $choicesStr);
-	$choices[$type] = array();
+	$choices[$type] = [];
 	foreach ($choicePairs as $pair) {
 		$a = preg_split("/\s*,\s*/", $pair);
 		if (count($a) == 2) {
 			$choices[$type][$a[0]] = $a[1];
-		} else if (count($a) > 2) {
+		} elseif (count($a) > 2) {
 			$a = preg_split("/,/", $pair);
-			$b = array();
+			$b = [];
 			for ($i = 1; $i < count($a); $i++) {
 				$b[] = $a[$i];
 			}
@@ -56,7 +56,7 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 		$end = time();
 	}
 
-	$types = array();
+	$types = [];
 	foreach ($_POST as $variable => $value) {
 		if (preg_match("/^type___/", (string) $variable)) {
 			$types[] = REDCapManagement::sanitize($value);
@@ -85,7 +85,7 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 					|| ($myEnd >= $begin) && ($myEnd < $end)
 					|| ($myStart < $begin) && ($myEnd > $end)
 				) {
-					$names[$row['identifier_last_name']] = array ("i" => $i, "row" => $row);
+					$names[$row['identifier_last_name']] =  ["i" => $i, "row" => $row];
 				}
 			}
 		}
@@ -127,9 +127,9 @@ if ($hasType && isset($_POST['begin']) && ($_POST['begin'] != "")) {
 	$link = CareerDev::link("search/inTimespan.php");
 	echo "<form method='POST' action='$link'>";
 	echo Application::generateCSRFTokenHTML();
-	
+
 	echo "<table class='centered'><tr><td style='vertical-align: top; padding-right: 16px;'>";
-	$choiceHTML = array();
+	$choiceHTML = [];
 	foreach ($choices["award_type"] as $value => $label) {
 		$id = "type___$value";
 		$choiceHTML[] = "<input type='checkbox' name='$id' id='$id' value='$value'> <label for='$id'>$label</label>";

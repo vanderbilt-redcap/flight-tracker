@@ -25,22 +25,21 @@ namespace PhpOffice\PhpWord\Writer\RTF\Style;
  */
 class Indentation extends AbstractStyle
 {
-    /**
-     * Write style.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Indentation) {
-            return '';
-        }
+	/**
+	 * Write style.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Indentation) {
+			return '';
+		}
 
-        $content = '\fi' . round($style->getFirstLine());
-        $content .= '\li' . round($style->getLeft());
-        $content .= '\ri' . round($style->getRight());
+		$content = '\fi' . round($style->getFirstLine());
+		$content .= '\li' . round($style->getLeft());
+		$content .= '\ri' . round($style->getRight());
 
-        return $content . ' ';
-    }
+		return $content . ' ';
+	}
 }

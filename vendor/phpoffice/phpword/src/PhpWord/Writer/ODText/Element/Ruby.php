@@ -27,38 +27,37 @@ namespace PhpOffice\PhpWord\Writer\ODText\Element;
  */
 class Ruby extends AbstractElement
 {
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\Ruby) {
-            return;
-        }
-        $paragraphStyle = $element->getBaseTextRun()->getParagraphStyle();
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\Ruby) {
+			return;
+		}
+		$paragraphStyle = $element->getBaseTextRun()->getParagraphStyle();
 
-        if (!$this->withoutP) {
-            $xmlWriter->startElement('text:p'); // text:p
-        }
-        if (empty($paragraphStyle)) {
-            if (!$this->withoutP) {
-                $xmlWriter->writeAttribute('text:style-name', 'Normal');
-            }
-        } elseif (is_string($paragraphStyle)) {
-            if (!$this->withoutP) {
-                $xmlWriter->writeAttribute('text:style-name', $paragraphStyle);
-            }
-        }
+		if (!$this->withoutP) {
+			$xmlWriter->startElement('text:p'); // text:p
+		}
+		if (empty($paragraphStyle)) {
+			if (!$this->withoutP) {
+				$xmlWriter->writeAttribute('text:style-name', 'Normal');
+			}
+		} elseif (is_string($paragraphStyle)) {
+			if (!$this->withoutP) {
+				$xmlWriter->writeAttribute('text:style-name', $paragraphStyle);
+			}
+		}
 
-        $this->replaceTabs($element->getBaseTextRun()->getText(), $xmlWriter);
-        $this->writeText(' (');
-        $this->replaceTabs($element->getRubyTextRun()->getText(), $xmlWriter);
-        $this->writeText(')');
+		$this->replaceTabs($element->getBaseTextRun()->getText(), $xmlWriter);
+		$this->writeText(' (');
+		$this->replaceTabs($element->getRubyTextRun()->getText(), $xmlWriter);
+		$this->writeText(')');
 
-        if (!$this->withoutP) {
-            $xmlWriter->endElement(); // text:p
-        }
-    }
+		if (!$this->withoutP) {
+			$xmlWriter->endElement(); // text:p
+		}
+	}
 }

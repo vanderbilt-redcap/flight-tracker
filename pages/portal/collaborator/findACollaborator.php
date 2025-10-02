@@ -3,39 +3,30 @@
  * @var $module Vanderbilt\FlightTrackerExternalModule\FlightTrackerExternalModule
  */
 ?>
-
-<!DOCTYPE html>
-<html lang="en">
-<head>
-	<meta charset="UTF-8">
-	<title>Pubmed Search Form</title>
-	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .btn-primary {
-            background-color: #51B852 !important;
-            border-color: #51B852 !important;
-        }
-        .btn-primary:hover, .btn-primary:focus {
-            background-color: #449944 !important;
-            border-color: #3d8b3d !important;
-        }
-        .custom-btn-group .btn-outline-primary {
-            color: #51B852 !important;
-            border-color: #51B852 !important;
-            background-color: #fff !important;
-        }
-        .custom-btn-group .btn-outline-primary:hover,
-        .custom-btn-group .btn-outline-primary:focus,
-        .custom-btn-group .btn-outline-primary.active {
-            color: #fff !important;
-            background-color: #51B852 !important;
-            border-color: #51B852 !important;
-        }
-    </style>
-    <?php $module->loadREDCapJS() ?>
-    <?php $module->addJS('js/scholarPortal/FindACollaborator.js') ?>
-<body>
-<!-- TODO: Include this file as a string in $Portal->findACollaborator() to have this load in the normal flightTracker scholar portal -->
+<style>
+    .btn-primary {
+        background-color: #51B852 !important;
+        border-color: #51B852 !important;
+    }
+    .btn-primary:hover, .btn-primary:focus {
+        background-color: #449944 !important;
+        border-color: #3d8b3d !important;
+    }
+    .custom-btn-group .btn-outline-primary {
+        color: #51B852 !important;
+        border-color: #51B852 !important;
+        background-color: #fff !important;
+    }
+    .custom-btn-group .btn-outline-primary:hover,
+    .custom-btn-group .btn-outline-primary:focus,
+    .custom-btn-group .btn-outline-primary.active {
+        color: #fff !important;
+        background-color: #51B852 !important;
+        border-color: #51B852 !important;
+    }
+</style>
+<?php $module->loadBootstrap() ?>
+<?php $module->addJS('js/scholarPortal/FindACollaborator.js') ?>
 <div class="container mt-5">
     <div class="container">
         <div class="row align-items-center mb-2">
@@ -98,7 +89,7 @@
 </div>
     <div id="loadingSpinner" class="text-center my-4" style="display:none;">
         <p id="searchStatusText"></p>
-        <img src="http://127.0.0.1/modules/flightTracker_v999.999.999/img/loading.gif?1726078801" alt="Loading..." style="width: 48px; height: 48px;">
+        <img src="<?php echo \Vanderbilt\CareerDevLibrary\Application::link('img/loading.gif') ?>" alt="Loading..." style="width: 48px; height: 48px;">
     </div>
     <div class="mb-2 text-end">
         <button id="downloadCsvBtn" class="btn btn-success btn-sm" type="button" style="display:none;">
@@ -137,9 +128,3 @@
     </div>
     <p id="searchStats" style="display: none"></p>
 </div>
-
-<script>
-
-</script>
-</body>
-</html>

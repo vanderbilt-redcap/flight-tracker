@@ -41,7 +41,7 @@ function isNewItem($oldReporters, $item, $recordId) {
 
 # clear out old data
 echo "Clearing out old data\n";
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -52,7 +52,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -69,19 +69,19 @@ $output = curl_exec($ch);
 # formulate the upload JSON
 echo "Formulating the upload JSON\n";
 $redcapData = json_decode($output, true);
-$oldReporters = array();
+$oldReporters = [];
 foreach ($redcapData as $row) {
 	if ($row['redcap_repeat_instrument'] == "reporter") {
 		$oldReporters[] = $row;
 	}
 }
 
-$redcapRows = array();
-$uploadRows = array();
+$redcapRows = [];
+$uploadRows = [];
 foreach ($redcapData as $row) {
 	if ($row['redcap_repeat_instrument'] == "reporter") {
 		if (!isset($redcapRow[$row['record_id']])) {
-			$redcapRows[$row['record_id']] = array();
+			$redcapRows[$row['record_id']] = [];
 		}
 		if ($row['reporter_projectnumber']) {
 			$redcapRow[$row['record_id']][] = $row['reporter_projectnumber'];
@@ -96,8 +96,8 @@ unset($upload);
 ### DOWNLOAD PROCESS
 
 # download names
-$fields = array("record_id", "identifier_last_name", "identifier_middle", "identifier_first_name", "identifier_institution");
-$data = array(
+$fields = ["record_id", "identifier_last_name", "identifier_middle", "identifier_first_name", "identifier_institution"];
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -109,7 +109,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -126,7 +126,7 @@ echo $token."\n";
 echo $server."\n";
 curl_close($ch);
 
-$includedFields = array();
+$includedFields = [];
 $redcapData = json_decode($output, true);
 foreach ($redcapData as $row) {
 	# for each REDCap Record, download data for each person
@@ -136,18 +136,18 @@ foreach ($redcapData as $row) {
 	$lastName = $row['identifier_last_name'];
 	$firstNames = preg_split("/[\s\-]/", strtoupper($row['identifier_first_name']));
 	$lastNames = preg_split("/[\s\-]/", strtoupper($row['identifier_last_name']));
-	$listOfNames = array();
+	$listOfNames = [];
 	foreach ($lastNames as $ln) {
 		foreach ($firstNames as $fn) {
 			$fn = preg_replace("/^\(/", "", $fn);
 			$fn = preg_replace("/\)$/", "", $fn);
 			$listOfNames[] = $fn." ".$ln;
 		}
-	} 
+	}
 	if (!in_array($firstName." ".$lastName, $listOfNames)) {
 		$listOfNames[] = strtoupper($firstName." ".$lastName);
 	}
-	$institutions = array();
+	$institutions = [];
 	if ($row['identifier_institution']) {
 		$institutions = preg_split('/\s*[,\/]\s*/', $row['identifier_institution']);
 	}
@@ -157,12 +157,12 @@ foreach ($redcapData as $row) {
 	if (!in_array("Meharry", $institutions)) {
 		$institutions[] = "Meharry";
 	}
-	$included = array();
+	$included = [];
 	foreach ($listOfNames as $myName) {
 		$myName = preg_replace("/^\(/", "", $myName);
 		$myName = preg_replace("/\)$/", "", $myName);
-		$query = "/v1/projects/search?query=PiName:".urlencode($myName); 
-		$currData = array();
+		$query = "/v1/projects/search?query=PiName:".urlencode($myName);
+		$currData = [];
 		$try = 0;
 		do {
 			if (isset($myData['offset']) && $myData['offset'] == 0) {
@@ -184,7 +184,7 @@ foreach ($redcapData as $row) {
 			$output = curl_exec($ch);
 			curl_close($ch);
 			echo $output."\n";
-	
+
 			$myData = json_decode($output, true);
 			if ($myData && $myData['items']) {
 				foreach ($myData['items'] as $item) {
@@ -194,14 +194,14 @@ foreach ($redcapData as $row) {
 				// echo "Checking {$myData['totalCount']} (".count($myData['items'])." here) and ".($myData['offset'] - 1 + $myData['limit'])."\n";
 				usleep(400000);     // up to 3 per second
 			} else {
-				$myData = array("totalCount" => 0, "limit" => 0, "offset" => 0);
+				$myData = ["totalCount" => 0, "limit" => 0, "offset" => 0];
 			}
 			echo $myName." (".$lastName.") $try: Checking {$myData['totalCount']} and {$myData['offset']} and {$myData['limit']}\n";
 		} while (($myData['totalCount'] > $myData['limit'] + $myData['offset']) || (($myData['offset'] == 0) && ($try < 5)));
 		echo "{$row['record_id']}: $lastName currData ".count($currData)."\n";
 
 		# dissect current data; must have first name to include
-		$pis = array();
+		$pis = [];
 		if ($currData) {
 			foreach ($currData as $item) {
 				$itemName = $item['contactPi'];
@@ -258,19 +258,19 @@ foreach ($redcapData as $row) {
 	}
 
 	# format $included into REDCap infinitely repeating structures
-	$upload = array();
-	$notUpload = array();
+	$upload = [];
+	$notUpload = [];
 
 	$instance = getNewInstanceForRecord($oldReporters, $row['record_id']);
 	foreach ($included as $item) {
-		$uploadRow = array();
+		$uploadRow = [];
 		if (isNewItem($oldReporters, $item, $row['record_id'])) {
 			foreach ($item as $field => $value) {
 				$newField = "reporter_".strtolower($field);
 				if (in_array($newField, $reporterFields)) {
 					if (!isset($includedFields[$newField])) {
 						$includedFields[$newField] = $field;
-					} 
+					}
 					if (preg_match("/startdate/", $newField) || preg_match("/enddate/", $newField)) {
 						$value = getReporterDate($value);
 					}
@@ -293,14 +293,14 @@ foreach ($redcapData as $row) {
 
 	foreach ($upload as $uploadRow) {
 		if (!isset($uploadRows[$uploadRow['record_id']])) {
-			$uploadRows[$uploadRow['record_id']] = array();
+			$uploadRows[$uploadRow['record_id']] = [];
 		}
 		$uploadRows[$uploadRow['record_id']][$uploadRow['reporter_projectnumber']] = $uploadRow;
 	}
 
 	# upload to REDCap
 	if (!empty($upload)) {
-		$data = array(
+		$data = [
 			'token' => $token,
 			'content' => 'record',
 			'format' => 'json',
@@ -310,7 +310,7 @@ foreach ($redcapData as $row) {
 			'data' => json_encode($upload),
 			'returnContent' => 'count',
 			'returnFormat' => 'json'
-		);
+		];
 		$ch = curl_init();
 		curl_setopt($ch, CURLOPT_URL, $server);
 		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

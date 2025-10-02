@@ -27,128 +27,124 @@ use PhpOffice\PhpWord\SimpleType\Jc;
  */
 class Paragraph extends AbstractStyle
 {
-    /**
-     * Depth of table container nested level; Primarily used for RTF writer/reader.
-     *
-     * 0 = Not in a table; 1 = in a table; 2 = in a table inside another table, etc.
-     *
-     * @var int
-     */
-    private $nestedLevel = 0;
+	/**
+	 * Depth of table container nested level; Primarily used for RTF writer/reader.
+	 *
+	 * 0 = Not in a table; 1 = in a table; 2 = in a table inside another table, etc.
+	 *
+	 * @var int
+	 */
+	private $nestedLevel = 0;
 
-    private const LEFT = Jc::LEFT;
-    private const RIGHT = Jc::RIGHT;
-    private const JUSTIFY = Jc::JUSTIFY;
+	private const LEFT = Jc::LEFT;
+	private const RIGHT = Jc::RIGHT;
+	private const JUSTIFY = Jc::JUSTIFY;
 
-    /**
-     * Write style.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Paragraph) {
-            return '';
-        }
+	/**
+	 * Write style.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Paragraph) {
+			return '';
+		}
 
-        $alignments = [
-            Jc::START => '\ql',
-            Jc::END => '\qr',
-            Jc::CENTER => '\qc',
-            Jc::BOTH => '\qj',
-            self::LEFT => '\ql',
-            self::RIGHT => '\qr',
-            self::JUSTIFY => '\qj',
-        ];
-        $bidiAlignments = [
-            Jc::START => '\qr',
-            Jc::END => '\ql',
-            Jc::CENTER => '\qc',
-            Jc::BOTH => '\qj',
-            self::LEFT => '\ql',
-            self::RIGHT => '\qr',
-            self::JUSTIFY => '\qj',
-        ];
+		$alignments = [
+			Jc::START => '\ql',
+			Jc::END => '\qr',
+			Jc::CENTER => '\qc',
+			Jc::BOTH => '\qj',
+			self::LEFT => '\ql',
+			self::RIGHT => '\qr',
+			self::JUSTIFY => '\qj',
+		];
+		$bidiAlignments = [
+			Jc::START => '\qr',
+			Jc::END => '\ql',
+			Jc::CENTER => '\qc',
+			Jc::BOTH => '\qj',
+			self::LEFT => '\ql',
+			self::RIGHT => '\qr',
+			self::JUSTIFY => '\qj',
+		];
 
-        $spaceAfter = $style->getSpaceAfter();
-        $spaceBefore = $style->getSpaceBefore();
+		$spaceAfter = $style->getSpaceAfter();
+		$spaceBefore = $style->getSpaceBefore();
 
-        $content = '';
-        if ($this->nestedLevel == 0) {
-            $content .= '\pard\nowidctlpar ';
-        }
-        $alignment = $style->getAlignment();
-        $bidi = $style->isBidi();
-        if ($alignment === '' && $bidi !== null) {
-            $alignment = Jc::START;
-        }
-        if (isset($alignments[$alignment])) {
-            $content .= $bidi ? $bidiAlignments[$alignment] : $alignments[$alignment];
-        }
-        $content .= $this->writeIndentation($style->getIndentation());
-        $content .= $this->getValueIf($spaceBefore !== null, '\sb' . round($spaceBefore ?? 0));
-        $content .= $this->getValueIf($spaceAfter !== null, '\sa' . round($spaceAfter ?? 0));
-        $lineHeight = $style->getLineHeight();
-        if ($lineHeight) {
-            $lineHeightAdjusted = (int) ($lineHeight * 240);
-            $content .= "\\sl$lineHeightAdjusted\\slmult1";
-        }
-        if ($style->hasPageBreakBefore()) {
-            $content .= '\\page';
-        }
+		$content = '';
+		if ($this->nestedLevel == 0) {
+			$content .= '\pard\nowidctlpar ';
+		}
+		$alignment = $style->getAlignment();
+		$bidi = $style->isBidi();
+		if ($alignment === '' && $bidi !== null) {
+			$alignment = Jc::START;
+		}
+		if (isset($alignments[$alignment])) {
+			$content .= $bidi ? $bidiAlignments[$alignment] : $alignments[$alignment];
+		}
+		$content .= $this->writeIndentation($style->getIndentation());
+		$content .= $this->getValueIf($spaceBefore !== null, '\sb' . round($spaceBefore ?? 0));
+		$content .= $this->getValueIf($spaceAfter !== null, '\sa' . round($spaceAfter ?? 0));
+		$lineHeight = $style->getLineHeight();
+		if ($lineHeight) {
+			$lineHeightAdjusted = (int) ($lineHeight * 240);
+			$content .= "\\sl$lineHeightAdjusted\\slmult1";
+		}
+		if ($style->hasPageBreakBefore()) {
+			$content .= '\\page';
+		}
 
-        $styles = $style->getStyleValues();
-        $content .= $this->writeTabs($styles['tabs']);
+		$styles = $style->getStyleValues();
+		$content .= $this->writeTabs($styles['tabs']);
 
-        return $content;
-    }
+		return $content;
+	}
 
-    /**
-     * Writes an \PhpOffice\PhpWord\Style\Indentation.
-     *
-     * @param null|\PhpOffice\PhpWord\Style\Indentation $indent
-     *
-     * @return string
-     */
-    private function writeIndentation($indent = null)
-    {
-        if (isset($indent) && $indent instanceof \PhpOffice\PhpWord\Style\Indentation) {
-            $writer = new Indentation($indent);
+	/**
+	 * Writes an \PhpOffice\PhpWord\Style\Indentation.
+	 *
+	 * @param null|\PhpOffice\PhpWord\Style\Indentation $indent
+	 *
+	 * @return string
+	 */
+	private function writeIndentation($indent = null) {
+		if (isset($indent) && $indent instanceof \PhpOffice\PhpWord\Style\Indentation) {
+			$writer = new Indentation($indent);
 
-            return $writer->write();
-        }
+			return $writer->write();
+		}
 
-        return '';
-    }
+		return '';
+	}
 
-    /**
-     * Writes tabs.
-     *
-     * @param \PhpOffice\PhpWord\Style\Tab[] $tabs
-     *
-     * @return string
-     */
-    private function writeTabs($tabs = null)
-    {
-        $content = '';
-        if (!empty($tabs)) {
-            foreach ($tabs as $tab) {
-                $styleWriter = new Tab($tab);
-                $content .= $styleWriter->write();
-            }
-        }
+	/**
+	 * Writes tabs.
+	 *
+	 * @param \PhpOffice\PhpWord\Style\Tab[] $tabs
+	 *
+	 * @return string
+	 */
+	private function writeTabs($tabs = null) {
+		$content = '';
+		if (!empty($tabs)) {
+			foreach ($tabs as $tab) {
+				$styleWriter = new Tab($tab);
+				$content .= $styleWriter->write();
+			}
+		}
 
-        return $content;
-    }
+		return $content;
+	}
 
-    /**
-     * Set nested level.
-     *
-     * @param int $value
-     */
-    public function setNestedLevel($value): void
-    {
-        $this->nestedLevel = $value;
-    }
+	/**
+	 * Set nested level.
+	 *
+	 * @param int $value
+	 */
+	public function setNestedLevel($value): void {
+		$this->nestedLevel = $value;
+	}
 }

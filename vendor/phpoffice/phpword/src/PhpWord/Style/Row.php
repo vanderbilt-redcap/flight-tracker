@@ -25,103 +25,96 @@ namespace PhpOffice\PhpWord\Style;
  */
 class Row extends AbstractStyle
 {
-    /**
-     * Repeat table row on every new page.
-     *
-     * @var bool
-     */
-    private $tblHeader = false;
+	/**
+	 * Repeat table row on every new page.
+	 *
+	 * @var bool
+	 */
+	private $tblHeader = false;
 
-    /**
-     * Table row cannot break across pages.
-     *
-     * @var bool
-     */
-    private $cantSplit = false;
+	/**
+	 * Table row cannot break across pages.
+	 *
+	 * @var bool
+	 */
+	private $cantSplit = false;
 
-    /**
-     * Table row exact height.
-     *
-     * @var bool
-     */
-    private $exactHeight = false;
+	/**
+	 * Table row exact height.
+	 *
+	 * @var bool
+	 */
+	private $exactHeight = false;
 
-    /**
-     * Create a new row style.
-     */
-    public function __construct()
-    {
-    }
+	/**
+	 * Create a new row style.
+	 */
+	public function __construct() {
+	}
 
-    /**
-     * Is tblHeader.
-     *
-     * @return bool
-     */
-    public function isTblHeader()
-    {
-        return $this->tblHeader;
-    }
+	/**
+	 * Is tblHeader.
+	 *
+	 * @return bool
+	 */
+	public function isTblHeader() {
+		return $this->tblHeader;
+	}
 
-    /**
-     * Is tblHeader.
-     *
-     * @param bool $value
-     *
-     * @return self
-     */
-    public function setTblHeader($value = true)
-    {
-        $this->tblHeader = $this->setBoolVal($value, $this->tblHeader);
+	/**
+	 * Is tblHeader.
+	 *
+	 * @param bool $value
+	 *
+	 * @return self
+	 */
+	public function setTblHeader($value = true) {
+		$this->tblHeader = $this->setBoolVal($value, $this->tblHeader);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Is cantSplit.
-     *
-     * @return bool
-     */
-    public function isCantSplit()
-    {
-        return $this->cantSplit;
-    }
+	/**
+	 * Is cantSplit.
+	 *
+	 * @return bool
+	 */
+	public function isCantSplit() {
+		return $this->cantSplit;
+	}
 
-    /**
-     * Is cantSplit.
-     *
-     * @param bool $value
-     *
-     * @return self
-     */
-    public function setCantSplit($value = true)
-    {
-        $this->cantSplit = $this->setBoolVal($value, $this->cantSplit);
+	/**
+	 * Is cantSplit.
+	 *
+	 * @param bool $value
+	 *
+	 * @return self
+	 */
+	public function setCantSplit($value = true) {
+		$this->cantSplit = $this->setBoolVal($value, $this->cantSplit);
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Is exactHeight.
-     *
-     * @return bool
-     */
-    public function isExactHeight()
-    {
-        return $this->exactHeight;
-    }
+	/**
+	 * Is exactHeight.
+	 *
+	 * @return bool
+	 */
+	public function isExactHeight() {
+		return $this->exactHeight;
+	}
 
-    /**
-     * Set exactHeight.
-     *
-     * @param bool $value
-     *
-     * @return self
-     */
-    public function setExactHeight($value = true)
-    {
-        $this->exactHeight = $this->setBoolVal($value, $this->exactHeight);
+	/**
+	 * Set exactHeight.
+	 *
+	 * @param bool $value
+	 *
+	 * @return self
+	 */
+	public function setExactHeight($value = true) {
+		$this->exactHeight = $this->setBoolVal($value, $this->exactHeight);
 
-        return $this;
-    }
+		return $this;
+	}
 }

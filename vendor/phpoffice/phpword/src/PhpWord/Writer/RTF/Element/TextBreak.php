@@ -25,17 +25,16 @@ namespace PhpOffice\PhpWord\Writer\RTF\Element;
  */
 class TextBreak extends AbstractElement
 {
-    /**
-     * Write element.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        /** @var \PhpOffice\PhpWord\Writer\RTF $parentWriter Type hint */
-        $parentWriter = $this->parentWriter;
-        $parentWriter->setLastParagraphStyle();
+	/**
+	 * Write element.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		/** @var \PhpOffice\PhpWord\Writer\RTF $parentWriter Type hint */
+		$parentWriter = $this->parentWriter;
+		$parentWriter->setLastParagraphStyle();
 
-        return '\pard\par' . PHP_EOL;
-    }
+		return '\pard\par' . PHP_EOL;
+	}
 }

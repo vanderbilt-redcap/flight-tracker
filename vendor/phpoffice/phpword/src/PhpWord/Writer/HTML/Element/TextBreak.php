@@ -25,19 +25,18 @@ namespace PhpOffice\PhpWord\Writer\HTML\Element;
  */
 class TextBreak extends AbstractElement
 {
-    /**
-     * Write text break.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        if ($this->withoutP) {
-            $content = '<br />' . PHP_EOL;
-        } else {
-            $content = '<p>&nbsp;</p>' . PHP_EOL;
-        }
+	/**
+	 * Write text break.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		if ($this->withoutP) {
+			$content = '<br />' . PHP_EOL;
+		} else {
+			$content = '<p>&nbsp;</p>' . PHP_EOL;
+		}
 
-        return $content;
-    }
+		return $content;
+	}
 }

@@ -27,119 +27,113 @@ use ReflectionClass;
 
 abstract class IOFactory
 {
-    /**
-     * Create new writer.
-     *
-     * @param string $name
-     *
-     * @return WriterInterface
-     */
-    public static function createWriter(PhpWord $phpWord, $name = 'Word2007')
-    {
-        if ($name !== 'WriterInterface' && !in_array($name, ['ODText', 'RTF', 'Word2007', 'HTML', 'PDF', 'EPub3'], true)) {
-            throw new Exception("\"{$name}\" is not a valid writer.");
-        }
+	/**
+	 * Create new writer.
+	 *
+	 * @param string $name
+	 *
+	 * @return WriterInterface
+	 */
+	public static function createWriter(PhpWord $phpWord, $name = 'Word2007') {
+		if ($name !== 'WriterInterface' && !in_array($name, ['ODText', 'RTF', 'Word2007', 'HTML', 'PDF', 'EPub3'], true)) {
+			throw new Exception("\"{$name}\" is not a valid writer.");
+		}
 
-        $fqName = "PhpOffice\\PhpWord\\Writer\\{$name}";
+		$fqName = "PhpOffice\\PhpWord\\Writer\\{$name}";
 
-        return new $fqName($phpWord);
-    }
+		return new $fqName($phpWord);
+	}
 
-    /**
-     * Create new reader.
-     *
-     * @param string $name
-     *
-     * @return ReaderInterface
-     */
-    public static function createReader($name = 'Word2007')
-    {
-        return self::createObject('Reader', $name);
-    }
+	/**
+	 * Create new reader.
+	 *
+	 * @param string $name
+	 *
+	 * @return ReaderInterface
+	 */
+	public static function createReader($name = 'Word2007') {
+		return self::createObject('Reader', $name);
+	}
 
-    /**
-     * Create new object.
-     *
-     * @param string $type
-     * @param string $name
-     * @param PhpWord $phpWord
-     *
-     * @return ReaderInterface|WriterInterface
-     */
-    private static function createObject($type, $name, $phpWord = null)
-    {
-        $class = "PhpOffice\\PhpWord\\{$type}\\{$name}";
-        if (class_exists($class) && self::isConcreteClass($class)) {
-            return new $class($phpWord);
-        }
+	/**
+	 * Create new object.
+	 *
+	 * @param string $type
+	 * @param string $name
+	 * @param PhpWord $phpWord
+	 *
+	 * @return ReaderInterface|WriterInterface
+	 */
+	private static function createObject($type, $name, $phpWord = null) {
+		$class = "PhpOffice\\PhpWord\\{$type}\\{$name}";
+		if (class_exists($class) && self::isConcreteClass($class)) {
+			return new $class($phpWord);
+		}
 
-        throw new Exception("\"{$name}\" is not a valid {$type}.");
-    }
+		throw new Exception("\"{$name}\" is not a valid {$type}.");
+	}
 
-    /**
-     * Loads PhpWord from file.
-     *
-     * @param string $filename The name of the file
-     * @param string $readerName
-     *
-     * @return PhpWord $phpWord
-     */
-    public static function load($filename, $readerName = 'Word2007')
-    {
-        /** @var ReaderInterface $reader */
-        $reader = self::createReader($readerName);
+	/**
+	 * Loads PhpWord from file.
+	 *
+	 * @param string $filename The name of the file
+	 * @param string $readerName
+	 *
+	 * @return PhpWord $phpWord
+	 */
+	public static function load($filename, $readerName = 'Word2007') {
+		/** @var ReaderInterface $reader */
+		$reader = self::createReader($readerName);
 
-        return $reader->load($filename);
-    }
+		return $reader->load($filename);
+	}
 
-    /**
-     * Loads PhpWord ${variable} from file.
-     *
-     * @param string $filename The name of the file
-     *
-     * @return array The extracted variables
-     */
-    public static function extractVariables(string $filename, string $readerName = 'Word2007'): array
-    {
-        /** @var ReaderInterface $reader */
-        $reader = self::createReader($readerName);
-        $document = $reader->load($filename);
-        $extractedVariables = [];
-        foreach ($document->getSections() as $section) {
-            $concatenatedText = '';
-            foreach ($section->getElements() as $element) {
-                if ($element instanceof TextRun) {
-                    foreach ($element->getElements() as $textElement) {
-                        if ($textElement instanceof Text) {
-                            $text = $textElement->getText();
-                            $concatenatedText .= $text;
-                        }
-                    }
-                }
-            }
-            preg_match_all('/\$\{([^}]+)\}/', $concatenatedText, $matches);
-            if (!empty($matches[1])) {
-                foreach ($matches[1] as $match) {
-                    $trimmedMatch = trim($match);
-                    $extractedVariables[] = $trimmedMatch;
-                }
-            }
-        }
+	/**
+	 * Loads PhpWord ${variable} from file.
+	 *
+	 * @param string $filename The name of the file
+	 *
+	 * @return array The extracted variables
+	 */
+	public static function extractVariables(string $filename, string $readerName = 'Word2007'): array {
+		/** @var ReaderInterface $reader */
+		$reader = self::createReader($readerName);
+		$document = $reader->load($filename);
+		$extractedVariables = [];
+		foreach ($document->getSections() as $section) {
+			$concatenatedText = '';
+			foreach ($section->getElements() as $element) {
+				if ($element instanceof TextRun) {
+					foreach ($element->getElements() as $textElement) {
+						if ($textElement instanceof Text) {
+							$text = $textElement->getText();
+							$concatenatedText .= $text;
+						}
+					}
+				}
+			}
+			preg_match_all('/\$\{([^}]+)\}/', $concatenatedText, $matches);
+			if (!empty($matches[1])) {
+				foreach ($matches[1] as $match) {
+					$trimmedMatch = trim($match);
+					$extractedVariables[] = $trimmedMatch;
+				}
+			}
+		}
 
-        return $extractedVariables;
-    }
+		return $extractedVariables;
+	}
 
-    /**
-     * Check if it's a concrete class (not abstract nor interface).
-     *
-     * @param string $class
-     *
-     * @return bool
-     */
-    private static function isConcreteClass($class)
-    {
-        $reflection = new ReflectionClass($class);
+	/**
+	 * Check if it's a concrete class (not abstract nor interface).
+	 *
+	 * @param string $class
+	 *
+	 * @return bool
+	 */
+	private static function isConcreteClass($class) {
+		$reflection = new ReflectionClass($class);
 
-        return !$reflection->isAbstract() && !$reflection->isInterface();
-    }
+		return !$reflection->isAbstract() && !$reflection->isInterface();
+	}
 }

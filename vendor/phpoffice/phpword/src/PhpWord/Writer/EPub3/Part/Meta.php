@@ -25,50 +25,48 @@ use PhpOffice\PhpWord\Shared\XMLWriter;
  */
 class Meta extends AbstractPart
 {
-    /**
-     * Get XML Writer.
-     */
-    protected function getXmlWriter(): XMLWriter
-    {
-        $xmlWriter = new XMLWriter();
-        $xmlWriter->openMemory();
-        $xmlWriter->startDocument('1.0', 'UTF-8');
+	/**
+	 * Get XML Writer.
+	 */
+	protected function getXmlWriter(): XMLWriter {
+		$xmlWriter = new XMLWriter();
+		$xmlWriter->openMemory();
+		$xmlWriter->startDocument('1.0', 'UTF-8');
 
-        return $xmlWriter;
-    }
+		return $xmlWriter;
+	}
 
-    /**
-     * Write part content.
-     */
-    public function write(): string
-    {
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write part content.
+	 */
+	public function write(): string {
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('metadata');
-        $xmlWriter->writeAttribute('xmlns', 'http://www.idpf.org/2007/opf');
-        $xmlWriter->writeAttribute('xmlns:dc', 'http://purl.org/dc/elements/1.1/');
+		$xmlWriter->startElement('metadata');
+		$xmlWriter->writeAttribute('xmlns', 'http://www.idpf.org/2007/opf');
+		$xmlWriter->writeAttribute('xmlns:dc', 'http://purl.org/dc/elements/1.1/');
 
-        // Write basic metadata
-        $title = $this->getParentWriter()->getPhpWord()->getDocInfo()->getTitle() ?: 'Sample EPub3 Document';
-        $xmlWriter->writeRaw('<dc:title>' . htmlspecialchars($title, ENT_QUOTES) . '</dc:title>');
-        $xmlWriter->writeElement('dc:language', 'en');
-        $xmlWriter->writeElement('dc:identifier', 'urn:uuid:12345');
-        $xmlWriter->writeAttribute('id', 'bookid');
+		// Write basic metadata
+		$title = $this->getParentWriter()->getPhpWord()->getDocInfo()->getTitle() ?: 'Sample EPub3 Document';
+		$xmlWriter->writeRaw('<dc:title>' . htmlspecialchars($title, ENT_QUOTES) . '</dc:title>');
+		$xmlWriter->writeElement('dc:language', 'en');
+		$xmlWriter->writeElement('dc:identifier', 'urn:uuid:12345');
+		$xmlWriter->writeAttribute('id', 'bookid');
 
-        // Write document info if available
-        $docInfo = $this->getParentWriter()->getPhpWord()->getDocInfo();
-        if ($docInfo->getCreator()) {
-            $xmlWriter->writeElement('dc:creator', $docInfo->getCreator());
-        }
+		// Write document info if available
+		$docInfo = $this->getParentWriter()->getPhpWord()->getDocInfo();
+		if ($docInfo->getCreator()) {
+			$xmlWriter->writeElement('dc:creator', $docInfo->getCreator());
+		}
 
-        // Write modification date
-        $xmlWriter->startElement('meta');
-        $xmlWriter->writeAttribute('property', 'dcterms:modified');
-        $xmlWriter->text('2023-01-01T00:00:00Z');
-        $xmlWriter->endElement();
+		// Write modification date
+		$xmlWriter->startElement('meta');
+		$xmlWriter->writeAttribute('property', 'dcterms:modified');
+		$xmlWriter->text('2023-01-01T00:00:00Z');
+		$xmlWriter->endElement();
 
-        $xmlWriter->endElement(); // metadata
+		$xmlWriter->endElement(); // metadata
 
-        return $xmlWriter->getData();
-    }
+		return $xmlWriter->getData();
+	}
 }

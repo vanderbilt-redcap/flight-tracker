@@ -25,13 +25,12 @@ namespace PhpOffice\PhpWord\Writer\RTF\Element;
  */
 class PageBreak extends AbstractElement
 {
-    /**
-     * Write element.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        return '\page' . PHP_EOL;
-    }
+	/**
+	 * Write element.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		return '\page' . PHP_EOL;
+	}
 }

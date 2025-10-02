@@ -21,15 +21,15 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
 	foreach ($redcapData as $row) {
 		if (($row['record_id'] == $recordId) && ($row['redcap_repeat_instrument'] == "exporter") && ($maxInstance < $row['redcap_repeat_instance'])) {
 			$maxInstance = $row['redcap_repeat_instance'];
-			$same = TRUE;
+			$same = true;
 			foreach ($uploadLine as $field => $value) {
 				if ($row[$field] != $value) {
-					$same = FALSE;
+					$same = false;
 					break;
 				}
 			}
 			if ($same) {
-				return array($row['redcap_repeat_instance'], FALSE);
+				return [$row['redcap_repeat_instance'], false];
 			}
 		}
 	}
@@ -39,7 +39,7 @@ function getExPORTERInstance($recordId, $redcapData, $upload, $uploadLine) {
 		}
 	}
 
-	return array($maxInstance + 1, TRUE);
+	return [$maxInstance + 1, true];
 }
 
 /**
@@ -72,8 +72,8 @@ function downloadURLAndUnzip($file) {
 			fwrite($fp, $zip);
 			fclose($fp);
 
-			$za = new ZipArchive;
-			if ($za->open(APP_PATH_TEMP.$file) === TRUE) {
+			$za = new ZipArchive();
+			if ($za->open(APP_PATH_TEMP.$file) === true) {
 				$za->extractTo(APP_PATH_TEMP);
 				$za->close();
 				return APP_PATH_TEMP.$csvfile;
@@ -85,7 +85,7 @@ function downloadURLAndUnzip($file) {
 	}
 }
 
-$files = array();
+$files = [];
 
 // echo APP_PATH_TEMP."\n";
 // $files[] = downloadURLAndUnzip("RePORTER_PRJ_C_FY2018_048.zip");
@@ -116,19 +116,19 @@ for ($year = date("Y") - 1; $year <= date("Y") + 1; $year++) {
 echo "Downloading REDCap\n";
 global $token, $server;
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
 	'type' => 'flat',
-	'forms' => array("custom", "exporter"),
+	'forms' => ["custom", "exporter"],
 	'rawOrLabel' => 'raw',
 	'rawOrLabelHeaders' => 'raw',
 	'exportCheckboxLabel' => 'false',
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -152,8 +152,8 @@ $redcapData = json_decode($output, true);
  */
 function makeUploadHoldingQueue($line, $headers) {
 	$j = 0;
-	$dates = array("exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end");
-	$uploadLineHoldingQueue = array();
+	$dates = ["exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end"];
+	$uploadLineHoldingQueue = [];
 	foreach ($line as $item) {
 		$field = "exporter_".strtolower($headers[$j]);
 		if (in_array($field, $dates)) {
@@ -168,15 +168,15 @@ function makeUploadHoldingQueue($line, $headers) {
 
 # download names and ExPORTER instances from REDCap
 # parse CSVs with screen for Vanderbilt and names
-$institutions = array("/".INSTITUTION."/i", "/Meharry/i");
-$cities = array("/Nashville/i");
-$matchingQueries = array("ORG_NAME" => $institutions, "ORG_CITY" => $cities);
-$upload = array();
-$newUploads = array();		// new records
+$institutions = ["/".INSTITUTION."/i", "/Meharry/i"];
+$cities = ["/Nashville/i"];
+$matchingQueries = ["ORG_NAME" => $institutions, "ORG_CITY" => $cities];
+$upload = [];
+$newUploads = [];		// new records
 foreach ($files as $file => $year) {
 	$fp = fopen($file, "r");
 	$i = 0;
-	$headers = array();
+	$headers = [];
 	while ($line = fgetcsv($fp)) {
 		if ($i === 0) {
 			$j = 0;
@@ -186,15 +186,15 @@ foreach ($files as $file => $year) {
 			}
 		} else {
 			$j = 0;
-			$possibleMatch= FALSE;
-			$firstNames = array();
-			$lastNames = array();
+			$possibleMatch = false;
+			$firstNames = [];
+			$lastNames = [];
 			foreach ($line as $item) {
 				foreach ($matchingQueries as $column => $reAry) {
 					if ($column == $headers[$j]) {
 						foreach ($reAry as $re) {
 							if (preg_match($re, $item)) {
-								$possibleMatch = TRUE;
+								$possibleMatch = true;
 							}
 						}
 						break;
@@ -229,7 +229,7 @@ foreach ($files as $file => $year) {
 					$recordId = matchName($firstNames[$k], $lastNames[$k]);
 					if ($recordId && $firstNames[$k] && $lastNames[$k]) {
 						# upload line
-						$uploadLine = array("record_id" => $recordId, "redcap_repeat_instrument" => "exporter");
+						$uploadLine = ["record_id" => $recordId, "redcap_repeat_instrument" => "exporter"];
 						$uploadLineHoldingQueue = makeUploadHoldingQueue($line, $headers);
 						list($uploadLine["redcap_repeat_instance"], $isNew) = getExPORTERInstance($recordId, $redcapData, $upload, $uploadLineHoldingQueue);
 						if ($isNew) {
@@ -237,21 +237,21 @@ foreach ($files as $file => $year) {
 							echo "Matched name {$recordId} {$firstNames[$k]} {$lastNames[$k]} = {$uploadLine['exporter_pi_names']}\n";
 							$upload[] = $uploadLine;
 						}
-					} else if (!$recordId && $firstNames[$k] && $lastNames[$k] && $year >= date("Y")) {
+					} elseif (!$recordId && $firstNames[$k] && $lastNames[$k] && $year >= date("Y")) {
 						# new person?
 						$j = 0;
-						$isK = FALSE;
-						$isSupportYear1 = FALSE;
+						$isK = false;
+						$isSupportYear1 = false;
 						foreach ($line as $item) {
 							if (strtolower($headers[$j]) == "full_project_num") {
 								$awardNo = $item;
 								if (preg_match("/^\d[Kk]\d\d/", $awardNo) || preg_match("/^[Kk]\d\d/", $awardNo)) {
-									$addToNewUploads = TRUE;
+									$addToNewUploads = true;
 								}
 							}
 							if (strtolower($headers[$j]) == "support_year") {
 								if ($item == 1) {
-									$isSupportYear1 = TRUE;
+									$isSupportYear1 = true;
 								}
 							}
 							$j++;
@@ -280,19 +280,19 @@ foreach ($redcapData as $row) {
 foreach ($newUploads as $fullName => $uploadLineHoldingQueue) {
 	$maxRecordId++;
 
-	$uploadLine = array("record_id" => $maxRecordId, "redcap_repeat_instrument" => "exporter");
+	$uploadLine = ["record_id" => $maxRecordId, "redcap_repeat_instrument" => "exporter"];
 	list($uploadLine["redcap_repeat_instance"], $isNew) = getExPORTERInstance($recordId, $redcapData, $upload, $uploadLineHoldingQueue);
 	$uploadLine = array_merge($uploadLine, $uploadLineHoldingQueue);
 
 	echo "Found new name {$maxRecordId} {$fullName} --> {$uploadLine['exporter_full_project_num']}\n";
 
 	list($firstName, $lastName) = preg_split("/\s/", $fullName);
-	$upload[] = array("record_id" => $maxRecordId, "redcap_repeat_instrument" => "", "redcap_repeat_instance" => "", "identifier_first_name" => ucfirst(strtolower($firstName)), "identifier_last_name" => ucfirst(strtolower($lastName)));
+	$upload[] = ["record_id" => $maxRecordId, "redcap_repeat_instrument" => "", "redcap_repeat_instance" => "", "identifier_first_name" => ucfirst(strtolower($firstName)), "identifier_last_name" => ucfirst(strtolower($lastName))];
 	$upload[] = $uploadLine;
 }
 
 # upload to REDCap
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -302,7 +302,7 @@ $data = array(
 	'data' => json_encode($upload),
 	'returnContent' => 'count',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);

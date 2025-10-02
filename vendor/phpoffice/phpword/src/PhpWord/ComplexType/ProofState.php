@@ -27,83 +27,79 @@ use InvalidArgumentException;
  */
 final class ProofState
 {
-    /**
-     * Check Completed.
-     */
-    const CLEAN = 'clean';
+	/**
+	 * Check Completed.
+	 */
+	public const CLEAN = 'clean';
 
-    /**
-     * Check Not Completed.
-     */
-    const DIRTY = 'dirty';
+	/**
+	 * Check Not Completed.
+	 */
+	public const DIRTY = 'dirty';
 
-    /**
-     * Spell Checking State.
-     *
-     * @var string
-     */
-    private $spelling;
+	/**
+	 * Spell Checking State.
+	 *
+	 * @var string
+	 */
+	private $spelling;
 
-    /**
-     * Grammatical Checking State.
-     *
-     * @var string
-     */
-    private $grammar;
+	/**
+	 * Grammatical Checking State.
+	 *
+	 * @var string
+	 */
+	private $grammar;
 
-    /**
-     * Set the Spell Checking State (dirty or clean).
-     *
-     * @param string $spelling
-     *
-     * @return self
-     */
-    public function setSpelling($spelling)
-    {
-        if ($spelling == self::CLEAN || $spelling == self::DIRTY) {
-            $this->spelling = $spelling;
-        } else {
-            throw new InvalidArgumentException('Invalid value, dirty or clean possible');
-        }
+	/**
+	 * Set the Spell Checking State (dirty or clean).
+	 *
+	 * @param string $spelling
+	 *
+	 * @return self
+	 */
+	public function setSpelling($spelling) {
+		if ($spelling == self::CLEAN || $spelling == self::DIRTY) {
+			$this->spelling = $spelling;
+		} else {
+			throw new InvalidArgumentException('Invalid value, dirty or clean possible');
+		}
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get the Spell Checking State.
-     *
-     * @return string
-     */
-    public function getSpelling()
-    {
-        return $this->spelling;
-    }
+	/**
+	 * Get the Spell Checking State.
+	 *
+	 * @return string
+	 */
+	public function getSpelling() {
+		return $this->spelling;
+	}
 
-    /**
-     * Set the Grammatical Checking State (dirty or clean).
-     *
-     * @param string $grammar
-     *
-     * @return self
-     */
-    public function setGrammar($grammar)
-    {
-        if ($grammar == self::CLEAN || $grammar == self::DIRTY) {
-            $this->grammar = $grammar;
-        } else {
-            throw new InvalidArgumentException('Invalid value, dirty or clean possible');
-        }
+	/**
+	 * Set the Grammatical Checking State (dirty or clean).
+	 *
+	 * @param string $grammar
+	 *
+	 * @return self
+	 */
+	public function setGrammar($grammar) {
+		if ($grammar == self::CLEAN || $grammar == self::DIRTY) {
+			$this->grammar = $grammar;
+		} else {
+			throw new InvalidArgumentException('Invalid value, dirty or clean possible');
+		}
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get the Grammatical Checking State.
-     *
-     * @return string
-     */
-    public function getGrammar()
-    {
-        return $this->grammar;
-    }
+	/**
+	 * Get the Grammatical Checking State.
+	 *
+	 * @return string
+	 */
+	public function getGrammar() {
+		return $this->grammar;
+	}
 }

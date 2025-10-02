@@ -28,61 +28,57 @@ use PhpOffice\PhpWord\Writer\Word2007\Style\Paragraph as ParagraphStyleWriter;
  */
 class ListItemRun extends AbstractElement
 {
-    /**
-     * Write list item element.
-     */
-    public function write(): void
-    {
-        $element = $this->getElement();
+	/**
+	 * Write list item element.
+	 */
+	public function write(): void {
+		$element = $this->getElement();
 
-        if (!$element instanceof ListItemRunElement) {
-            return;
-        }
+		if (!$element instanceof ListItemRunElement) {
+			return;
+		}
 
-        $this->writeParagraph($element);
-    }
+		$this->writeParagraph($element);
+	}
 
-    private function writeParagraph(ListItemRunElement $element): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $xmlWriter->startElement('w:p');
+	private function writeParagraph(ListItemRunElement $element): void {
+		$xmlWriter = $this->getXmlWriter();
+		$xmlWriter->startElement('w:p');
 
-        $this->writeParagraphProperties($element);
+		$this->writeParagraphProperties($element);
 
-        $containerWriter = new Container($xmlWriter, $element);
-        $containerWriter->write();
+		$containerWriter = new Container($xmlWriter, $element);
+		$containerWriter->write();
 
-        $xmlWriter->endElement(); // w:p
-    }
+		$xmlWriter->endElement(); // w:p
+	}
 
-    private function writeParagraphProperties(ListItemRunElement $element): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $xmlWriter->startElement('w:pPr');
+	private function writeParagraphProperties(ListItemRunElement $element): void {
+		$xmlWriter = $this->getXmlWriter();
+		$xmlWriter->startElement('w:pPr');
 
-        $styleWriter = new ParagraphStyleWriter($xmlWriter, $element->getParagraphStyle());
-        $styleWriter->setIsInline(true);
-        $styleWriter->setWithoutPPR(true);
-        $styleWriter->write();
+		$styleWriter = new ParagraphStyleWriter($xmlWriter, $element->getParagraphStyle());
+		$styleWriter->setIsInline(true);
+		$styleWriter->setWithoutPPR(true);
+		$styleWriter->write();
 
-        $this->writeParagraphPropertiesNumbering($element);
+		$this->writeParagraphPropertiesNumbering($element);
 
-        $xmlWriter->endElement(); // w:pPr
-    }
+		$xmlWriter->endElement(); // w:pPr
+	}
 
-    private function writeParagraphPropertiesNumbering(ListItemRunElement $element): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $xmlWriter->startElement('w:numPr');
+	private function writeParagraphPropertiesNumbering(ListItemRunElement $element): void {
+		$xmlWriter = $this->getXmlWriter();
+		$xmlWriter->startElement('w:numPr');
 
-        $xmlWriter->writeElementBlock('w:ilvl', [
-            'w:val' => $element->getDepth(),
-        ]);
+		$xmlWriter->writeElementBlock('w:ilvl', [
+			'w:val' => $element->getDepth(),
+		]);
 
-        $xmlWriter->writeElementBlock('w:numId', [
-            'w:val' => $element->getStyle()->getNumId(),
-        ]);
+		$xmlWriter->writeElementBlock('w:numId', [
+			'w:val' => $element->getStyle()->getNumId(),
+		]);
 
-        $xmlWriter->endElement(); // w:numPr
-    }
+		$xmlWriter->endElement(); // w:numPr
+	}
 }

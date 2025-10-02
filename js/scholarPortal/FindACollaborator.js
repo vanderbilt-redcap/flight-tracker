@@ -1,85 +1,138 @@
-
-
 $(document).ready(function() {
     const module = ExternalModules.Vanderbilt.FlightTrackerExternalModule;
 
-    document.getElementById('searchForm').addEventListener('submit', function(e) {
+    // Use jQuery event binding for the search form
+    $('#searchForm').on('submit', function(e) {
         e.preventDefault();
         $('#resultsTable').hide();
         $('#downloadCsvBtn').hide();
         $('#loadingSpinner').show();
         module.ajax('ajaxRouter', {ajaxAction: 'getFlightTrackerPids'}).then(function (response) {
             console.dir(response);
+            // Initialize progress UI
             $('#searchStatusText').data('currentPidSearching', 1);
             $('#searchStatusText').text(`Searching FlightTracker Project 1 of ${response.length}`);
-            response.forEach(function (pid, index, pidArray) {
-                let currentPid = index+1;
-                let totalPids = pidArray.length;
-                module.ajax('ajaxRouter', {ajaxAction: 'collaboratorBasicSearch', searchString: $('#mainSearch').val(), pids: [pid]}).then(function(response) {
-                    console.dir(response);
-                    $('#searchStatusText').data('currentPidSearching', $('#searchStatusText').data('currentPidSearching') + 1);
-                    $('#searchStatusText').text(`Searching FlightTracker Project ${$('#searchStatusText').data('currentPidSearching')} of ${totalPids}`);
-                    if (response.matchesFound > 0) {
-                        $('#resultsTable').show();
-                        $('#downloadCsvBtn').show();
-                        for (const key in response.searchResults) {
-                            addDataToResultsTable(response.searchResults[key]);
+
+            // Process pids sequentially so we can send accumulated names from prior responses
+            (async function processPidsSequentially(pids) {
+                const accumulatedNames = new Set();
+                const totalPids = pids.length;
+
+                for (let index = 0; index < totalPids; index++) {
+                    const pid = pids[index];
+                    const currentPid = index + 1;
+
+                    try {
+                        // Send previously collected names along with the current pid
+                        const payload = {
+                            ajaxAction: 'collaboratorBasicSearch',
+                            searchString: $('#mainSearch').val(),
+                            pids: [pid],
+                            names: Array.from(accumulatedNames)
+                        };
+
+                        const resp = await module.ajax('ajaxRouter', payload);
+                        console.dir(resp);
+
+                        // Update progress UI
+                        // increment stored counter (keeps previous behavior)
+                        $('#searchStatusText').data('currentPidSearching', $('#searchStatusText').data('currentPidSearching') + 1);
+                        $('#searchStatusText').text(`Searching FlightTracker Project ${$('#searchStatusText').data('currentPidSearching')} of ${totalPids}`);
+
+                        // If matches found, show results and add rows; also collect names from this response
+                        if (resp.matchesFound > 0) {
+                            $('#resultsTable').show();
+                            $('#downloadCsvBtn').show();
+                            for (const key in resp.searchResults) {
+                                const resultObj = resp.searchResults[key];
+                                // resultObj is a collection of entries; iterate its members to collect names
+                                if (resultObj) {
+                                    for (const entryKey in resultObj) {
+                                        const entry = resultObj[entryKey];
+                                        if (entry && entry.name) {
+                                            accumulatedNames.add(entry.name);
+                                        }
+                                    }
+                                }
+                                addDataToResultsTable(resultObj);
+                            }
+                        }
+
+                        updateSearchStats(resp);
+
+                        // If last pid, hide spinner and status text
+                        if (currentPid === totalPids) {
+                            $('#loadingSpinner').hide();
+                            $('#searchStatusText').hide();
+                        }
+                    } catch (err) {
+                        console.log('Error in ajaxRouter for pid', pid, err);
+                        // continue to next pid even on error
+                        if (index === totalPids - 1) {
+                            $('#loadingSpinner').hide();
+                            $('#searchStatusText').hide();
                         }
                     }
-                    updateSearchStats(response);
-                    if (currentPid === totalPids) {
-                        $('#loadingSpinner').hide();
-                        $('#searchStatusText').hide();
-                    }
-                }).catch(function (err) {
-                    console.log('Error in ajaxRouter:', err);
-                })
-            })
+                }
+            })(response);
         }).catch(function (err) {
             console.log(err)
         })
     });
 
-    document.querySelectorAll('.toggle-col').forEach(function(checkbox) {
-        checkbox.addEventListener('change', function() {
-            const colClass = this.getAttribute('data-col');
-            const show = this.checked;
-            document.querySelectorAll('.' + colClass).forEach(function(cell) {
-                cell.style.display = show ? '' : 'none';
+    // Use jQuery to bind change handlers to toggle-col checkboxes
+    $('.toggle-col').each(function() {
+        $(this).on('change', function() {
+            const colClass = $(this).attr('data-col');
+            const show = $(this).prop('checked');
+            // Toggle display of column cells using jQuery
+            $('.' + colClass).each(function() {
+                $(this).css('display', show ? '' : 'none');
             });
+            // Toggle the active class on the associated label (if present) instead of the checkbox itself
+            const checkboxId = $(this).attr('id');
+            if (checkboxId) {
+                const label = $('label[for="' + checkboxId + '"]');
+                if (label.length) {
+                    label.toggleClass('active', show);
+                }
+            }
         });
     });
 
-    // Update CSV export to only include visible columns
-    document.getElementById('downloadCsvBtn').addEventListener('click', function() {
-        const table = document.querySelector('#resultsTable table');
+    // Update CSV export to only include visible columns (use jQuery traversal)
+    $('#downloadCsvBtn').on('click', function() {
+        const $table = $('#resultsTable table');
         let csv = [];
-        // Get visible column indexes
+        // Get visible column indexes from the first row
         const visibleIndexes = [];
-        for (let i = 0; i < table.rows[0].cells.length; i++) {
-            if (table.rows[0].cells[i].style.display !== 'none') {
+        const $firstRowCells = $table.find('tr').first().children();
+        $firstRowCells.each(function(i, cell) {
+            if ($(cell).css('display') !== 'none') {
                 visibleIndexes.push(i);
             }
-        }
-        for (let row of table.rows) {
+        });
+
+        // Iterate rows and collect visible cells
+        $table.find('tr').each(function() {
             let rowData = [];
-            visibleIndexes.forEach(function(i) {
-                let cell = row.cells[i];
-                let text = cell.innerHTML.replace(/<br\s*\/?>/gi, '\n').replace(/"/g, '""');
-                rowData.push('"' + text.replace(/<[^>]*>?/gm, '') + '"');
+            $(this).children().each(function(i, cell) {
+                if (visibleIndexes.indexOf(i) !== -1) {
+                    let text = $(cell).html().replace(/<br\s*\/?>/gi, '\n').replace(/"/g, '""');
+                    rowData.push('"' + text.replace(/<[^>]*>?/gm, '') + '"');
+                }
             });
             csv.push(rowData.join(','));
-        }
+        });
+
         const csvContent = csv.join('\r\n');
         const blob = new Blob([csvContent], { type: 'text/csv' });
         const url = URL.createObjectURL(blob);
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'results.csv';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        // Create anchor using jQuery, trigger download, then remove
+        const $a = $('<a>').attr({ href: url, download: 'results.csv' }).appendTo('body');
+        $a[0].click();
+        $a.remove();
         URL.revokeObjectURL(url);
     });
 })

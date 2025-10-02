@@ -23,13 +23,12 @@ namespace PhpOffice\PhpWord\Writer\ODText\Part;
  */
 class Mimetype extends AbstractPart
 {
-    /**
-     * Write part.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        return 'application/vnd.oasis.opendocument.text';
-    }
+	/**
+	 * Write part.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		return 'application/vnd.oasis.opendocument.text';
+	}
 }

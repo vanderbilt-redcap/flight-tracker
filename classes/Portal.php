@@ -531,7 +531,7 @@ class Portal
 		$processingTimeTakenArray = [];
 		foreach ($pids as $pid) {
 			$records = Download::recordsByPid($pid);
-			$recordsChunks = array_chunk($records, 10);
+			$recordsChunks = array_chunk($records, 5);
 			$matches['totalRecordsSearched'] = count($records);
 			foreach ($recordsChunks as $recordChunk) {
 				$startTime = microtime(true);
@@ -551,6 +551,19 @@ class Portal
 				foreach ($recordsByRecordId as $recordId => $recordData) {
 					$score = 0;
 					$processingTimeStart = microtime(true);
+					$name = Download::fullNameByPid($pid, $recordId);
+					list($currFirstName, $currLastName) = NameMatcher::splitName($name);
+					$namePreviouslyMatched = false;
+					foreach ($postData['names'] as $namePrevious) {
+						list($prevFirstName, $prevLastName) = NameMatcher::splitName($namePrevious);
+						if (NameMatcher::matchName($currFirstName, $currLastName, $prevFirstName, $prevLastName)) {
+							$namePreviouslyMatched = true;
+							break;
+						}
+					}
+					if ($namePreviouslyMatched) {
+						continue;
+					}
 					foreach ($recordData as $data) {
 						$matchFound = false;
 						$pmid = $data['citation_pmid'] ?? "";
@@ -585,7 +598,6 @@ class Portal
 								$matches['searchResults'][$licensePlate] = [];
 								$matches['matchesFound']++;
 							}
-							$name = Download::fullNameByPid($pid, $recordId);
 							$email = Download::oneFieldForRecordByPid($pid, "identifier_email", $recordId);
 							if (is_array($email) && !empty($email)) {
 								$firstKey = array_keys($email)[0];

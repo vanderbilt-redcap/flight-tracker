@@ -27,35 +27,33 @@ use PhpOffice\PhpWord\Style\TextBox as TextBoxStyle;
  */
 class TextBox extends AbstractContainer
 {
-    /**
-     * @var string Container type
-     */
-    protected $container = 'TextBox';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'TextBox';
 
-    /**
-     * TextBox style.
-     *
-     * @var ?TextBoxStyle
-     */
-    private $style;
+	/**
+	 * TextBox style.
+	 *
+	 * @var ?TextBoxStyle
+	 */
+	private $style;
 
-    /**
-     * Create a new textbox.
-     *
-     * @param mixed $style
-     */
-    public function __construct($style = null)
-    {
-        $this->style = $this->setNewStyle(new TextBoxStyle(), $style);
-    }
+	/**
+	 * Create a new textbox.
+	 *
+	 * @param mixed $style
+	 */
+	public function __construct($style = null) {
+		$this->style = $this->setNewStyle(new TextBoxStyle(), $style);
+	}
 
-    /**
-     * Get textbox style.
-     *
-     * @return ?TextBoxStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get textbox style.
+	 *
+	 * @return ?TextBoxStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 }

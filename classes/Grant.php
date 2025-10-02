@@ -2,545 +2,545 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-
 # This file compiles all of the grants from various data sources and compiles them into an ordered list of grants.
 # It should remove duplicate grants as well.
 # Unit-testable.
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Grant {
+class Grant
+{
 	public function __construct($lexicalTranslator) {
 		$this->translator = $lexicalTranslator;
 	}
 
-    public static function trimApplicationType($awardNo) {
-        if (preg_match("/^\d[A-Za-z]/", $awardNo)) {
-            return substr($awardNo, 1);
-        }
-        return $awardNo;
-    }
-
-    public static function makeAryOfBaseAwardNumbers($awardNumbers) {
-        $newAry = [];
-        foreach ($awardNumbers as $awardNo) {
-            if ($awardNo) {
-                $newAry[] = strtoupper(self::translateToBaseAwardNumber($awardNo));
-            }
-        }
-        return $newAry;
-    }
-
-    # https://www.bls.gov/cpi/factsheets/escalation.htm
-    public static function adjustDollarsForInflation($dollars, $year, $currYear = 2023) {
-        $cpis = self::getCPITable();
-        if ($year == $currYear) {
-            return $dollars;
-        }
-        if (!isset($cpis[$year]) || !isset($cpis[$currYear])) {
-            $minYear = "NONE";
-            $maxYear = "NONE";
-            $years = array_keys($cpis);
-            if (!empty($years)) {
-                $minYear = min($years);
-                $maxYear = max($years);
-            }
-            throw new \Exception("Invalid year ($year or $currYear). Minimum year is $minYear. Maximum year is $maxYear.");
-        }
-        $currCPI = $cpis[$currYear];
-        $origCPI = $cpis[$year];
-        $changeCPI = $currCPI - $origCPI;
-        $fracChange = 1 + $changeCPI / $origCPI;
-        return $dollars * $fracChange;
-    }
-
-    # https://www.usinflationcalculator.com/inflation/consumer-price-index-and-annual-percent-changes-from-1913-to-2008/
-    # until October 2023
-    # Consumer Price Index
-    private static function getCPITable() {
-        return [
-            1913 => 9.9,
-            1914 => 10,
-            1915 => 10.1,
-            1916 => 10.9,
-            1917 => 12.8,
-            1918 => 15.1,
-            1919 => 17.3,
-            1920 => 20,
-            1921 => 17.9,
-            1922 => 16.8,
-            1923 => 17.1,
-            1924 => 17.1,
-            1925 => 17.5,
-            1926 => 17.7,
-            1927 => 17.4,
-            1928 => 17.1,
-            1929 => 17.1,
-            1930 => 16.7,
-            1931 => 15.2,
-            1932 => 13.7,
-            1933 => 13,
-            1934 => 13.4,
-            1935 => 13.7,
-            1936 => 13.9,
-            1937 => 14.4,
-            1938 => 14.1,
-            1939 => 13.9,
-            1940 => 14,
-            1941 => 14.7,
-            1942 => 16.3,
-            1943 => 17.3,
-            1944 => 17.6,
-            1945 => 18,
-            1946 => 19.5,
-            1947 => 22.3,
-            1948 => 24.1,
-            1949 => 23.8,
-            1950 => 24.1,
-            1951 => 26,
-            1952 => 26.5,
-            1953 => 26.7,
-            1954 => 26.9,
-            1955 => 26.8,
-            1956 => 27.2,
-            1957 => 28.1,
-            1958 => 28.9,
-            1959 => 29.1,
-            1960 => 29.6,
-            1961 => 29.9,
-            1962 => 30.2,
-            1963 => 30.6,
-            1964 => 31,
-            1965 => 31.5,
-            1966 => 32.4,
-            1967 => 33.4,
-            1968 => 34.8,
-            1969 => 36.7,
-            1970 => 38.8,
-            1971 => 40.5,
-            1972 => 41.8,
-            1973 => 44.4,
-            1974 => 49.3,
-            1975 => 53.8,
-            1976 => 56.9,
-            1977 => 60.6,
-            1978 => 65.2,
-            1979 => 72.6,
-            1980 => 82.4,
-            1981 => 90.9,
-            1982 => 96.5,
-            1983 => 99.6,
-            1984 => 103.9,
-            1985 => 107.6,
-            1986 => 109.6,
-            1987 => 113.6,
-            1988 => 118.3,
-            1989 => 124,
-            1990 => 130.7,
-            1991 => 136.2,
-            1992 => 140.3,
-            1993 => 144.5,
-            1994 => 148.2,
-            1995 => 152.4,
-            1996 => 156.9,
-            1997 => 160.5,
-            1998 => 163,
-            1999 => 166.6,
-            2000 => 172.2,
-            2001 => 177.1,
-            2002 => 179.9,
-            2003 => 184,
-            2004 => 188.9,
-            2005 => 195.3,
-            2006 => 201.6,
-            2007 => 207.3,
-            2008 => 215.303,
-            2009 => 214.537,
-            2010 => 218.056,
-            2011 => 224.939,
-            2012 => 229.594,
-            2013 => 232.957,
-            2014 => 236.736,
-            2015 => 237.017,
-            2016 => 240.007,
-            2017 => 245.12,
-            2018 => 251.107,
-            2019 => 255.657,
-            2020 => 258.811,
-            2021 => 270.97,
-            2022 => 292.655,
-            2023 => 307.789,    // Oct 2023
-        ];
-    }
-
-    public function getFundingByYear($budgetField = "ALL") {
-        if ($budgetField == "ALL") {
-            $budgetFields = ["total_budget", "direct_budget"];
-        } else {
-            $budgetFields = [$budgetField];
-        }
-        foreach ($budgetFields as $budgetField) {
-            $budget = $this->getVariable($budgetField);
-            $budget = (int) str_replace("$", "", $budget);
-            if ($budget > 0) {
-                break;
-            }
-        }
-        if (!$budget) {
-            return [];
-        }
-
-        $dollarsByYear = [];
-        $startTs = strtotime($this->getVariable("start"));
-        $endDate = $this->getVariable("end");
-        $endTs = $endDate ? strtotime($endDate) : time();
-        $totalTimespan = $endTs - $startTs;
-        $startYear = (int) date("Y", $startTs);
-        $endYear = (int) date("Y", $endTs);
-        if ($startYear && ($startYear == $endYear)) {
-            $dollarsByYear[$startYear] = $budget;
-        } else if ($startYear) {
-            $startYearEndTs = strtotime(($startYear + 1)."-01-01");
-            $endYearStartTs = strtotime("$endYear-01-01");
-            $secsInStartYear = $startYearEndTs - $startTs;
-            $secsInEndYear = $endTs - $endYearStartTs;
-            $startYearBudget = round($secsInStartYear * $budget / $totalTimespan);
-            $endYearBudget = round($secsInEndYear * $budget / $totalTimespan);
-            if (!isset($dollarsByYear[$startYear])) {
-                $dollarsByYear[$startYear] = 0;
-            }
-            $dollarsByYear[$startYear] += $startYearBudget;
-            if (!isset($dollarsByYear[$endYear])) {
-                $dollarsByYear[$endYear] = 0;
-            }
-            $dollarsByYear[$endYear] += $endYearBudget;
-            if ($endYear - $startYear > 1) {
-                # spans 3+ years
-                for ($year = $startYear + 1; $year <= $endYear - 1; $year++) {
-                    $yearStartTs = strtotime($year."-01-01");
-                    $yearEndTs = strtotime(($year + 1)."-01-01");
-                    $secsInYear = $yearEndTs - $yearStartTs;
-                    $yearBudget = round($secsInYear * $budget / $totalTimespan);
-                    if (!isset($dollarsByYear[$year])) {
-                        $dollarsByYear[$year] = 0;
-                    }
-                    $dollarsByYear[$year] += $yearBudget;
-                }
-            }
-        }
-        return $dollarsByYear;
-    }
-
-	public function isInternalVanderbiltGrant() {
-        return preg_match("/VUMC\s*\d+/", $this->getNumber());
-    }
-
-    public function getCurrentYearBudget($rows, $type) {
-	    return $this->getActiveBudgetAtTime($rows, $type, time());
-    }
-
-    public function getBudget($rows, $type, $sourcesToExclude = []) {
-        if ($type == "Direct") {
-            return $this->getVariable("direct_budget");
-        } else if ($type == "Total") {
-            $total = $this->getVariable("total_budget");
-            if ($total) {
-                return $total;
-            } else {
-                $total = $this->getVariable("budget");
-                if ($total) {
-                    return $total;
-                }
-            }
-        }
-	    return 0.0;
-    }
-
-    # $type is an item of [Direct, Indirect, Total]
-    # if $ts === FALSE, then calculate for all time
-    public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
-	    # Do not use Federal RePORTER because data are incomplete
-        $orderedSources = ["coeus", "nih_reporter", "exporter", "reporter", "nsf", "ies_grant", "followup", "custom"];
-        $sourcesToSkip = ["followup", "custom"]; // have numbers over all time period, not current budget
-        $baseNumber = $this->getBaseNumber();
-        $awardNo = $this->getNumber();
-        if (self::getShowDebug()) {
-            echo "Looking for $baseNumber<br>";
-        }
-        $runningTotal = 0.0;     // able to count supplements
-        $sourceForRunningTotal = "";
-        foreach ($orderedSources as $source) {
-            if (!in_array($source, $sourcesToExclude) && !in_array($source, $sourcesToSkip)) {
-                foreach ($rows as $row) {
-                    if (($source == "coeus") && ($awardNo == $row['coeus_sponsor_award_number'])) {
-                        if ($type == "Total") {
-                            $field = "coeus_total_cost_budget_period";
-                        } else if ($type == "Direct") {
-                            $field = "coeus_direct_cost_budget_period";
-                        } else {
-                            throw new \Exception("Invalid type $type!");
-                        }
-                        if ($ts === FALSE) {
-                            $currTotalFunding = $row[$field] ?? 0;
-                            if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                $runningTotal += $currTotalFunding;
-                                $sourceForRunningTotal = $source;
-                            }
-                        } else if ($row['coeus_budget_start_date'] && $row['coeus_budget_end_date']) {
-                            $startTs = strtotime($row['coeus_budget_start_date']);
-                            $endTs = strtotime($row['coeus_budget_end_date']);
-                            if (($ts >= $startTs) && ($ts <= $endTs)) {
-                                $currTotalFunding = $row[$field] ?? 0;
-                                if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                    $runningTotal += $currTotalFunding;
-                                    $sourceForRunningTotal = $source;
-                                }
-                            }
-                        }
-                    } else if (($source == "nih_reporter") && ($awardNo == $row['nih_project_num'])) {
-                        if ($type == "Total") {
-                            if ($ts === FALSE) {
-                                if ($row['nih_award_amount']) {
-                                    $currTotalFunding = $row['nih_award_amount'];
-                                    if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                        $runningTotal = $currTotalFunding;    // do not total
-                                        $sourceForRunningTotal = $source;
-                                    }
-                                }
-                            } else {
-                                $fy = REDCapManagement::getCurrentFY("Federal", $ts);
-                                $field = "nih_agency_ic_fundings";
-                                if ($row[$field]) {
-                                    $entries = RePORTER::decodeICFundings($row[$field]);
-                                    foreach ($entries as $ary) {
-                                        if (count($ary) >= 2) {
-                                            $currFY = $ary['fy'] ?? "";
-                                            $currTotalFunding = $ary['total_cost'] ?? "";
-                                            if ($currFY == $fy) {
-                                                if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                                    $runningTotal += $currTotalFunding;
-                                                    $sourceForRunningTotal = $source;
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else if (($source == "exporter") && ($awardNo == $row['exporter_full_project_num'])) {
-                        if ($row['redcap_repeat_instrument'] == $source) {
-                            if ($type == "Direct") {
-                                $budgetField = 'exporter_direct_cost_amt';
-                            } else if ($type == "Indirect") {
-                                $budgetField = 'exporter_indirect_cost_amt';
-                            } else if ($type == "Total") {
-                                $budgetField = 'exporter_total_cost';
-                                if (!$row[$budgetField]) {
-                                    $budgetField = 'exporter_total_cost_sub_project';
-                                }
-                            } else {
-                                $budgetField = "";
-                            }
-                            if ($ts === FALSE) {
-                                if ($budgetField) {
-                                    $dollars = $row[$budgetField];
-                                } else {
-                                    $dollars = 0;
-                                }
-                            } else {
-                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", $budgetField, $ts);
-                            }
-                            if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                $runningTotal += $dollars;
-                                $sourceForRunningTotal = $source;
-                            }
-                        }
-                    } else if (($source == "coeus2") && ($awardNo == $row['coeus2_agency_grant_number'])) {
-                        if (($row['redcap_repeat_instrument'] == $source) && ($row['coeus2_award_status'] == "Awarded")) {
-                            if ($type == "Direct") {
-                                $budgetField = 'coeus2_current_period_direct_funding';
-                            } else if ($type == "Indirect") {
-                                $budgetField = 'coeus2_current_period_indirect_funding';
-                            } else if ($type == "Total") {
-                                $budgetField = 'coeus2_current_period_total_funding';
-                            } else {
-                                $budgetField = "";
-                            }
-                            if ($ts === FALSE) {
-                                if ($budgetField) {
-                                    $dollars = $row[$budgetField];
-                                } else {
-                                    $dollars = 0;
-                                }
-                            } else {
-                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", $budgetField, $ts);
-                            }
-                            if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                $runningTotal += $dollars;
-                                $sourceForRunningTotal = $source;
-                            }
-                        }
-                    } else if (($source == "reporter") && ($awardNo == $row['reporter_projectnumber'])) {
-                        if ($row['redcap_repeat_instrument'] == $source) {
-                            if ($type == "Total") {
-                                $budgetField = 'reporter_totalcostamount';
-                            } else {
-                                $budgetField = "";
-                            }
-                            if ($ts === FALSE) {
-                                if ($budgetField) {
-                                    $dollars = $row[$budgetField];
-                                } else {
-                                    $dollars = 0;
-                                }
-                            } else {
-                                $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "reporter_projectnumber", "reporter_budgetstartdate", "reporter_budgetenddate", $budgetField, $ts);
-                            }
-                            if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                $runningTotal += $dollars;
-                                $sourceForRunningTotal = $source;
-                            }
-                        }
-                    } else if (($source == "custom") && ($awardNo == $row['custom_number'])) {
-                        if ($type == "Direct") {
-                            $budgetField = 'custom_costs';
-                        } else if ($type == "Total") {
-                            $budgetField = 'custom_costs_total';
-                        } else {
-                            $budgetField = "";
-                        }
-                        if ($ts === FALSE) {
-                            if ($budgetField) {
-                                $dollars = $row[$budgetField];
-                            } else {
-                                $dollars = 0;
-                            }
-                        } else {
-                            $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "custom_number", "custom_start", "custom_end", $budgetField, $ts);
-                        }
-                        if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                            $runningTotal += $dollars;
-                            $sourceForRunningTotal = $source;
-                        }
-                    } else if ($source == "followup") {
-                        for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
-                            if ($row['followup_grant'.$i.'_number']) {
-                                $currentBaseNumber = self::translateToBaseAwardNumber($row['followup_grant'.$i.'_number']);
-                                if ($baseNumber == $currentBaseNumber) {
-                                    if ($type == "Direct") {
-                                        $budgetField = 'followup_grant'.$i.'_costs';
-                                    } else {
-                                        $budgetField = "";
-                                    }
-                                    if ($ts === FALSE) {
-                                        if ($budgetField) {
-                                            $dollars = $row[$budgetField];
-                                        } else {
-                                            $dollars = 0;
-                                        }
-                                    } else {
-                                        $dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "followup_grant".$i."_number", "followup_grant".$i."_start", "followup_grant".$i."_end", $budgetField, $ts);
-                                    }
-                                    if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
-                                        $runningTotal += $dollars;
-                                        $sourceForRunningTotal = $source;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        return $runningTotal;
-    }
-
-    private static function getDollarAmountFromRowAtTime($row, $searchBaseNumber, $numberField, $startField, $endField, $budgetField, $ts) {
-	    if (!$budgetField || !$row[$budgetField]) {
-	        if (self::getShowDebug()) {
-	            echo "No budget in $budgetField with {$row[$numberField]}<br>";
-            }
-	        return FALSE;
-        }
-        $rowBaseNumber = self::translateToBaseAwardNumber($row[$numberField]);
-	    if (self::getShowDebug()) {
-            echo "Comparing '$rowBaseNumber' from $numberField and '$searchBaseNumber'<br>";
-        }
-        if ($rowBaseNumber == $searchBaseNumber) {
-            if (!$row[$startField] || !$row[$endField]) {
-                if (self::getShowDebug()) {
-                    echo "No start/end<br>";
-                }
-                return FALSE;
-            }
-            $startTs = strtotime($row[$startField]);
-            $endTs = strtotime($row[$endField]);
-            if (($startTs <= $ts) && ($endTs >= $ts)) {
-                if (self::getShowDebug()) {
-                    echo "Returning $budgetField: {$row[$budgetField]}<br>";
-                }
-                return $row[$budgetField];
-            } else {
-                if (self::getShowDebug()) {
-                    echo "Not current time<br>";
-                }
-            }
-        }
-        if (self::getShowDebug()) {
-            echo "Last<br>";
-        }
-        return FALSE;
-    }
-
-    public function isState() {
-	    $fundingSource = $this->getFundingSource();
-	    return preg_match("/State/", $fundingSource);
-    }
-
-    public function isIndustry() {
-        $fundingSource = $this->getFundingSource();
-        return preg_match("/Industry/", $fundingSource);
-    }
-
-    public function isFoundation() {
-	    $type = $this->getVariable("type");
-        return (
-            !$this->isFederal()
-            && !$this->isIndustry()
-            && !$this->isState()
-            && !$this->isInternalVanderbiltGrant()
-            && !in_array($type, ["Internal K", "K12/KL2"])
-        );
-    }
-
-	public function isNIH() {
-	    $ary = self::parseNumber($this->getNumber());
-        return isset($ary['institute_code']) && self::isMember($ary['institute_code'], "NIH");
-    }
-
-    public function isHHS() {
-	    return self::isHHSGrant($this->getNumber());
+	public static function trimApplicationType($awardNo) {
+		if (preg_match("/^\d[A-Za-z]/", $awardNo)) {
+			return substr($awardNo, 1);
+		}
+		return $awardNo;
 	}
 
-    public static function isHHSGrant($awardNo) {
-	    return preg_match("/^HHS/", $awardNo);
-    }
+	public static function makeAryOfBaseAwardNumbers($awardNumbers) {
+		$newAry = [];
+		foreach ($awardNumbers as $awardNo) {
+			if ($awardNo) {
+				$newAry[] = strtoupper(self::translateToBaseAwardNumber($awardNo));
+			}
+		}
+		return $newAry;
+	}
 
-    public static function isMember($instituteCode, $group) {
-	    if (!$instituteCode) {
-	        return FALSE;
-        }
-	    $codes = [
-            # from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
-            "NIH" => ["TW", "TR", "AT", "CA", "EY", "HG", "HL", "AG", "AA", "AI", "AR", "EB", "HD", "DA", "DC", "DE", "DK", "ES", "GM", "MH", "MD", "NS", "NR", "LM", "RR", "OD", "HC"],
-            "PCORI" => [],
-            "AHRQ" => ["HS"],
-            "VA" => ["BX", "CX", "HX"],
-            "DOD" => ["XW"],
-        ];
-	    $groupCodes = $codes[$group] ?? [];
-        return in_array($instituteCode, $groupCodes);
-    }
+	# https://www.bls.gov/cpi/factsheets/escalation.htm
+	public static function adjustDollarsForInflation($dollars, $year, $currYear = 2023) {
+		$cpis = self::getCPITable();
+		if ($year == $currYear) {
+			return $dollars;
+		}
+		if (!isset($cpis[$year]) || !isset($cpis[$currYear])) {
+			$minYear = "NONE";
+			$maxYear = "NONE";
+			$years = array_keys($cpis);
+			if (!empty($years)) {
+				$minYear = min($years);
+				$maxYear = max($years);
+			}
+			throw new \Exception("Invalid year ($year or $currYear). Minimum year is $minYear. Maximum year is $maxYear.");
+		}
+		$currCPI = $cpis[$currYear];
+		$origCPI = $cpis[$year];
+		$changeCPI = $currCPI - $origCPI;
+		$fracChange = 1 + $changeCPI / $origCPI;
+		return $dollars * $fracChange;
+	}
+
+	# https://www.usinflationcalculator.com/inflation/consumer-price-index-and-annual-percent-changes-from-1913-to-2008/
+	# until October 2023
+	# Consumer Price Index
+	private static function getCPITable() {
+		return [
+			1913 => 9.9,
+			1914 => 10,
+			1915 => 10.1,
+			1916 => 10.9,
+			1917 => 12.8,
+			1918 => 15.1,
+			1919 => 17.3,
+			1920 => 20,
+			1921 => 17.9,
+			1922 => 16.8,
+			1923 => 17.1,
+			1924 => 17.1,
+			1925 => 17.5,
+			1926 => 17.7,
+			1927 => 17.4,
+			1928 => 17.1,
+			1929 => 17.1,
+			1930 => 16.7,
+			1931 => 15.2,
+			1932 => 13.7,
+			1933 => 13,
+			1934 => 13.4,
+			1935 => 13.7,
+			1936 => 13.9,
+			1937 => 14.4,
+			1938 => 14.1,
+			1939 => 13.9,
+			1940 => 14,
+			1941 => 14.7,
+			1942 => 16.3,
+			1943 => 17.3,
+			1944 => 17.6,
+			1945 => 18,
+			1946 => 19.5,
+			1947 => 22.3,
+			1948 => 24.1,
+			1949 => 23.8,
+			1950 => 24.1,
+			1951 => 26,
+			1952 => 26.5,
+			1953 => 26.7,
+			1954 => 26.9,
+			1955 => 26.8,
+			1956 => 27.2,
+			1957 => 28.1,
+			1958 => 28.9,
+			1959 => 29.1,
+			1960 => 29.6,
+			1961 => 29.9,
+			1962 => 30.2,
+			1963 => 30.6,
+			1964 => 31,
+			1965 => 31.5,
+			1966 => 32.4,
+			1967 => 33.4,
+			1968 => 34.8,
+			1969 => 36.7,
+			1970 => 38.8,
+			1971 => 40.5,
+			1972 => 41.8,
+			1973 => 44.4,
+			1974 => 49.3,
+			1975 => 53.8,
+			1976 => 56.9,
+			1977 => 60.6,
+			1978 => 65.2,
+			1979 => 72.6,
+			1980 => 82.4,
+			1981 => 90.9,
+			1982 => 96.5,
+			1983 => 99.6,
+			1984 => 103.9,
+			1985 => 107.6,
+			1986 => 109.6,
+			1987 => 113.6,
+			1988 => 118.3,
+			1989 => 124,
+			1990 => 130.7,
+			1991 => 136.2,
+			1992 => 140.3,
+			1993 => 144.5,
+			1994 => 148.2,
+			1995 => 152.4,
+			1996 => 156.9,
+			1997 => 160.5,
+			1998 => 163,
+			1999 => 166.6,
+			2000 => 172.2,
+			2001 => 177.1,
+			2002 => 179.9,
+			2003 => 184,
+			2004 => 188.9,
+			2005 => 195.3,
+			2006 => 201.6,
+			2007 => 207.3,
+			2008 => 215.303,
+			2009 => 214.537,
+			2010 => 218.056,
+			2011 => 224.939,
+			2012 => 229.594,
+			2013 => 232.957,
+			2014 => 236.736,
+			2015 => 237.017,
+			2016 => 240.007,
+			2017 => 245.12,
+			2018 => 251.107,
+			2019 => 255.657,
+			2020 => 258.811,
+			2021 => 270.97,
+			2022 => 292.655,
+			2023 => 307.789,    // Oct 2023
+		];
+	}
+
+	public function getFundingByYear($budgetField = "ALL") {
+		if ($budgetField == "ALL") {
+			$budgetFields = ["total_budget", "direct_budget"];
+		} else {
+			$budgetFields = [$budgetField];
+		}
+		foreach ($budgetFields as $budgetField) {
+			$budget = $this->getVariable($budgetField);
+			$budget = (int) str_replace("$", "", $budget);
+			if ($budget > 0) {
+				break;
+			}
+		}
+		if (!$budget) {
+			return [];
+		}
+
+		$dollarsByYear = [];
+		$startTs = strtotime($this->getVariable("start"));
+		$endDate = $this->getVariable("end");
+		$endTs = $endDate ? strtotime($endDate) : time();
+		$totalTimespan = $endTs - $startTs;
+		$startYear = (int) date("Y", $startTs);
+		$endYear = (int) date("Y", $endTs);
+		if ($startYear && ($startYear == $endYear)) {
+			$dollarsByYear[$startYear] = $budget;
+		} elseif ($startYear) {
+			$startYearEndTs = strtotime(($startYear + 1)."-01-01");
+			$endYearStartTs = strtotime("$endYear-01-01");
+			$secsInStartYear = $startYearEndTs - $startTs;
+			$secsInEndYear = $endTs - $endYearStartTs;
+			$startYearBudget = round($secsInStartYear * $budget / $totalTimespan);
+			$endYearBudget = round($secsInEndYear * $budget / $totalTimespan);
+			if (!isset($dollarsByYear[$startYear])) {
+				$dollarsByYear[$startYear] = 0;
+			}
+			$dollarsByYear[$startYear] += $startYearBudget;
+			if (!isset($dollarsByYear[$endYear])) {
+				$dollarsByYear[$endYear] = 0;
+			}
+			$dollarsByYear[$endYear] += $endYearBudget;
+			if ($endYear - $startYear > 1) {
+				# spans 3+ years
+				for ($year = $startYear + 1; $year <= $endYear - 1; $year++) {
+					$yearStartTs = strtotime($year."-01-01");
+					$yearEndTs = strtotime(($year + 1)."-01-01");
+					$secsInYear = $yearEndTs - $yearStartTs;
+					$yearBudget = round($secsInYear * $budget / $totalTimespan);
+					if (!isset($dollarsByYear[$year])) {
+						$dollarsByYear[$year] = 0;
+					}
+					$dollarsByYear[$year] += $yearBudget;
+				}
+			}
+		}
+		return $dollarsByYear;
+	}
+
+	public function isInternalVanderbiltGrant() {
+		return preg_match("/VUMC\s*\d+/", $this->getNumber());
+	}
+
+	public function getCurrentYearBudget($rows, $type) {
+		return $this->getActiveBudgetAtTime($rows, $type, time());
+	}
+
+	public function getBudget($rows, $type, $sourcesToExclude = []) {
+		if ($type == "Direct") {
+			return $this->getVariable("direct_budget");
+		} elseif ($type == "Total") {
+			$total = $this->getVariable("total_budget");
+			if ($total) {
+				return $total;
+			} else {
+				$total = $this->getVariable("budget");
+				if ($total) {
+					return $total;
+				}
+			}
+		}
+		return 0.0;
+	}
+
+	# $type is an item of [Direct, Indirect, Total]
+	# if $ts === FALSE, then calculate for all time
+	public function getActiveBudgetAtTime($rows, $type, $ts, $sourcesToExclude = []) {
+		# Do not use Federal RePORTER because data are incomplete
+		$orderedSources = ["coeus", "nih_reporter", "exporter", "reporter", "nsf", "ies_grant", "followup", "custom"];
+		$sourcesToSkip = ["followup", "custom"]; // have numbers over all time period, not current budget
+		$baseNumber = $this->getBaseNumber();
+		$awardNo = $this->getNumber();
+		if (self::getShowDebug()) {
+			echo "Looking for $baseNumber<br>";
+		}
+		$runningTotal = 0.0;     // able to count supplements
+		$sourceForRunningTotal = "";
+		foreach ($orderedSources as $source) {
+			if (!in_array($source, $sourcesToExclude) && !in_array($source, $sourcesToSkip)) {
+				foreach ($rows as $row) {
+					if (($source == "coeus") && ($awardNo == $row['coeus_sponsor_award_number'])) {
+						if ($type == "Total") {
+							$field = "coeus_total_cost_budget_period";
+						} elseif ($type == "Direct") {
+							$field = "coeus_direct_cost_budget_period";
+						} else {
+							throw new \Exception("Invalid type $type!");
+						}
+						if ($ts === false) {
+							$currTotalFunding = $row[$field] ?? 0;
+							if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+								$runningTotal += $currTotalFunding;
+								$sourceForRunningTotal = $source;
+							}
+						} elseif ($row['coeus_budget_start_date'] && $row['coeus_budget_end_date']) {
+							$startTs = strtotime($row['coeus_budget_start_date']);
+							$endTs = strtotime($row['coeus_budget_end_date']);
+							if (($ts >= $startTs) && ($ts <= $endTs)) {
+								$currTotalFunding = $row[$field] ?? 0;
+								if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+									$runningTotal += $currTotalFunding;
+									$sourceForRunningTotal = $source;
+								}
+							}
+						}
+					} elseif (($source == "nih_reporter") && ($awardNo == $row['nih_project_num'])) {
+						if ($type == "Total") {
+							if ($ts === false) {
+								if ($row['nih_award_amount']) {
+									$currTotalFunding = $row['nih_award_amount'];
+									if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+										$runningTotal = $currTotalFunding;    // do not total
+										$sourceForRunningTotal = $source;
+									}
+								}
+							} else {
+								$fy = REDCapManagement::getCurrentFY("Federal", $ts);
+								$field = "nih_agency_ic_fundings";
+								if ($row[$field]) {
+									$entries = RePORTER::decodeICFundings($row[$field]);
+									foreach ($entries as $ary) {
+										if (count($ary) >= 2) {
+											$currFY = $ary['fy'] ?? "";
+											$currTotalFunding = $ary['total_cost'] ?? "";
+											if ($currFY == $fy) {
+												if (!$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+													$runningTotal += $currTotalFunding;
+													$sourceForRunningTotal = $source;
+												}
+											}
+										}
+									}
+								}
+							}
+						}
+					} elseif (($source == "exporter") && ($awardNo == $row['exporter_full_project_num'])) {
+						if ($row['redcap_repeat_instrument'] == $source) {
+							if ($type == "Direct") {
+								$budgetField = 'exporter_direct_cost_amt';
+							} elseif ($type == "Indirect") {
+								$budgetField = 'exporter_indirect_cost_amt';
+							} elseif ($type == "Total") {
+								$budgetField = 'exporter_total_cost';
+								if (!$row[$budgetField]) {
+									$budgetField = 'exporter_total_cost_sub_project';
+								}
+							} else {
+								$budgetField = "";
+							}
+							if ($ts === false) {
+								if ($budgetField) {
+									$dollars = $row[$budgetField];
+								} else {
+									$dollars = 0;
+								}
+							} else {
+								$dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", $budgetField, $ts);
+							}
+							if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+								$runningTotal += $dollars;
+								$sourceForRunningTotal = $source;
+							}
+						}
+					} elseif (($source == "coeus2") && ($awardNo == $row['coeus2_agency_grant_number'])) {
+						if (($row['redcap_repeat_instrument'] == $source) && ($row['coeus2_award_status'] == "Awarded")) {
+							if ($type == "Direct") {
+								$budgetField = 'coeus2_current_period_direct_funding';
+							} elseif ($type == "Indirect") {
+								$budgetField = 'coeus2_current_period_indirect_funding';
+							} elseif ($type == "Total") {
+								$budgetField = 'coeus2_current_period_total_funding';
+							} else {
+								$budgetField = "";
+							}
+							if ($ts === false) {
+								if ($budgetField) {
+									$dollars = $row[$budgetField];
+								} else {
+									$dollars = 0;
+								}
+							} else {
+								$dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", $budgetField, $ts);
+							}
+							if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+								$runningTotal += $dollars;
+								$sourceForRunningTotal = $source;
+							}
+						}
+					} elseif (($source == "reporter") && ($awardNo == $row['reporter_projectnumber'])) {
+						if ($row['redcap_repeat_instrument'] == $source) {
+							if ($type == "Total") {
+								$budgetField = 'reporter_totalcostamount';
+							} else {
+								$budgetField = "";
+							}
+							if ($ts === false) {
+								if ($budgetField) {
+									$dollars = $row[$budgetField];
+								} else {
+									$dollars = 0;
+								}
+							} else {
+								$dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "reporter_projectnumber", "reporter_budgetstartdate", "reporter_budgetenddate", $budgetField, $ts);
+							}
+							if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+								$runningTotal += $dollars;
+								$sourceForRunningTotal = $source;
+							}
+						}
+					} elseif (($source == "custom") && ($awardNo == $row['custom_number'])) {
+						if ($type == "Direct") {
+							$budgetField = 'custom_costs';
+						} elseif ($type == "Total") {
+							$budgetField = 'custom_costs_total';
+						} else {
+							$budgetField = "";
+						}
+						if ($ts === false) {
+							if ($budgetField) {
+								$dollars = $row[$budgetField];
+							} else {
+								$dollars = 0;
+							}
+						} else {
+							$dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "custom_number", "custom_start", "custom_end", $budgetField, $ts);
+						}
+						if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+							$runningTotal += $dollars;
+							$sourceForRunningTotal = $source;
+						}
+					} elseif ($source == "followup") {
+						for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
+							if ($row['followup_grant'.$i.'_number']) {
+								$currentBaseNumber = self::translateToBaseAwardNumber($row['followup_grant'.$i.'_number']);
+								if ($baseNumber == $currentBaseNumber) {
+									if ($type == "Direct") {
+										$budgetField = 'followup_grant'.$i.'_costs';
+									} else {
+										$budgetField = "";
+									}
+									if ($ts === false) {
+										if ($budgetField) {
+											$dollars = $row[$budgetField];
+										} else {
+											$dollars = 0;
+										}
+									} else {
+										$dollars = self::getDollarAmountFromRowAtTime($row, $baseNumber, "followup_grant".$i."_number", "followup_grant".$i."_start", "followup_grant".$i."_end", $budgetField, $ts);
+									}
+									if ($dollars && !$sourceForRunningTotal || ($source == $sourceForRunningTotal)) {
+										$runningTotal += $dollars;
+										$sourceForRunningTotal = $source;
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return $runningTotal;
+	}
+
+	private static function getDollarAmountFromRowAtTime($row, $searchBaseNumber, $numberField, $startField, $endField, $budgetField, $ts) {
+		if (!$budgetField || !$row[$budgetField]) {
+			if (self::getShowDebug()) {
+				echo "No budget in $budgetField with {$row[$numberField]}<br>";
+			}
+			return false;
+		}
+		$rowBaseNumber = self::translateToBaseAwardNumber($row[$numberField]);
+		if (self::getShowDebug()) {
+			echo "Comparing '$rowBaseNumber' from $numberField and '$searchBaseNumber'<br>";
+		}
+		if ($rowBaseNumber == $searchBaseNumber) {
+			if (!$row[$startField] || !$row[$endField]) {
+				if (self::getShowDebug()) {
+					echo "No start/end<br>";
+				}
+				return false;
+			}
+			$startTs = strtotime($row[$startField]);
+			$endTs = strtotime($row[$endField]);
+			if (($startTs <= $ts) && ($endTs >= $ts)) {
+				if (self::getShowDebug()) {
+					echo "Returning $budgetField: {$row[$budgetField]}<br>";
+				}
+				return $row[$budgetField];
+			} else {
+				if (self::getShowDebug()) {
+					echo "Not current time<br>";
+				}
+			}
+		}
+		if (self::getShowDebug()) {
+			echo "Last<br>";
+		}
+		return false;
+	}
+
+	public function isState() {
+		$fundingSource = $this->getFundingSource();
+		return preg_match("/State/", $fundingSource);
+	}
+
+	public function isIndustry() {
+		$fundingSource = $this->getFundingSource();
+		return preg_match("/Industry/", $fundingSource);
+	}
+
+	public function isFoundation() {
+		$type = $this->getVariable("type");
+		return (
+			!$this->isFederal()
+			&& !$this->isIndustry()
+			&& !$this->isState()
+			&& !$this->isInternalVanderbiltGrant()
+			&& !in_array($type, ["Internal K", "K12/KL2"])
+		);
+	}
+
+	public function isNIH() {
+		$ary = self::parseNumber($this->getNumber());
+		return isset($ary['institute_code']) && self::isMember($ary['institute_code'], "NIH");
+	}
+
+	public function isHHS() {
+		return self::isHHSGrant($this->getNumber());
+	}
+
+	public static function isHHSGrant($awardNo) {
+		return preg_match("/^HHS/", $awardNo);
+	}
+
+	public static function isMember($instituteCode, $group) {
+		if (!$instituteCode) {
+			return false;
+		}
+		$codes = [
+			# from https://era.nih.gov/files/Deciphering_NIH_Application.pdf
+			"NIH" => ["TW", "TR", "AT", "CA", "EY", "HG", "HL", "AG", "AA", "AI", "AR", "EB", "HD", "DA", "DC", "DE", "DK", "ES", "GM", "MH", "MD", "NS", "NR", "LM", "RR", "OD", "HC"],
+			"PCORI" => [],
+			"AHRQ" => ["HS"],
+			"VA" => ["BX", "CX", "HX"],
+			"DOD" => ["XW"],
+		];
+		$groupCodes = $codes[$group] ?? [];
+		return in_array($instituteCode, $groupCodes);
+	}
 
 	public function getVariable($type) {
 		if (($type == "type") && !isset($this->specs[$type])) {
@@ -550,12 +550,12 @@ class Grant {
 			$type = "budget";
 		}
 		if (isset($type) && isset($this->specs[$type])) {
-            if (($type == "sponsor") && !$this->specs[$type]) {
-                $type = "sponsor_type";
-            } else if (($type == "sponsor_type") && !$this->specs[$type]) {
-                $type = "sponsor";
-            }
-            $s = $this->specs[$type];
+			if (($type == "sponsor") && !$this->specs[$type]) {
+				$type = "sponsor_type";
+			} elseif (($type == "sponsor_type") && !$this->specs[$type]) {
+				$type = "sponsor";
+			}
+			$s = $this->specs[$type];
 			if (preg_match("/budget/", $type) && is_numeric($s)) {
 				$s = round($s * 100) / 100;
 			}
@@ -570,9 +570,9 @@ class Grant {
 
 	public static function isDate($d) {
 		if (preg_match("/^\d+-\d+-\d+$/", $d)) {
-			return TRUE;
+			return true;
 		}
-		return FALSE;
+		return false;
 	}
 
 	public function getTotalCostsForTimespan($start, $end) {
@@ -691,10 +691,10 @@ class Grant {
 	public static function isSameDate($d1, $d2) {
 		if (self::isDate($d1) && self::isDate($d2)) {
 			if (strtotime($d1) == strtotime($d2)) {
-				return TRUE;
+				return true;
 			}
 		}
-		return FALSE;
+		return false;
 	}
 
 	public function matchesGrant($grant, $var) {
@@ -715,28 +715,28 @@ class Grant {
 				if (is_numeric($grantVar) && is_numeric($thisVar)) {
 					# number
 					if ($grantVar == $thisVar) {
-						return TRUE;
+						return true;
 					} else {
-						return FALSE;
+						return false;
 					}
-				} else if (self::isDate($grantVar) && self::isDate($thisVar)) {
+				} elseif (self::isDate($grantVar) && self::isDate($thisVar)) {
 					# date
 					if (self::isSameDate($grantVar, $thisVar)) {
-						return TRUE;
+						return true;
 					} else {
-						return FALSE;
+						return false;
 					}
 				} else {
 					# string
 					if ($grantVar == $thisVar) {
-						return TRUE;
+						return true;
 					} else {
-						return FALSE;
+						return false;
 					}
 				}
 			}
 		}
-		return FALSE;
+		return false;
 	}
 
 	public function setVariable($type, $value) {
@@ -745,9 +745,9 @@ class Grant {
 		}
 	}
 
-    public function getSpecs() {
-        return $this->specs;
-    }
+	public function getSpecs() {
+		return $this->specs;
+	}
 
 	public function getBaseAwardNumber() {
 		return $this->getBaseNumber();
@@ -755,23 +755,23 @@ class Grant {
 
 	public function getBaseNumber() {
 		$baseAwardNo = $this->getVariable("base_award_no");
-        if ($baseAwardNo === "") {
-            return $this->getGenericNumber();
-        }
-        return $baseAwardNo;
+		if ($baseAwardNo === "") {
+			return $this->getGenericNumber();
+		}
+		return $baseAwardNo;
 	}
 
-  private function getGenericNumber() {
-        $source = $this->getVariable("source");
-        $pid = $this->getVariable("pid");
-        $sourceChoices = DataDictionaryManagement::getChoicesForField($pid, "summary_award_source_1");
-        $sourceStr = $sourceChoices[$source] ?? ucfirst($source);
-        $instance = $this->getVariable("instance");
-        return "[$sourceStr Instance $instance]";
-   }
+	private function getGenericNumber() {
+		$source = $this->getVariable("source");
+		$pid = $this->getVariable("pid");
+		$sourceChoices = DataDictionaryManagement::getChoicesForField($pid, "summary_award_source_1");
+		$sourceStr = $sourceChoices[$source] ?? ucfirst($source);
+		$instance = $this->getVariable("instance");
+		return "[$sourceStr Instance $instance]";
+	}
 
-   public static function getGrantTypeDescriptionHTML() {
-        return "<ul class='left-align max-width-600'>
+	public static function getGrantTypeDescriptionHTML() {
+		return "<ul class='left-align max-width-600'>
         <li><strong>Internal K</strong> awards are funding from your own institution that’s not a K12 or KL2.</li>
         <li><strong>K12/KL2</strong> grants have their own class. Note that these are for trainees, and for a PI, this would count as a Mentoring/Traiing Grant Admin award.</li>
         <li><strong>Individual K</strong> grants are career development awards by the NIH (only).</li>
@@ -782,18 +782,18 @@ class Grant {
         <li><strong>Mentoring/Training Grant Admin</strong> grants are leadership awards for training or mentoring others.</li>
         <li><strong>Bridge Award</strong> grants span more than one category. K99/R00 and T99/K00 awards are the primary two examples.</li>
     </ul>";
-    }
+	}
 
-    public function getAwardNumber() {
-        return $this->getNumber();
-    }
+	public function getAwardNumber() {
+		return $this->getNumber();
+	}
 
 	public function getNumber() {
 		$awardNo = $this->getVariable("sponsor_award_no");
-        if ($awardNo === "") {
-            return $this->getGenericNumber();
-        }
-        return $awardNo;
+		if ($awardNo === "") {
+			return $this->getGenericNumber();
+		}
+		return $awardNo;
 	}
 
 	public function setNumber($awardNo) {
@@ -812,26 +812,26 @@ class Grant {
 	public static function parseNumber($awardNo) {
 		$awardNo = preg_replace("/[\s\-]+/", "", $awardNo);
 		$ary = [];
-        if (preg_match("/[A-Z][A-Z\d]\d[A-Z][A-Z]\d{6}/", $awardNo)) {
-            if (preg_match("/^\d[A-Z][A-Z\d]\d[A-Z][A-Z]\d{6}/", $awardNo)) {
-                $ary["application_type"] = self::getApplicationType($awardNo);
-            } else {
-                $awardNo = "0" . $awardNo;
-            }
-            $ary["activity_code"] = self::getActivityCode($awardNo);
-            $ary["activity_type"] = self::getActivityType($ary["activity_code"]);
-            $ary["funding_institute"] = self::getFundingInstitute($awardNo);
-            $ary["institute_code"] = self::getInstituteCode($awardNo);
-            $ary["serial_number"] = self::getSerialNumber($awardNo);
-            $ary["support_year"] = self::getSupportYear($awardNo);
-            $ary["other_suffixes"] = self::getOtherSuffixes($awardNo);
-        } else if (preg_match("/^[A-Z][A-Z]\d{6}$/", $awardNo)) {
-		    $ary['institute_code'] = substr($awardNo, 0, 2);
-		    $ary['serial_number'] = substr($awardNo, 2, 6);
-        } else if (preg_match("/^[A-Z][A-Z]\d{5}$/", $awardNo)) {
-            $ary['institute_code'] = substr($awardNo, 0, 2);
-            $ary['serial_number'] = "0".substr($awardNo, 2, 5);
-        }
+		if (preg_match("/[A-Z][A-Z\d]\d[A-Z][A-Z]\d{6}/", $awardNo)) {
+			if (preg_match("/^\d[A-Z][A-Z\d]\d[A-Z][A-Z]\d{6}/", $awardNo)) {
+				$ary["application_type"] = self::getApplicationType($awardNo);
+			} else {
+				$awardNo = "0" . $awardNo;
+			}
+			$ary["activity_code"] = self::getActivityCode($awardNo);
+			$ary["activity_type"] = self::getActivityType($ary["activity_code"]);
+			$ary["funding_institute"] = self::getFundingInstitute($awardNo);
+			$ary["institute_code"] = self::getInstituteCode($awardNo);
+			$ary["serial_number"] = self::getSerialNumber($awardNo);
+			$ary["support_year"] = self::getSupportYear($awardNo);
+			$ary["other_suffixes"] = self::getOtherSuffixes($awardNo);
+		} elseif (preg_match("/^[A-Z][A-Z]\d{6}$/", $awardNo)) {
+			$ary['institute_code'] = substr($awardNo, 0, 2);
+			$ary['serial_number'] = substr($awardNo, 2, 6);
+		} elseif (preg_match("/^[A-Z][A-Z]\d{5}$/", $awardNo)) {
+			$ary['institute_code'] = substr($awardNo, 0, 2);
+			$ary['serial_number'] = "0".substr($awardNo, 2, 5);
+		}
 		foreach ($ary as $type => $value) {
 			if ($value === "") {
 				unset($ary[$type]);
@@ -1340,7 +1340,7 @@ class Grant {
 	public static function getActivityCode($awardNo) {
 		if (preg_match("/^\d[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 1, 3);
-		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
+		} elseif (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 0, 3);
 		} else {
 			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
@@ -1353,10 +1353,10 @@ class Grant {
 
 	# https://www.nlm.nih.gov/bsd/grant_acronym.html
 	public static function getInstituteCode($awardNo) {
-	    $activityCode = self::getActivityCode($awardNo);
+		$activityCode = self::getActivityCode($awardNo);
 		if (preg_match("/^\d$activityCode/", $awardNo)) {
 			return substr($awardNo, 4, 2);
-		} else if (preg_match("/^$activityCode/", $awardNo)) {
+		} elseif (preg_match("/^$activityCode/", $awardNo)) {
 			return substr($awardNo, 3, 2);
 		} else {
 			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
@@ -1367,867 +1367,1005 @@ class Grant {
 		return "";
 	}
 
-    public static function getFundingInstituteAbbreviation($awardNo) {
-        return self::getFundingInstitute($awardNo, TRUE);
-    }
+	public static function getFundingInstituteAbbreviation($awardNo) {
+		return self::getFundingInstitute($awardNo, true);
+	}
 
 	# https://www.nlm.nih.gov/bsd/grant_acronym.html
-	public static function getFundingInstitute($awardNo, $abbreviated = FALSE)
-    {
-        $instituteCode = self::getInstituteCode($awardNo);
-        return self::decodeInstituteCode($instituteCode, $abbreviated);
-    }
+	public static function getFundingInstitute($awardNo, $abbreviated = false) {
+		$instituteCode = self::getInstituteCode($awardNo);
+		return self::decodeInstituteCode($instituteCode, $abbreviated);
+	}
 
-    public static function decodeInstituteCode($instituteCode, $abbreviated = FALSE) {
+	public static function decodeInstituteCode($instituteCode, $abbreviated = false) {
 		switch ($instituteCode) {
-            case "NH":
-                if ($abbreviated) {
-                    return "NIH";
-                } else {
-                    return "National Institutes of Health";
-                }
-            case "AA":
-                if ($abbreviated) {
-                    return "NIAAA";
-                } else {
-                    return "National Institute on Alcohol Abuse and Alcoholism";
-                }
-            case "AG":
-                if ($abbreviated) {
-                    return "NIA";
-                } else {
-                    return "National Institute on Aging";
-                }
-            case "AI":
-                if ($abbreviated) {
-                    return "NIAID";
-                } else {
-                    return "National Institute of Allergy and Infectious Diseases Extramural Activities";
-                }
-            case "AO":
-                if ($abbreviated) {
-                    return "NIAID";
-                } else {
-                    return "National Institute of Allergy and Infectious Diseases Research Support";
-                }
-            case "AM":
-                if ($abbreviated) {
-                    return "NIADDK";
-                } else {
-                    return "National Institute of Arthritis, Diabetes, and Digestive and Kidney Diseases";
-                }
-            case "AR":
-                if ($abbreviated) {
-                    return "NIAMS";
-                } else {
-                    return "National Institute of Arthritis and Musculoskeletal and Skin Diseases";
-                }
-            case "AT":
-                if ($abbreviated) {
-                    return "NCCIH";
-                } else {
-                    return "National Center for Complementary and Integrative Health";
-                }
-            case "CA":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "National Cancer Institute";
-                }
-            case "CO":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Office of the Director";
-                }
-            case "BC":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Basic Sciences";
-                }
-            case "CN":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Cancer Prevention and Control";
-                }
-            case "CB":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Cancer Biology and Diagnosis";
-                }
-            case "CP":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Cancer Epidemiology and Genetics";
-                }
-            case "CM":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Cancer Treatment";
-                }
-            case "PC":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Cancer Control and Population Science";
-                }
-            case "SC":
-                if ($abbreviated) {
-                    return "NCI";
-                } else {
-                    return "NCI Division of Clinical Sciences";
-                }
-            case "CL":
-                if ($abbreviated) {
-                    return "CLC";
-                } else {
-                    return "Clinical Center";
-                }
-            case "CT":
-                if ($abbreviated) {
-                    return "CIT";
-                } else {
-                    return "Center for Information Technology";
-                }
-            case "DA":
-                if ($abbreviated) {
-                    return "NIDA";
-                } else {
-                    return "National Institute on Drug Abuse";
-                }
-            case "DC":
-                if ($abbreviated) {
-                    return "NIDCD";
-                } else {
-                    return "National Institute on Deafness and other Communication Disorders";
-                }
-            case "DE":
-                if ($abbreviated) {
-                    return "NIDCR";
-                } else {
-                    return "National Institute of Dental and Craniofacial Research";
-                }
-            case "DK":
-                if ($abbreviated) {
-                    return "NIDDK";
-                } else {
-                    return "National Institute of Diabetes and Digestive and Kidney Diseases";
-                }
-            case "DS":
-                if ($abbreviated) {
-                    return "DS";
-                } else {
-                    return "Division of Safety, Office of Research Services";
-                }
-            case "EB":
-                if ($abbreviated) {
-                    return "NIBIB";
-                } else {
-                    return "National Institute of Biomedical Imaging and Bioengineering";
-                }
-            case "ES":
-                if ($abbreviated) {
-                    return "NIEHS";
-                } else {
-                    return "National Institute of Environmental Health Sciences";
-                }
-            case "EY":
-                if ($abbreviated) {
-                    return "NEI";
-                } else {
-                    return "National Eye Institute";
-                }
-            case "GF":
-                if ($abbreviated) {
-                    return "NIH";
-                } else {
-                    return "Gift Fund";
-                }
-            case "GM":
-                if ($abbreviated) {
-                    return "NIGMS";
-                } else {
-                    return "National Institute of General Medical Sciences";
-                }
-            case "GW":
-                if ($abbreviated) {
-                    return "GAS";
-                } else {
-                    return "Genome Association Studies";
-                }
-            case "HD":
-                if ($abbreviated) {
-                    return "NICHD";
-                } else {
-                    return "National Institute of Child Health and Human Development";
-                }
-            case "HG":
-                if ($abbreviated) {
-                    return "NHGRI";
-                } else {
-                    return "National Human Genome Research Institute";
-                }
-            case "HL":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "National Heart, Lung, and Blood Institute";
-                }
-            case "HV":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "NHLBI Division of Heart and Vascular Diseases";
-                }
-            case "HB":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "NHLBI Division of Blood Diseases and Resources";
-                }
-            case "HR":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "NHLBI Division of Lung Diseases";
-                }
-            case "HI":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "NHLBI Division of Intramural Research";
-                }
-            case "HO":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "NHLBI Office of the Director";
-                }
-            case "HC":
-                if ($abbreviated) {
-                    return "NHLBI";
-                } else {
-                    return "NHLBI Division of Epidemiology and Clinical Applications";
-                }
-            case "JT":
-                if ($abbreviated) {
-                    return "NIH";
-                } else {
-                    return "Joint Grant and Contract Sponsorship";
-                }
-            case "LM":
-                if ($abbreviated) {
-                    return "NLM";
-                } else {
-                    return "National Library of Medicine";
-                }
-            case "MD":
-                if ($abbreviated) {
-                    return "NIMHD";
-                } else {
-                    return "National Institute on Minority Health and Health Disparities";
-                }
-            case "MH":
-                if ($abbreviated) {
-                    return "NIMH";
-                } else {
-                    return "National Institute of Mental Health";
-                }
-            case "NB":
-                if ($abbreviated) {
-                    return "NB";
-                } else {
-                    return "Neuroscience Blueprint";
-                }
-            case "NR":
-                if ($abbreviated) {
-                    return "NINR";
-                } else {
-                    return "National Institute of Nursing Research";
-                }
-            case "NS":
-                if ($abbreviated) {
-                    return "NINDS";
-                } else {
-                    return "National Institute of Neurological Disorders and Stroke";
-                }
-            case "OD":
-                if ($abbreviated) {
-                    return "NIH";
-                } else {
-                    return "Office of the Director";
-                }
-            case "OF":
-                if ($abbreviated) {
-                    return "ORFDO";
-                } else {
-                    return "Office of Research Facilities Development and Operations";
-                }
-            case "OL":
-                if ($abbreviated) {
-                    return "OLAO";
-                } else {
-                    return "Office of Logistics and Acquisition Operations";
-                }
-            case "OP":
-                if ($abbreviated) {
-                    return "OppNet";
-                } else {
-                    return "NIH Basic Behavioral and Social Science Opportunity Network";
-                }
-            case "OR":
-                if ($abbreviated) {
-                    return "ORS";
-                } else {
-                    return "Office of Research Services";
-                }
-            case "RA":
-                if ($abbreviated) {
-                    return "ARRA";
-                } else {
-                    return "American Reinvestment and Recovery Act of 2009";
-                }
-            case "RC":
-                if ($abbreviated) {
-                    return "CCR";
-                } else {
-                    return "Center for Cancer Research";
-                }
-            case "RG":
-                if ($abbreviated) {
-                    return "CSR";
-                } else {
-                    return "Center for Scientific Review";
-                }
-            case "RI":
-                if ($abbreviated) {
-                    return "ORIP";
-                } else {
-                    return "Office of Research Infrastructure Programs";
-                }
-            case "RM":
-                if ($abbreviated) {
-                    return "RMOD";
-                } else {
-                    return "NIH Roadmap Initiative, Office of the Director";
-                }
-            case "RR":
-                if ($abbreviated) {
-                    return "NCRR";
-                } else {
-                    return "National Center for Research Resources";
-                }
-            case "RS":
-                if ($abbreviated) {
-                    return "DRS";
-                } else {
-                    return "Division of Research Services";
-                }
-            case "SF":
-                if ($abbreviated) {
-                    return "SBRP";
-                } else {
-                    return "Superfund Basic Research Program";
-                }
-            case "TR":
-                if ($abbreviated) {
-                    return "NCATS";
-                } else {
-                    return "National Center for Advancing Translational Sciences";
-                }
-            case "TW":
-                if ($abbreviated) {
-                    return "FIC";
-                } else {
-                    return "Fogarty International Center";
-                }
-            case "WH":
-                if ($abbreviated) {
-                    return "WHI";
-                } else {
-                    return "Women's Health Initiative";
-                }
-            case "WT":
-                if ($abbreviated) {
-                    return "WETP";
-                } else {
-                    return "Worker Education Training Program";
-                }
-            case "HS":
-                if ($abbreviated) {
-                    return "AHRQ";
-                } else {
-                    return "Agency for Healthcare Research and Quality";
-                }
-            case "AD":
-                if ($abbreviated) {
-                    return "ADAMHA";
-                } else {
-                    return "Alcohol, Drug Abuse, and Mental Health Administration";
-                }
-            case "CC":
-                if ($abbreviated) {
-                    return "CDC";
-                } else {
-                    return "Centers for Disease Control and Prevention";
-                }
-            case "CD":
-                if ($abbreviated) {
-                    return "ODCDC";
-                } else {
-                    return "Office of the Director";
-                }
-            case "CE":
-                if ($abbreviated) {
-                    return "NCIPC";
-                } else {
-                    return "National Center for Injury Prevention and Control";
-                }
-            case "CH":
-                if ($abbreviated) {
-                    return "OID";
-                } else {
-                    return "Office of Infectious Disease";
-                }
-            case "CI":
-                if ($abbreviated) {
-                    return "NCPDCID";
-                } else {
-                    return "National Center for Preparedness, Detection, and Control of Infectious Diseases";
-                }
-            case "CK":
-                if ($abbreviated) {
-                    return "NCEZID";
-                } else {
-                    return "National Center for Emerging and Zoonotic Infectious Diseases";
-                }
-            case "DD":
-                if ($abbreviated) {
-                    return "NCBDD";
-                } else {
-                    return "National Center on Birth Defects and Developmental Disabilities";
-                }
-            case "DP":
-                if ($abbreviated) {
-                    return "NCCDPHP";
-                } else {
-                    return "National Center for Chronic Disease Prevention and Health Promotion";
-                }
-            case "EH":
-                if ($abbreviated) {
-                    return "NCEH";
-                } else {
-                    return "National Center for Environmental Health";
-                }
-            case "EP":
-                if ($abbreviated) {
-                    return "EAPO";
-                } else {
-                    return "Epidemiology and Analytic Methods Program Office";
-                }
-            case "GD":
-                if ($abbreviated) {
-                    return "OGDP";
-                } else {
-                    return "Office of Genomics and Disease Prevention";
-                }
-            case "GH":
-                if ($abbreviated) {
-                    return "CGH";
-                } else {
-                    return "Center for Global Health";
-                }
-            case "HK":
-                if ($abbreviated) {
-                    return "PHITPO";
-                } else {
-                    return "Public Health Informatics and Technology Program Office";
-                }
-            case "HM":
-                if ($abbreviated) {
-                    return "NCHM";
-                } else {
-                    return "National Center for Health Marketing";
-                }
-            case "HY":
-                if ($abbreviated) {
-                    return "OHS";
-                } else {
-                    return "Office of Health and Safety";
-                }
-            case "IP":
-                if ($abbreviated) {
-                    return "NCIRD";
-                } else {
-                    return "National Center for Immunization and Respiratory Diseases";
-                }
-            case "LS":
-                if ($abbreviated) {
-                    return "LSPPPO";
-                } else {
-                    return "Laboratory Science, Policy, and Practice Program Office";
-                }
-            case "MN":
-                if ($abbreviated) {
-                    return "OMHHE";
-                } else {
-                    return "Office of Minority Health and Health Equity";
-                }
-            case "ND":
-                if ($abbreviated) {
-                    return "ONDIEH";
-                } else {
-                    return "Office of Non-communicable Diseases, Injury, and Environmental Health";
-                }
-            case "OE":
-                if ($abbreviated) {
-                    return "OSELS";
-                } else {
-                    return "Office of Surveillance, Epidemiology and Laboratory Services";
-                }
-            case "OH":
-                if ($abbreviated) {
-                    return "NIOSH";
-                } else {
-                    return "National Institute for Occupational Safety and Health";
-                }
-            case "OT":
-                if ($abbreviated) {
-                    return "OSTLTS";
-                } else {
-                    return "Office for State, Tribal, and Local and Territorial Support";
-                }
-            case "OW":
-                if ($abbreviated) {
-                    return "OWH";
-                } else {
-                    return "Office of Women’s Health";
-                }
-            case "PH":
-                if ($abbreviated) {
-                    return "PHPPO";
-                } else {
-                    return "Public Health Practice Program Office";
-                }
-            case "PR":
-                if ($abbreviated) {
-                    return "OCPHP";
-                } else {
-                    return "Office of Chief Public Health Practice";
-                }
-            case "PS":
-                if ($abbreviated) {
-                    return "NCHHSTP";
-                } else {
-                    return "National Center for HIV, Viral Hepatitis, STDs and Tuberculosis Prevention";
-                }
-            case "SE":
-                if ($abbreviated) {
-                    return "SEPDPO";
-                } else {
-                    return "Scientific Education and Professional Development Program Office";
-                }
-            case "SH":
-                if ($abbreviated) {
-                    return "NCHS";
-                } else {
-                    return "National Center for Health Statistics";
-                }
-            case "SO":
-                if ($abbreviated) {
-                    return "PHSPO";
-                } else {
-                    return "Public Health Surveillance Program Office";
-                }
-            case "TP":
-                if ($abbreviated) {
-                    return "OPHPR";
-                } else {
-                    return "Office of Public Health Preparedness and Response";
-                }
-            case "TS":
-                if ($abbreviated) {
-                    return "ATSDR";
-                } else {
-                    return "Agency for Toxic Substances and Disease Registry";
-                }
-            case "WC":
-                if ($abbreviated) {
-                    return "OWCD";
-                } else {
-                    return "Office of Workforce and Career Development";
-                }
-            case "HH":
-                if ($abbreviated) {
-                    return "HHS";
-                } else {
-                    return "Department of Health and Human Services";
-                }
-            case "AE":
-                if ($abbreviated) {
-                    return "ASPE";
-                } else {
-                    return "Assistant Secretary of Planning and Evaluation";
-                }
-            case "OC":
-                if ($abbreviated) {
-                    return "ONCHIT";
-                } else {
-                    return "Office of the National Coordinator for Health Information Technology";
-                }
-            case "FD":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "Food and Drug Administration";
-                }
-            case "BA":
-            case "BJ":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Bacterial Products";
-                }
-            case "BB":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Biochemistry and Biophysics";
-                }
-            case "BD":
-            case "BL":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Cytokine Biology";
-                }
-            case "BE":
-            case "BR":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Product Quality Control";
-                }
-            case "BF":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Virology";
-                }
-            case "BG":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Transfusion";
-                }
-            case "BH":
-            case "BQ":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Hematology";
-                }
-            case "BI":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Allergenic Products and Parasitology";
-                }
-            case "BK":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Viral Products";
-                }
-            case "BM":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Cellular and Gene Therapies";
-                }
-            case "BN":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Hematologic Products";
-                }
-            case "BO":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Monoclonal Antibodies";
-                }
-            case "BP":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center of Biologics Evaluation and Research-Transfusion Transmitted Diseases";
-                }
-            case "BS":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Division of Biologics Standards";
-                }
-            case "BT":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Immunology and Infectious Diseases";
-                }
-            case "BU":
-                if ($abbreviated) {
-                    return "FDA";
-                } else {
-                    return "FDA Center for Biologics Evaluation and Research-Clinical Pharmacology and Toxicology";
-                }
-            case "AH":
-            case "DH":
-                if ($abbreviated) {
-                    return "BHP";
-                } else {
-                    return "HRSA Division of Associated & Dental Health Professions";
-                }
-            case "MB":
-                if ($abbreviated) {
-                    return "BHP";
-                } else {
-                    return "HRSA Division of Disadvantaged Assistance";
-                }
-            case "NU":
-                if ($abbreviated) {
-                    return "BHP";
-                } else {
-                    return "HRSA Division of Nursing";
-                }
-            case "PE":
-                if ($abbreviated) {
-                    return "BHP";
-                } else {
-                    return "HRSA Division of Medicine";
-                }
-            case "SA":
-                if ($abbreviated) {
-                    return "BHP";
-                } else {
-                    return "HRSA Division of Student Assistance";
-                }
-            case "ST":
-                if ($abbreviated) {
-                    return "OHS";
-                } else {
-                    return "Office of Healthy Start";
-                }
-            case "AS":
-                if ($abbreviated) {
-                    return "ASC";
-                } else {
-                    return "Administrative Services Center, OASH";
-                }
-            case "FP":
-                if ($abbreviated) {
-                    return "OFP";
-                } else {
-                    return "Office of Family Planning";
-                }
-            case "MP":
-                if ($abbreviated) {
-                    return "OMH";
-                } else {
-                    return "Office of Minority Health";
-                }
-            case "PG":
-                if ($abbreviated) {
-                    return "OAPP";
-                } else {
-                    return "Office of Adolescent Pregnancy Programs";
-                }
-            case "OA":
-                if ($abbreviated) {
-                    return "SAMHSA";
-                } else {
-                    return "SAMHSA Office of the Administration";
-                }
-            case "SP":
-                if ($abbreviated) {
-                    return "CSAP";
-                } else {
-                    return "Center for Substance Abuse Prevention";
-                }
-            case "SM":
-                if ($abbreviated) {
-                    return "CMHS";
-                } else {
-                    return "Center for Mental Health Services";
-                }
-            case "SU":
-                if ($abbreviated) {
-                    return "SAMHSA";
-                } else {
-                    return "Substance Abuse and Mental Health Services Administration";
-                }
-            case "TI":
-                if ($abbreviated) {
-                    return "CSAT";
-                } else {
-                    return "Center for Substance Abuse Treatment";
-                }
-            case "VA":
-                if ($abbreviated) {
-                    return "VA";
-                } else {
-                    return "Department of Veterans Affairs";
-                }
-            case "BX":
-                if ($abbreviated) {
-                    return "BLRD";
-                } else {
-                    return "VA Biomedical Laboratory Research and Development";
-                }
-            case "CU":
-                if ($abbreviated) {
-                    return "CSP";
-                } else {
-                    return "VA Cooperative Studies Program";
-                }
-            case "CX":
-                if ($abbreviated) {
-                    return "CSRD";
-                } else {
-                    return "VA Clinical Science Research and Development";
-                }
-            case "HX":
-                if ($abbreviated) {
-                    return "HSRD";
-                } else {
-                    return "VA Health Services Research and Development";
-                }
-            case "RD":
-                if ($abbreviated) {
-                    return "ORD";
-                } else {
-                    return "VA Office of Research and Development";
-                }
-            case "RX":
-                if ($abbreviated) {
-                    return "RRD";
-                } else {
-                    return "VA Rehabilitation Research and Development";
-                }
-            default:
-                return "";
-        }
-    }
+			case "NH":
+				if ($abbreviated) {
+					return "NIH";
+				} else {
+					return "National Institutes of Health";
+				}
+				// no break
+			case "AA":
+				if ($abbreviated) {
+					return "NIAAA";
+				} else {
+					return "National Institute on Alcohol Abuse and Alcoholism";
+				}
+				// no break
+			case "AG":
+				if ($abbreviated) {
+					return "NIA";
+				} else {
+					return "National Institute on Aging";
+				}
+				// no break
+			case "AI":
+				if ($abbreviated) {
+					return "NIAID";
+				} else {
+					return "National Institute of Allergy and Infectious Diseases Extramural Activities";
+				}
+				// no break
+			case "AO":
+				if ($abbreviated) {
+					return "NIAID";
+				} else {
+					return "National Institute of Allergy and Infectious Diseases Research Support";
+				}
+				// no break
+			case "AM":
+				if ($abbreviated) {
+					return "NIADDK";
+				} else {
+					return "National Institute of Arthritis, Diabetes, and Digestive and Kidney Diseases";
+				}
+				// no break
+			case "AR":
+				if ($abbreviated) {
+					return "NIAMS";
+				} else {
+					return "National Institute of Arthritis and Musculoskeletal and Skin Diseases";
+				}
+				// no break
+			case "AT":
+				if ($abbreviated) {
+					return "NCCIH";
+				} else {
+					return "National Center for Complementary and Integrative Health";
+				}
+				// no break
+			case "CA":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "National Cancer Institute";
+				}
+				// no break
+			case "CO":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Office of the Director";
+				}
+				// no break
+			case "BC":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Basic Sciences";
+				}
+				// no break
+			case "CN":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Cancer Prevention and Control";
+				}
+				// no break
+			case "CB":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Cancer Biology and Diagnosis";
+				}
+				// no break
+			case "CP":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Cancer Epidemiology and Genetics";
+				}
+				// no break
+			case "CM":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Cancer Treatment";
+				}
+				// no break
+			case "PC":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Cancer Control and Population Science";
+				}
+				// no break
+			case "SC":
+				if ($abbreviated) {
+					return "NCI";
+				} else {
+					return "NCI Division of Clinical Sciences";
+				}
+				// no break
+			case "CL":
+				if ($abbreviated) {
+					return "CLC";
+				} else {
+					return "Clinical Center";
+				}
+				// no break
+			case "CT":
+				if ($abbreviated) {
+					return "CIT";
+				} else {
+					return "Center for Information Technology";
+				}
+				// no break
+			case "DA":
+				if ($abbreviated) {
+					return "NIDA";
+				} else {
+					return "National Institute on Drug Abuse";
+				}
+				// no break
+			case "DC":
+				if ($abbreviated) {
+					return "NIDCD";
+				} else {
+					return "National Institute on Deafness and other Communication Disorders";
+				}
+				// no break
+			case "DE":
+				if ($abbreviated) {
+					return "NIDCR";
+				} else {
+					return "National Institute of Dental and Craniofacial Research";
+				}
+				// no break
+			case "DK":
+				if ($abbreviated) {
+					return "NIDDK";
+				} else {
+					return "National Institute of Diabetes and Digestive and Kidney Diseases";
+				}
+				// no break
+			case "DS":
+				if ($abbreviated) {
+					return "DS";
+				} else {
+					return "Division of Safety, Office of Research Services";
+				}
+				// no break
+			case "EB":
+				if ($abbreviated) {
+					return "NIBIB";
+				} else {
+					return "National Institute of Biomedical Imaging and Bioengineering";
+				}
+				// no break
+			case "ES":
+				if ($abbreviated) {
+					return "NIEHS";
+				} else {
+					return "National Institute of Environmental Health Sciences";
+				}
+				// no break
+			case "EY":
+				if ($abbreviated) {
+					return "NEI";
+				} else {
+					return "National Eye Institute";
+				}
+				// no break
+			case "GF":
+				if ($abbreviated) {
+					return "NIH";
+				} else {
+					return "Gift Fund";
+				}
+				// no break
+			case "GM":
+				if ($abbreviated) {
+					return "NIGMS";
+				} else {
+					return "National Institute of General Medical Sciences";
+				}
+				// no break
+			case "GW":
+				if ($abbreviated) {
+					return "GAS";
+				} else {
+					return "Genome Association Studies";
+				}
+				// no break
+			case "HD":
+				if ($abbreviated) {
+					return "NICHD";
+				} else {
+					return "National Institute of Child Health and Human Development";
+				}
+				// no break
+			case "HG":
+				if ($abbreviated) {
+					return "NHGRI";
+				} else {
+					return "National Human Genome Research Institute";
+				}
+				// no break
+			case "HL":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "National Heart, Lung, and Blood Institute";
+				}
+				// no break
+			case "HV":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "NHLBI Division of Heart and Vascular Diseases";
+				}
+				// no break
+			case "HB":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "NHLBI Division of Blood Diseases and Resources";
+				}
+				// no break
+			case "HR":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "NHLBI Division of Lung Diseases";
+				}
+				// no break
+			case "HI":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "NHLBI Division of Intramural Research";
+				}
+				// no break
+			case "HO":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "NHLBI Office of the Director";
+				}
+				// no break
+			case "HC":
+				if ($abbreviated) {
+					return "NHLBI";
+				} else {
+					return "NHLBI Division of Epidemiology and Clinical Applications";
+				}
+				// no break
+			case "JT":
+				if ($abbreviated) {
+					return "NIH";
+				} else {
+					return "Joint Grant and Contract Sponsorship";
+				}
+				// no break
+			case "LM":
+				if ($abbreviated) {
+					return "NLM";
+				} else {
+					return "National Library of Medicine";
+				}
+				// no break
+			case "MD":
+				if ($abbreviated) {
+					return "NIMHD";
+				} else {
+					return "National Institute on Minority Health and Health Disparities";
+				}
+				// no break
+			case "MH":
+				if ($abbreviated) {
+					return "NIMH";
+				} else {
+					return "National Institute of Mental Health";
+				}
+				// no break
+			case "NB":
+				if ($abbreviated) {
+					return "NB";
+				} else {
+					return "Neuroscience Blueprint";
+				}
+				// no break
+			case "NR":
+				if ($abbreviated) {
+					return "NINR";
+				} else {
+					return "National Institute of Nursing Research";
+				}
+				// no break
+			case "NS":
+				if ($abbreviated) {
+					return "NINDS";
+				} else {
+					return "National Institute of Neurological Disorders and Stroke";
+				}
+				// no break
+			case "OD":
+				if ($abbreviated) {
+					return "NIH";
+				} else {
+					return "Office of the Director";
+				}
+				// no break
+			case "OF":
+				if ($abbreviated) {
+					return "ORFDO";
+				} else {
+					return "Office of Research Facilities Development and Operations";
+				}
+				// no break
+			case "OL":
+				if ($abbreviated) {
+					return "OLAO";
+				} else {
+					return "Office of Logistics and Acquisition Operations";
+				}
+				// no break
+			case "OP":
+				if ($abbreviated) {
+					return "OppNet";
+				} else {
+					return "NIH Basic Behavioral and Social Science Opportunity Network";
+				}
+				// no break
+			case "OR":
+				if ($abbreviated) {
+					return "ORS";
+				} else {
+					return "Office of Research Services";
+				}
+				// no break
+			case "RA":
+				if ($abbreviated) {
+					return "ARRA";
+				} else {
+					return "American Reinvestment and Recovery Act of 2009";
+				}
+				// no break
+			case "RC":
+				if ($abbreviated) {
+					return "CCR";
+				} else {
+					return "Center for Cancer Research";
+				}
+				// no break
+			case "RG":
+				if ($abbreviated) {
+					return "CSR";
+				} else {
+					return "Center for Scientific Review";
+				}
+				// no break
+			case "RI":
+				if ($abbreviated) {
+					return "ORIP";
+				} else {
+					return "Office of Research Infrastructure Programs";
+				}
+				// no break
+			case "RM":
+				if ($abbreviated) {
+					return "RMOD";
+				} else {
+					return "NIH Roadmap Initiative, Office of the Director";
+				}
+				// no break
+			case "RR":
+				if ($abbreviated) {
+					return "NCRR";
+				} else {
+					return "National Center for Research Resources";
+				}
+				// no break
+			case "RS":
+				if ($abbreviated) {
+					return "DRS";
+				} else {
+					return "Division of Research Services";
+				}
+				// no break
+			case "SF":
+				if ($abbreviated) {
+					return "SBRP";
+				} else {
+					return "Superfund Basic Research Program";
+				}
+				// no break
+			case "TR":
+				if ($abbreviated) {
+					return "NCATS";
+				} else {
+					return "National Center for Advancing Translational Sciences";
+				}
+				// no break
+			case "TW":
+				if ($abbreviated) {
+					return "FIC";
+				} else {
+					return "Fogarty International Center";
+				}
+				// no break
+			case "WH":
+				if ($abbreviated) {
+					return "WHI";
+				} else {
+					return "Women's Health Initiative";
+				}
+				// no break
+			case "WT":
+				if ($abbreviated) {
+					return "WETP";
+				} else {
+					return "Worker Education Training Program";
+				}
+				// no break
+			case "HS":
+				if ($abbreviated) {
+					return "AHRQ";
+				} else {
+					return "Agency for Healthcare Research and Quality";
+				}
+				// no break
+			case "AD":
+				if ($abbreviated) {
+					return "ADAMHA";
+				} else {
+					return "Alcohol, Drug Abuse, and Mental Health Administration";
+				}
+				// no break
+			case "CC":
+				if ($abbreviated) {
+					return "CDC";
+				} else {
+					return "Centers for Disease Control and Prevention";
+				}
+				// no break
+			case "CD":
+				if ($abbreviated) {
+					return "ODCDC";
+				} else {
+					return "Office of the Director";
+				}
+				// no break
+			case "CE":
+				if ($abbreviated) {
+					return "NCIPC";
+				} else {
+					return "National Center for Injury Prevention and Control";
+				}
+				// no break
+			case "CH":
+				if ($abbreviated) {
+					return "OID";
+				} else {
+					return "Office of Infectious Disease";
+				}
+				// no break
+			case "CI":
+				if ($abbreviated) {
+					return "NCPDCID";
+				} else {
+					return "National Center for Preparedness, Detection, and Control of Infectious Diseases";
+				}
+				// no break
+			case "CK":
+				if ($abbreviated) {
+					return "NCEZID";
+				} else {
+					return "National Center for Emerging and Zoonotic Infectious Diseases";
+				}
+				// no break
+			case "DD":
+				if ($abbreviated) {
+					return "NCBDD";
+				} else {
+					return "National Center on Birth Defects and Developmental Disabilities";
+				}
+				// no break
+			case "DP":
+				if ($abbreviated) {
+					return "NCCDPHP";
+				} else {
+					return "National Center for Chronic Disease Prevention and Health Promotion";
+				}
+				// no break
+			case "EH":
+				if ($abbreviated) {
+					return "NCEH";
+				} else {
+					return "National Center for Environmental Health";
+				}
+				// no break
+			case "EP":
+				if ($abbreviated) {
+					return "EAPO";
+				} else {
+					return "Epidemiology and Analytic Methods Program Office";
+				}
+				// no break
+			case "GD":
+				if ($abbreviated) {
+					return "OGDP";
+				} else {
+					return "Office of Genomics and Disease Prevention";
+				}
+				// no break
+			case "GH":
+				if ($abbreviated) {
+					return "CGH";
+				} else {
+					return "Center for Global Health";
+				}
+				// no break
+			case "HK":
+				if ($abbreviated) {
+					return "PHITPO";
+				} else {
+					return "Public Health Informatics and Technology Program Office";
+				}
+				// no break
+			case "HM":
+				if ($abbreviated) {
+					return "NCHM";
+				} else {
+					return "National Center for Health Marketing";
+				}
+				// no break
+			case "HY":
+				if ($abbreviated) {
+					return "OHS";
+				} else {
+					return "Office of Health and Safety";
+				}
+				// no break
+			case "IP":
+				if ($abbreviated) {
+					return "NCIRD";
+				} else {
+					return "National Center for Immunization and Respiratory Diseases";
+				}
+				// no break
+			case "LS":
+				if ($abbreviated) {
+					return "LSPPPO";
+				} else {
+					return "Laboratory Science, Policy, and Practice Program Office";
+				}
+				// no break
+			case "MN":
+				if ($abbreviated) {
+					return "OMHHE";
+				} else {
+					return "Office of Minority Health and Health Equity";
+				}
+				// no break
+			case "ND":
+				if ($abbreviated) {
+					return "ONDIEH";
+				} else {
+					return "Office of Non-communicable Diseases, Injury, and Environmental Health";
+				}
+				// no break
+			case "OE":
+				if ($abbreviated) {
+					return "OSELS";
+				} else {
+					return "Office of Surveillance, Epidemiology and Laboratory Services";
+				}
+				// no break
+			case "OH":
+				if ($abbreviated) {
+					return "NIOSH";
+				} else {
+					return "National Institute for Occupational Safety and Health";
+				}
+				// no break
+			case "OT":
+				if ($abbreviated) {
+					return "OSTLTS";
+				} else {
+					return "Office for State, Tribal, and Local and Territorial Support";
+				}
+				// no break
+			case "OW":
+				if ($abbreviated) {
+					return "OWH";
+				} else {
+					return "Office of Women’s Health";
+				}
+				// no break
+			case "PH":
+				if ($abbreviated) {
+					return "PHPPO";
+				} else {
+					return "Public Health Practice Program Office";
+				}
+				// no break
+			case "PR":
+				if ($abbreviated) {
+					return "OCPHP";
+				} else {
+					return "Office of Chief Public Health Practice";
+				}
+				// no break
+			case "PS":
+				if ($abbreviated) {
+					return "NCHHSTP";
+				} else {
+					return "National Center for HIV, Viral Hepatitis, STDs and Tuberculosis Prevention";
+				}
+				// no break
+			case "SE":
+				if ($abbreviated) {
+					return "SEPDPO";
+				} else {
+					return "Scientific Education and Professional Development Program Office";
+				}
+				// no break
+			case "SH":
+				if ($abbreviated) {
+					return "NCHS";
+				} else {
+					return "National Center for Health Statistics";
+				}
+				// no break
+			case "SO":
+				if ($abbreviated) {
+					return "PHSPO";
+				} else {
+					return "Public Health Surveillance Program Office";
+				}
+				// no break
+			case "TP":
+				if ($abbreviated) {
+					return "OPHPR";
+				} else {
+					return "Office of Public Health Preparedness and Response";
+				}
+				// no break
+			case "TS":
+				if ($abbreviated) {
+					return "ATSDR";
+				} else {
+					return "Agency for Toxic Substances and Disease Registry";
+				}
+				// no break
+			case "WC":
+				if ($abbreviated) {
+					return "OWCD";
+				} else {
+					return "Office of Workforce and Career Development";
+				}
+				// no break
+			case "HH":
+				if ($abbreviated) {
+					return "HHS";
+				} else {
+					return "Department of Health and Human Services";
+				}
+				// no break
+			case "AE":
+				if ($abbreviated) {
+					return "ASPE";
+				} else {
+					return "Assistant Secretary of Planning and Evaluation";
+				}
+				// no break
+			case "OC":
+				if ($abbreviated) {
+					return "ONCHIT";
+				} else {
+					return "Office of the National Coordinator for Health Information Technology";
+				}
+				// no break
+			case "FD":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "Food and Drug Administration";
+				}
+				// no break
+			case "BA":
+			case "BJ":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Bacterial Products";
+				}
+				// no break
+			case "BB":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Biochemistry and Biophysics";
+				}
+				// no break
+			case "BD":
+			case "BL":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Cytokine Biology";
+				}
+				// no break
+			case "BE":
+			case "BR":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Product Quality Control";
+				}
+				// no break
+			case "BF":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Virology";
+				}
+				// no break
+			case "BG":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Transfusion";
+				}
+				// no break
+			case "BH":
+			case "BQ":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Hematology";
+				}
+				// no break
+			case "BI":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Allergenic Products and Parasitology";
+				}
+				// no break
+			case "BK":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Viral Products";
+				}
+				// no break
+			case "BM":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Cellular and Gene Therapies";
+				}
+				// no break
+			case "BN":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Hematologic Products";
+				}
+				// no break
+			case "BO":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Monoclonal Antibodies";
+				}
+				// no break
+			case "BP":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center of Biologics Evaluation and Research-Transfusion Transmitted Diseases";
+				}
+				// no break
+			case "BS":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Division of Biologics Standards";
+				}
+				// no break
+			case "BT":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Immunology and Infectious Diseases";
+				}
+				// no break
+			case "BU":
+				if ($abbreviated) {
+					return "FDA";
+				} else {
+					return "FDA Center for Biologics Evaluation and Research-Clinical Pharmacology and Toxicology";
+				}
+				// no break
+			case "AH":
+			case "DH":
+				if ($abbreviated) {
+					return "BHP";
+				} else {
+					return "HRSA Division of Associated & Dental Health Professions";
+				}
+				// no break
+			case "MB":
+				if ($abbreviated) {
+					return "BHP";
+				} else {
+					return "HRSA Division of Disadvantaged Assistance";
+				}
+				// no break
+			case "NU":
+				if ($abbreviated) {
+					return "BHP";
+				} else {
+					return "HRSA Division of Nursing";
+				}
+				// no break
+			case "PE":
+				if ($abbreviated) {
+					return "BHP";
+				} else {
+					return "HRSA Division of Medicine";
+				}
+				// no break
+			case "SA":
+				if ($abbreviated) {
+					return "BHP";
+				} else {
+					return "HRSA Division of Student Assistance";
+				}
+				// no break
+			case "ST":
+				if ($abbreviated) {
+					return "OHS";
+				} else {
+					return "Office of Healthy Start";
+				}
+				// no break
+			case "AS":
+				if ($abbreviated) {
+					return "ASC";
+				} else {
+					return "Administrative Services Center, OASH";
+				}
+				// no break
+			case "FP":
+				if ($abbreviated) {
+					return "OFP";
+				} else {
+					return "Office of Family Planning";
+				}
+				// no break
+			case "MP":
+				if ($abbreviated) {
+					return "OMH";
+				} else {
+					return "Office of Minority Health";
+				}
+				// no break
+			case "PG":
+				if ($abbreviated) {
+					return "OAPP";
+				} else {
+					return "Office of Adolescent Pregnancy Programs";
+				}
+				// no break
+			case "OA":
+				if ($abbreviated) {
+					return "SAMHSA";
+				} else {
+					return "SAMHSA Office of the Administration";
+				}
+				// no break
+			case "SP":
+				if ($abbreviated) {
+					return "CSAP";
+				} else {
+					return "Center for Substance Abuse Prevention";
+				}
+				// no break
+			case "SM":
+				if ($abbreviated) {
+					return "CMHS";
+				} else {
+					return "Center for Mental Health Services";
+				}
+				// no break
+			case "SU":
+				if ($abbreviated) {
+					return "SAMHSA";
+				} else {
+					return "Substance Abuse and Mental Health Services Administration";
+				}
+				// no break
+			case "TI":
+				if ($abbreviated) {
+					return "CSAT";
+				} else {
+					return "Center for Substance Abuse Treatment";
+				}
+				// no break
+			case "VA":
+				if ($abbreviated) {
+					return "VA";
+				} else {
+					return "Department of Veterans Affairs";
+				}
+				// no break
+			case "BX":
+				if ($abbreviated) {
+					return "BLRD";
+				} else {
+					return "VA Biomedical Laboratory Research and Development";
+				}
+				// no break
+			case "CU":
+				if ($abbreviated) {
+					return "CSP";
+				} else {
+					return "VA Cooperative Studies Program";
+				}
+				// no break
+			case "CX":
+				if ($abbreviated) {
+					return "CSRD";
+				} else {
+					return "VA Clinical Science Research and Development";
+				}
+				// no break
+			case "HX":
+				if ($abbreviated) {
+					return "HSRD";
+				} else {
+					return "VA Health Services Research and Development";
+				}
+				// no break
+			case "RD":
+				if ($abbreviated) {
+					return "ORD";
+				} else {
+					return "VA Office of Research and Development";
+				}
+				// no break
+			case "RX":
+				if ($abbreviated) {
+					return "RRD";
+				} else {
+					return "VA Rehabilitation Research and Development";
+				}
+				// no break
+			default:
+				return "";
+		}
+	}
 
 	private static function getSerialNumber($awardNo) {
 		if (preg_match("/^\d[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 6, 6);
-		} else if (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
+		} elseif (preg_match("/^[A-Z][A-Z\d]\d/", $awardNo)) {
 			return substr($awardNo, 5, 6);
 		} else {
 			$baseAwardNo = self::translateToBaseAwardNumber($awardNo);
@@ -2288,7 +2426,7 @@ class Grant {
 			case 7:
 				return "Change of Grantee or Training Institution";
 			case 8:
-            case 9:
+			case 9:
 				return "Change of Institute or Center";
 			default:
 				return "";
@@ -2297,121 +2435,121 @@ class Grant {
 
 	public function isFederal() {
 		$src = $this->getVariable("source");
-        $isFederal = [
-            "Non-Profit - Foundations/ Associations" => "Non-Federal",
-            "DOD" => "Federal",
-            "NASA" => "Federal",
-            "ED" => "Federal",
-            "NSF" => "Federal",
-            "VA" => "Federal",
-            "Federal" => "Federal",
-            "Institutional Funds" => "Non-Federal",
-            "Non-Profit - Other" => "Non-Federal",
-            "State - Tennessee" => "Non-Federal",
-            "Non-Profit - Education" => "Non-Federal",
-            "State - Other" => "Non-Federal",
-            "DOE" => "Federal",
-            "NIH" => "Federal",
-            "Profit" => "Non-Federal",
-            "PHS" => "Federal",
-            "Local Government" => "Non-Federal",
-            "Endowment" => "Non-Federal",
-            "Non-Profit - Hospital" => "Non-Federal",
-        ];
-        $federalAgencies = [
-            "Patient-Centered Outcomes Research Institute",
-            "National Science Foundation",
-            "National Oceanic and Atmospheric Administration",
-            "National Library of Medicine",
-            "National Institutes of Health/Unknown",
-            "National Institutes of Health/Office of the Director",
-            "National Institute on Minority Health and Health Disparities",
-            "National Institute on Minority Health & Health Disparities",
-            "National Institute on Drug Abuse",
-            "National Institute on Deafness and Communication Disorders",
-            "National Institute on Deafness and Other Communication Disor",
-            "National Institute on Deafness and Other Communication Disorders",
-            "National Institute on Alcohol Abuse and Alcoholism",
-            "National Institute on Alcohol Abuse & Alcoholism",
-            "National Institute on Aging",
-            "National Institute of Nursing Research",
-            "National Institute of Neurological Disorders and Stroke",
-            "National Institute of Neurological Disorders & Stroke",
-            "National Institute of Mental Health",
-            "National Institute of General Medical Sciences",
-            "National Institute of Environmental Health Sciences",
-            "National Institute of Diabetes & Digestive & Kidney Disease",
-            "National Institute of Diabetes and Digestive and Kidney Disease",
-            "National Institute of Child Health and Human Development",
-            "National Institute of Child Health & Human Development",
-            "National Institute of Dental and Craniofacial Research",
-            "National Institute of Dental & Craniofacial Research",
-            "National Institute of Biomedical Imaging and Bioengineering",
-            "National Institute of Biomedical Imaging & Bioengineering",
-            "National Institute of Arthritis, Musculoskeletal and Skin",
-            "National Institute of Arthritis and Musculoskeletal and Skin Diseases",
-            "National Institute of Arthritis & Musculoskeletal & Skin Diseases",
-            "National Institute of Allergy and Infectious Diseases",
-            "National Institute of Allergy & Infectious Diseases",
-            "National Human Genome Research Institute",
-            "National Heart, Lung, and Blood Institute",
-            "National Heart, Lung, & Blood Institute",
-            "National Eye Institute",
-            "National Center for Research Resources",
-            "National Center for Complementary and Integrative Health",
-            "National Center for Complementary & Integrative Health",
-            "National Center for Advancing Translational Sciences",
-            "National Cancer Institute",
-            "NIH Clinical Center",
-            "Center for Information Technology",
-            "Center for Scientific Review",
-            "Fogarty International Center",
-            "Food and Drug Administration/Other",
-            "Food and Drug Administration",
-            "Food & Drug Administration",
-            "Department of Defense",
-            "Congressionally Directed Medical Research Programs",
-            "Centers for Medicare and Medicaid Services",
-            "Centers for Medicare & Medicaid Services",
-            "Centers For Disease Control and Prevention (CDC)",
-            "Centers For Disease Control and Prevention",
-            "Agency for Healthcare Research and Quality",
-            "Agency for Healthcare Research & Quality",
-            "Department of Health and Human Services",
-            "Department of Health & Human Services",
-            "NIH National Research Service Award",
-            "NIH Office of the Director",
-        ];
+		$isFederal = [
+			"Non-Profit - Foundations/ Associations" => "Non-Federal",
+			"DOD" => "Federal",
+			"NASA" => "Federal",
+			"ED" => "Federal",
+			"NSF" => "Federal",
+			"VA" => "Federal",
+			"Federal" => "Federal",
+			"Institutional Funds" => "Non-Federal",
+			"Non-Profit - Other" => "Non-Federal",
+			"State - Tennessee" => "Non-Federal",
+			"Non-Profit - Education" => "Non-Federal",
+			"State - Other" => "Non-Federal",
+			"DOE" => "Federal",
+			"NIH" => "Federal",
+			"Profit" => "Non-Federal",
+			"PHS" => "Federal",
+			"Local Government" => "Non-Federal",
+			"Endowment" => "Non-Federal",
+			"Non-Profit - Hospital" => "Non-Federal",
+		];
+		$federalAgencies = [
+			"Patient-Centered Outcomes Research Institute",
+			"National Science Foundation",
+			"National Oceanic and Atmospheric Administration",
+			"National Library of Medicine",
+			"National Institutes of Health/Unknown",
+			"National Institutes of Health/Office of the Director",
+			"National Institute on Minority Health and Health Disparities",
+			"National Institute on Minority Health & Health Disparities",
+			"National Institute on Drug Abuse",
+			"National Institute on Deafness and Communication Disorders",
+			"National Institute on Deafness and Other Communication Disor",
+			"National Institute on Deafness and Other Communication Disorders",
+			"National Institute on Alcohol Abuse and Alcoholism",
+			"National Institute on Alcohol Abuse & Alcoholism",
+			"National Institute on Aging",
+			"National Institute of Nursing Research",
+			"National Institute of Neurological Disorders and Stroke",
+			"National Institute of Neurological Disorders & Stroke",
+			"National Institute of Mental Health",
+			"National Institute of General Medical Sciences",
+			"National Institute of Environmental Health Sciences",
+			"National Institute of Diabetes & Digestive & Kidney Disease",
+			"National Institute of Diabetes and Digestive and Kidney Disease",
+			"National Institute of Child Health and Human Development",
+			"National Institute of Child Health & Human Development",
+			"National Institute of Dental and Craniofacial Research",
+			"National Institute of Dental & Craniofacial Research",
+			"National Institute of Biomedical Imaging and Bioengineering",
+			"National Institute of Biomedical Imaging & Bioengineering",
+			"National Institute of Arthritis, Musculoskeletal and Skin",
+			"National Institute of Arthritis and Musculoskeletal and Skin Diseases",
+			"National Institute of Arthritis & Musculoskeletal & Skin Diseases",
+			"National Institute of Allergy and Infectious Diseases",
+			"National Institute of Allergy & Infectious Diseases",
+			"National Human Genome Research Institute",
+			"National Heart, Lung, and Blood Institute",
+			"National Heart, Lung, & Blood Institute",
+			"National Eye Institute",
+			"National Center for Research Resources",
+			"National Center for Complementary and Integrative Health",
+			"National Center for Complementary & Integrative Health",
+			"National Center for Advancing Translational Sciences",
+			"National Cancer Institute",
+			"NIH Clinical Center",
+			"Center for Information Technology",
+			"Center for Scientific Review",
+			"Fogarty International Center",
+			"Food and Drug Administration/Other",
+			"Food and Drug Administration",
+			"Food & Drug Administration",
+			"Department of Defense",
+			"Congressionally Directed Medical Research Programs",
+			"Centers for Medicare and Medicaid Services",
+			"Centers for Medicare & Medicaid Services",
+			"Centers For Disease Control and Prevention (CDC)",
+			"Centers For Disease Control and Prevention",
+			"Agency for Healthcare Research and Quality",
+			"Agency for Healthcare Research & Quality",
+			"Department of Health and Human Services",
+			"Department of Health & Human Services",
+			"NIH National Research Service Award",
+			"NIH Office of the Director",
+		];
 		if ($this->isNIH()) {
-		    return TRUE;
-        }
+			return true;
+		}
 		if (in_array($src, ["exporter", "reporter", "nih_reporter", "nsf", "ies_grant"])) {
-			return TRUE;
-		} else if ($src == "coeus") {
+			return true;
+		} elseif ($src == "coeus") {
 			$directSponsorType = $this->getVariable("direct_sponsor_type");
 			$primeSponsorType = $this->getVariable("prime_sponsor_type");
 			if (($isFederal[$primeSponsorType] == "Federal") && ($directSponsorType != "State - Tennessee")) {
-				return TRUE;
+				return true;
 			}
-		} else if ($src == "coeus2") {
-		    $agency = $this->getVariable("agency_name");
-            if (in_array($agency, $federalAgencies) && ($agency != "State of Tennessee")) {
-                return TRUE;
-            }
-        } else {
-            # Try to hack a guess
-            $sponsor = $this->getVariable("sponsor");
-            if (
-                $sponsor
-                && (
-                    ($isFederal[$sponsor] == "Federal")
-                    || in_array($sponsor, $federalAgencies)
-                )
-            ) {
-                return TRUE;
-            }
-        }
-        return FALSE;
+		} elseif ($src == "coeus2") {
+			$agency = $this->getVariable("agency_name");
+			if (in_array($agency, $federalAgencies) && ($agency != "State of Tennessee")) {
+				return true;
+			}
+		} else {
+			# Try to hack a guess
+			$sponsor = $this->getVariable("sponsor");
+			if (
+				$sponsor
+				&& (
+					($isFederal[$sponsor] == "Federal")
+					|| in_array($sponsor, $federalAgencies)
+				)
+			) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 	public static function removeCommas($num) {
@@ -2419,21 +2557,21 @@ class Grant {
 	}
 
 	public static function autocalculateGrantLength($type) {
-	    if (!is_numeric($type)) {
-	        # convert string to number
-	        $awardTypes = self::getAwardTypes();
-	        $type = $awardTypes[$type];
-        }
-        if ($type == 1) {
-            return Application::getInternalKLength();
-        } else if ($type == 2) {
-            return Application::getK12KL2Length();
-        } else if (in_array($type, [3, 4])) {
-            return Application::getIndividualKLength();
-        } else {
-            throw new \Exception("Invalid type ($type) for year length");
-        }
-    }
+		if (!is_numeric($type)) {
+			# convert string to number
+			$awardTypes = self::getAwardTypes();
+			$type = $awardTypes[$type];
+		}
+		if ($type == 1) {
+			return Application::getInternalKLength();
+		} elseif ($type == 2) {
+			return Application::getK12KL2Length();
+		} elseif (in_array($type, [3, 4])) {
+			return Application::getIndividualKLength();
+		} else {
+			throw new \Exception("Invalid type ($type) for year length");
+		}
+	}
 
 	# 0, Computer-Generated
 	# 1, Self-Reported
@@ -2448,31 +2586,31 @@ class Grant {
 	}
 
 	public function isSelfReported() {
-	    return ($this->getSourceType() == 1);
-    }
+		return ($this->getSourceType() == 1);
+	}
 
 	private static function getSourceTypeTranslation() {
 		return [
-            "modify" => 2,
-            "custom" => 2,
-            "coeus" => 0,
-            "coeus2" => 0,
-            "exporter" => 0,
-            "nih_reporter" => 0,
-            "vera" => 0,
-            "local_gms" => 0,
-            "reporter" => 0,
-            "ldap" => 0,
-            "nsf" => 0,
-            "ies_grant" => 0,
-            "followup" => 1,
-            "scholars" => 1,
-            "override" => 2,
-            "manual" => 2,
-            "data" => 2,
-            "sheet2" => 2,
-            "new2017" => 2,
-            ];
+			"modify" => 2,
+			"custom" => 2,
+			"coeus" => 0,
+			"coeus2" => 0,
+			"exporter" => 0,
+			"nih_reporter" => 0,
+			"vera" => 0,
+			"local_gms" => 0,
+			"reporter" => 0,
+			"ldap" => 0,
+			"nsf" => 0,
+			"ies_grant" => 0,
+			"followup" => 1,
+			"scholars" => 1,
+			"override" => 2,
+			"manual" => 2,
+			"data" => 2,
+			"sheet2" => 2,
+			"new2017" => 2,
+			];
 	}
 
 
@@ -2480,24 +2618,24 @@ class Grant {
 		$num = preg_replace("/^Individual K - Rec\. \d+ /", "", $num);
 		if (preg_match("/^Internal K/", $num)) {
 			return $num;
-		} else if (preg_match("/^K12/", $num)) {
+		} elseif (preg_match("/^K12/", $num)) {
 			return $num;
-		} else if (preg_match("/^KL2/", $num)) {
+		} elseif (preg_match("/^KL2/", $num)) {
 			return $num;
-		} else if (preg_match("/^Individual K/", $num)) {
+		} elseif (preg_match("/^Individual K/", $num)) {
 			return $num;
-		} else if (preg_match("/^Unknown R01 - Rec. \d+/", $num)) {
+		} elseif (preg_match("/^Unknown R01 - Rec. \d+/", $num)) {
 			return $num;
-		} else if (preg_match("/^Unknown/", $num)) {
+		} elseif (preg_match("/^Unknown/", $num)) {
 			return $num;
 		}
 		$numWithoutSpaces = preg_replace("/\s+/", "", $num);
-		$specialActivityCodes = array(
+		$specialActivityCodes = [
 						"L1C",     // CMS
 						"C1C",     // CMS
 						"U2G",     // CDC
-                        "U2C",     // Cooperative Agreements
-						);
+						"U2C",     // Cooperative Agreements
+						];
 		foreach ($specialActivityCodes as $activityCode) {
 			if (preg_match("/".$activityCode."[A-Z][A-Z]\d\d\d\d\d\d/", $numWithoutSpaces, $matches)) {
 				return $matches[0];
@@ -2507,7 +2645,7 @@ class Grant {
 			# HHS, e.g., HHSF22301012T, HHSF223201400042I, HHSN268200900034C
 			if (preg_match("/HHS[A-Z]\d\d\d\d\d\d\d\d[A-Z]/", $numWithoutSpaces, $matches)) {
 				return $matches[0];
-			} else if (preg_match("/HHS[A-Z]\d\d\d\d\d\d\d\d\d\d\d\d[A-Z]/", $numWithoutSpaces, $matches)) {
+			} elseif (preg_match("/HHS[A-Z]\d\d\d\d\d\d\d\d\d\d\d\d[A-Z]/", $numWithoutSpaces, $matches)) {
 				return $matches[0];
 			}
 		}
@@ -2517,15 +2655,15 @@ class Grant {
 			$instituteCode = $ary['institute_code'] ?? "";
 			$serialNumber = $ary['serial_number'] ?? "";
 			return $activityCode.$instituteCode.$serialNumber;
-		} else if (preg_match("/^VUMC\d+\(.+\)$/", $numWithoutSpaces)) {
+		} elseif (preg_match("/^VUMC\d+\(.+\)$/", $numWithoutSpaces)) {
 			$numWithoutSpaces = preg_replace("/^VUMC\d+\(/", "", $numWithoutSpaces);
 			$numWithoutSpaces = preg_replace("/\)$/", "", $numWithoutSpaces);
 			$ary = self::parseNumber($numWithoutSpaces);
 			if (!empty($ary)) {
-                $activityCode = $ary['activity_code'] ?? "";
-                $instituteCode = $ary['institute_code'] ?? "";
-                $serialNumber = $ary['serial_number'] ?? "";
-                return $activityCode.$instituteCode.$serialNumber;
+				$activityCode = $ary['activity_code'] ?? "";
+				$instituteCode = $ary['institute_code'] ?? "";
+				$serialNumber = $ary['serial_number'] ?? "";
+				return $activityCode.$instituteCode.$serialNumber;
 			} else {
 				return $numWithoutSpaces;
 			}
@@ -2534,7 +2672,7 @@ class Grant {
 	}
 
 	# The "type" (which is the bin into which we place the grant) is calculated in many cases.
-	# we get the "type" from the properties of the grant in getCurrentType. 
+	# we get the "type" from the properties of the grant in getCurrentType.
 	public function putInBins() {
 		$type = $this->getCurrentType();
 		$fundingSource = $this->getFundingSource();
@@ -2551,7 +2689,7 @@ class Grant {
 	}
 
 	public static function getFundingSourceAbbreviations() {
-		$agencies = array(
+		$agencies = [
 				"CDC" => "Centers for Disease Control and Prevention",
 				"AHRQ" => "Agency for Healthcare Research and Quality",
 				"HRSA" => "Health Resources and Services Administration",
@@ -2562,7 +2700,7 @@ class Grant {
 				"HHS" => "Department of Health and Human Services",
 				"VA" => "Department of Veterans Affairs",
 				"CMS" => "Centers for Medicare and Medicaid Services",
-				);
+				];
 		return $agencies;
 	}
 
@@ -2578,61 +2716,61 @@ class Grant {
 
 	# coordinated with wrangler/index.php
 	public static function getIndex($awardno, $sponsor, $startDate) {
-        $sep = "____";
-        return $awardno . $sep . $sponsor . $sep . $startDate;
-    }
+		$sep = "____";
+		return $awardno . $sep . $sponsor . $sep . $startDate;
+	}
 
-    # NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None, or Other
-    # Coordinated with MainGroup::getFundingSource in React Tables 2-4
-    public function getTable4AbbreviatedFundingSource() {
-        $acceptedFederalCategories = ["NIH", "AHRQ", "NSF"];
-	    $fundingSource = $this->getFundingSource();
-	    if ($fundingSource) {
-	        foreach (self::getFundingSourceAbbreviations() as $abbreviation => $name) {
-	            if (($fundingSource == $name) || ($fundingSource == $abbreviation)) {
-	                if (in_array($abbreviation, $acceptedFederalCategories)) {
-	                    return $abbreviation;
-                    }
-                }
-            }
-            if (in_array($fundingSource, ["NIH", "National Institutes of Health", "National Institute of Health"])) {
-                return "NIH";
-            } else if (in_array($fundingSource, ["NSF", "National Science Foundation"])) {
-                return "NSF";
-            } else if (in_array($fundingSource, ["AHRQ", "Agency for Healthcare Research and Quality", "Agency for Healthcare Research & Quality"])) {
-                return "AHRQ";
-            } else if ($this->isFederal()) {
-                return "Other Fed";
-            } else if ($this->getCurrentType() == "Internal K") {
-                return "Univ";
-            } else {
-                $type = self::$fdnOrOther;    // Cannot tell difference
-                if (isset($this->specs['sponsor'])) {
-                    return $type."<br/>".$this->specs['sponsor'];
-                } else {
-                    return $type;
-                }
-            }
-        }
-        if ($this->isNIH()) {
-            return "NIH";
-        }
-        return NULL;
-    }
+	# NIH, AHRQ, NSF, Other Federal (Other Fed), University (Univ), Foundation (Fdn), None, or Other
+	# Coordinated with MainGroup::getFundingSource in React Tables 2-4
+	public function getTable4AbbreviatedFundingSource() {
+		$acceptedFederalCategories = ["NIH", "AHRQ", "NSF"];
+		$fundingSource = $this->getFundingSource();
+		if ($fundingSource) {
+			foreach (self::getFundingSourceAbbreviations() as $abbreviation => $name) {
+				if (($fundingSource == $name) || ($fundingSource == $abbreviation)) {
+					if (in_array($abbreviation, $acceptedFederalCategories)) {
+						return $abbreviation;
+					}
+				}
+			}
+			if (in_array($fundingSource, ["NIH", "National Institutes of Health", "National Institute of Health"])) {
+				return "NIH";
+			} elseif (in_array($fundingSource, ["NSF", "National Science Foundation"])) {
+				return "NSF";
+			} elseif (in_array($fundingSource, ["AHRQ", "Agency for Healthcare Research and Quality", "Agency for Healthcare Research & Quality"])) {
+				return "AHRQ";
+			} elseif ($this->isFederal()) {
+				return "Other Fed";
+			} elseif ($this->getCurrentType() == "Internal K") {
+				return "Univ";
+			} else {
+				$type = self::$fdnOrOther;    // Cannot tell difference
+				if (isset($this->specs['sponsor'])) {
+					return $type."<br/>".$this->specs['sponsor'];
+				} else {
+					return $type;
+				}
+			}
+		}
+		if ($this->isNIH()) {
+			return "NIH";
+		}
+		return null;
+	}
 
-    # uses private variable specs
+	# uses private variable specs
 	public function getFundingSource() {
 		$specs = $this->specs;
-        $agencies = [
-            "CDC" => "CDC",
-            "Centers for Medicare and Medicaid Services" => "CMS",
-            "Agency for Healthcare Research and Quality" => "AHRQ",
-            "Health and Human Services" => "HHS",
-            "Health Resources and Services Administration" => "HRSA",
-            "Health Services Research Administration" => "HRSA",   // old name
-            "Food and Drug Administration" => "FDA",
-            "Health Information Technology" => "ONC",
-        ];
+		$agencies = [
+			"CDC" => "CDC",
+			"Centers for Medicare and Medicaid Services" => "CMS",
+			"Agency for Healthcare Research and Quality" => "AHRQ",
+			"Health and Human Services" => "HHS",
+			"Health Resources and Services Administration" => "HRSA",
+			"Health Services Research Administration" => "HRSA",   // old name
+			"Food and Drug Administration" => "FDA",
+			"Health Information Technology" => "ONC",
+		];
 
 		if ($specs["source"] == "coeus") {
 			if (preg_match("/\b000\b/", $specs['sponsor'])) {
@@ -2644,12 +2782,12 @@ class Grant {
 			$isFederal = $this->isFederal();
 
 			if ($isFederal) {
-				switch($primeSponsorType) {
+				switch ($primeSponsorType) {
 					case "DOD":
-                    case "NIH":
-                        return Grant::tellIfSubcontract($primeSponsorType, $primeSponsorType, $directSponsorType);
+					case "NIH":
+						return Grant::tellIfSubcontract($primeSponsorType, $primeSponsorType, $directSponsorType);
 					case "PHS":
-                        $matchedAgency = "";
+						$matchedAgency = "";
 						foreach ($agencies as $agency => $abbreviation) {
 							if (preg_match("/".$agency."/", $primeSponsorName)) {
 								$matchedAgency = $abbreviation;
@@ -2667,7 +2805,7 @@ class Grant {
 					return "Federal: Other";
 				}
 			} else {
-				switch($primeSponsorType) {
+				switch ($primeSponsorType) {
 					case "Non-Profit - Foundations/ Associations":
 						return "Foundation/Non-Profit";
 					case "State - Tennessee":
@@ -2688,98 +2826,105 @@ class Grant {
 				return "Non-Federal: Other";
 			}
 		} else {
-            # Very inexact - best guess
-            $sponsor = $specs['sponsor'];
-            $sponsorType = $specs['sponsor_type'] ?? "";
+			# Very inexact - best guess
+			$sponsor = $specs['sponsor'];
+			$sponsorType = $specs['sponsor_type'] ?? "";
 
-            foreach ([$sponsor, $sponsorType] as $type) {
-                switch($type) {
-                    case "DOD":
-                    case "NIH":
-                    case "VA":
-                        return $type;
-                    case "PHS":
-                        foreach ($agencies as $agency => $abbreviation) {
-                            if (preg_match("/" . $agency . "/i", $type)) {
-                                return $abbreviation;
-                            }
-                        }
-                        break;
-                    default:
-                        foreach ($agencies as $agency => $abbreviation) {
-                            if (
-                                preg_match("/" . $agency . "/i", $type)
-                                || (strtoupper($abbreviation) == strtoupper($type))
-                            ) {
-                                return $abbreviation;
-                            }
-                        }
-                }
-            }
-            if ($sponsor && $this->isFederal()) {
-                return "Federal: Other";
-            } else if ($sponsor) {
-                return "Non-Federal: Other";
-            }
-        }
+			foreach ([$sponsor, $sponsorType] as $type) {
+				switch ($type) {
+					case "DOD":
+					case "NIH":
+					case "VA":
+						return $type;
+					case "PHS":
+						foreach ($agencies as $agency => $abbreviation) {
+							if (preg_match("/" . $agency . "/i", $type)) {
+								return $abbreviation;
+							}
+						}
+						break;
+					default:
+						foreach ($agencies as $agency => $abbreviation) {
+							if (
+								preg_match("/" . $agency . "/i", $type)
+								|| (strtoupper($abbreviation) == strtoupper($type))
+							) {
+								return $abbreviation;
+							}
+						}
+				}
+			}
+			if ($sponsor && $this->isFederal()) {
+				return "Federal: Other";
+			} elseif ($sponsor) {
+				return "Non-Federal: Other";
+			}
+		}
 		return "N/A";
 	}
 
 	public static function getCoeusSources() {
-	    return ["coeus", "coeus2"];
-    }
+		return ["coeus", "coeus2"];
+	}
 
 	# uses private variable specs
 	# Finds the award type
 	# difficult
-	private function getCurrentType()
-    {
-        $specs = $this->specs;
-        $awardNo = $this->getNumber();
+	private function getCurrentType() {
+		$specs = $this->specs;
+		$awardNo = $this->getNumber();
 
-        if ($specs['pi_flag'] == 'N') {
-            if (self::getShowDebug()) { Application::log($awardNo.": pi_flag is N"); }
-            return "N/A";
-        }
-        if (isset($specs['type']) && ($specs['type'] !== "")) {
-            if (self::getShowDebug()) { Application::log($awardNo.": preset type ".$specs['type']); }
-            return $specs['type'];
-        }
+		if ($specs['pi_flag'] == 'N') {
+			if (self::getShowDebug()) {
+				Application::log($awardNo.": pi_flag is N");
+			}
+			return "N/A";
+		}
+		if (isset($specs['type']) && ($specs['type'] !== "")) {
+			if (self::getShowDebug()) {
+				Application::log($awardNo.": preset type ".$specs['type']);
+			}
+			return $specs['type'];
+		}
 
-        if (self::getShowDebug()) { Application::log($awardNo.": First Pass"); }
-        if ($type = $this->lexicallyTranslate($awardNo)) {
-            return $type;
-        }
+		if (self::getShowDebug()) {
+			Application::log($awardNo.": First Pass");
+		}
+		if ($type = $this->lexicallyTranslate($awardNo)) {
+			return $type;
+		}
 
-        return self::calculateAwardType($specs, $awardNo);
-    }
+		return self::calculateAwardType($specs, $awardNo);
+	}
 
-    public static function calculateAwardType($specs, $awardNo) {
-        $coeusSources = self::getCoeusSources();
-        $r01EquivYearlyThreshold = 250000;
-        $r01EquivNumberOfYears = 3;
+	public static function calculateAwardType($specs, $awardNo) {
+		$coeusSources = self::getCoeusSources();
+		$r01EquivYearlyThreshold = 250000;
+		$r01EquivNumberOfYears = 3;
 
-        if ($specs['source'] == 'nsf') {
-            if (preg_match("/REU Site/", $specs['title'])) {
-                return "Training Grant Admin";
-            } else if (preg_match("/CAREER/", $specs['title'])) {
-                return "K Equivalent";
-            } else {
-                return "R01 Equivalent";
-            }
-        }
+		if ($specs['source'] == 'nsf') {
+			if (preg_match("/REU Site/", $specs['title'])) {
+				return "Training Grant Admin";
+			} elseif (preg_match("/CAREER/", $specs['title'])) {
+				return "K Equivalent";
+			} else {
+				return "R01 Equivalent";
+			}
+		}
 
-		if (self::getShowDebug()) { Application::log($awardNo.": Second Pass"); }
+		if (self::getShowDebug()) {
+			Application::log($awardNo.": Second Pass");
+		}
 		$trainingGrantSources = ["coeus", "reporter", "exporter", "nih_reporter", "nsf"];
 		if ($awardNo == "") {
 			return "N/A";
-		} else if (($specs['pi_flag'] == "N") && !(preg_match("/\d[Kk][1L]2/", $awardNo))) {
+		} elseif (($specs['pi_flag'] == "N") && !(preg_match("/\d[Kk][1L]2/", $awardNo))) {
 			return "N/A";
-		} else if (preg_match("/^\d?[Kk][1L]2/", $awardNo)) {
+		} elseif (preg_match("/^\d?[Kk][1L]2/", $awardNo)) {
 			if (preg_match("/\d[Kk][1L]2/", $awardNo) || preg_match("/^[Kk][1L]2/", $awardNo) || preg_match("/[Kk][1L]2$/", $awardNo)) {
 				if (($specs['pi_flag'] == "N") && (in_array($specs['source'], $coeusSources))) {
 					// return "K12/KL2";
-				} else if (($specs['pi_flag'] == "Y") && (in_array($specs['source'], $trainingGrantSources ))) {
+				} elseif (($specs['pi_flag'] == "Y") && (in_array($specs['source'], $trainingGrantSources))) {
 					return "Mentoring/Training Grant Admin";
 				} else {
 					return "K12/KL2";
@@ -2787,125 +2932,137 @@ class Grant {
 			} else {
 				return "K12/KL2";
 			}
-		} else if (preg_match("/VUMC/", $awardNo)) {
+		} elseif (preg_match("/VUMC/", $awardNo)) {
 			return "N/A";
-		} else if (preg_match("/Unknown individual/", $awardNo)) {
+		} elseif (preg_match("/Unknown individual/", $awardNo)) {
 			return "K Equivalent";
-		} else if (
-            preg_match("/^\d?[Rr]00/", $awardNo)
-            || preg_match("/^\d?[Kk]\s*99/", $awardNo)
-            || preg_match("/^\d?[Ff]\s*99/", $awardNo)
-            || preg_match("/^\d?[Kk]\s*00/", $awardNo)
-        ) {
+		} elseif (
+			preg_match("/^\d?[Rr]00/", $awardNo)
+			|| preg_match("/^\d?[Kk]\s*99/", $awardNo)
+			|| preg_match("/^\d?[Ff]\s*99/", $awardNo)
+			|| preg_match("/^\d?[Kk]\s*00/", $awardNo)
+		) {
 			return "Bridge Award";
-        } else if (preg_match("/^\d?[Rr]01/", $awardNo)) {
-            return "R01";
-		} else if (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
+		} elseif (preg_match("/^\d?[Rr]01/", $awardNo)) {
+			return "R01";
+		} elseif (preg_match("/^\d?[Tt]\d\d/", $awardNo) || preg_match("/^\d?[Dd]43/", $awardNo)) {
 			return "Mentoring/Training Grant Admin";
 		} else {
-            # not R01 or R00
-            $budgetField = "";
-            // TODO ['direct_budget', 'budget', 'total_budget']
-            foreach (['direct_budget'] as $specField) {
-                if (isset($specs[$specField]) && ($specs[$specField] > 0)) {
-                    $budgetField = $specField;
-                    break;
-                }
-            }
+			# not R01 or R00
+			$budgetField = "";
+			// TODO ['direct_budget', 'budget', 'total_budget']
+			foreach (['direct_budget'] as $specField) {
+				if (isset($specs[$specField]) && ($specs[$specField] > 0)) {
+					$budgetField = $specField;
+					break;
+				}
+			}
 
-            if ($budgetField) {
-                if ($specs['project_start'] && $specs['project_end']) {
-                    $projStart = strtotime($specs['project_start']);
-                    $projEnd = strtotime($specs['project_end']);
-                    if (self::getShowDebug()) {
-                        Application::log("$awardNo with project {$specs['project_start']} and {$specs['project_end']}");
-                    }
-                } else if ($specs['start'] && $specs['end']) {
-                    $projStart = strtotime($specs['start']);
-                    $projEnd = strtotime($specs['end']);
-                    if (self::getShowDebug()) {
-                        Application::log("$awardNo with budget {$specs['start']} and {$specs['end']}");
-                    }
-                } else {
-                    $projStart = FALSE;
-                    $projEnd = FALSE;
-                }
-                if ($projStart && $projEnd) {
-                    $yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
-                    $isR01EquivEligible = ($specs[$budgetField] > $r01EquivYearlyThreshold * $yearspan) && ($specs[$budgetField] >= $r01EquivYearlyThreshold * $r01EquivNumberOfYears);
-                    if (self::getShowDebug()) {
-                        Application::log("$awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} / $yearspan years");
-                    }
-                    if (
-                        !$isR01EquivEligible
-                        && isset($specs['num_grants_combined'])
-                        && ($specs['num_grants_combined'] >= 3)
-                    ) {
-                        $isR01EquivEligible = ($specs[$budgetField] / $specs['num_grants_combined'] > $r01EquivYearlyThreshold);
-                        if (self::getShowDebug()) {
-                            Application::log("Route B: $awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} years");
-                        }
-                    }
-                    if (($yearspan >= $r01EquivNumberOfYears) && $isR01EquivEligible) {
-                        if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
-                            if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600))); }
-                            return "R01 Equivalent";
-                        } else {
-                            if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit D"); }
-                        }
-                    } else {
-                        if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years"); }
-                    }
-                } else {
-                    if (self::getShowDebug()) { Application::log($awardNo.": Second Pass - exit B"); }
-                }
-            } else {
-                if (self::getShowDebug()) { Application::log("$awardNo has no direct budget ".REDCapManagement::json_encode_with_spaces($specs)); }
-            }
-        }
+			if ($budgetField) {
+				if ($specs['project_start'] && $specs['project_end']) {
+					$projStart = strtotime($specs['project_start']);
+					$projEnd = strtotime($specs['project_end']);
+					if (self::getShowDebug()) {
+						Application::log("$awardNo with project {$specs['project_start']} and {$specs['project_end']}");
+					}
+				} elseif ($specs['start'] && $specs['end']) {
+					$projStart = strtotime($specs['start']);
+					$projEnd = strtotime($specs['end']);
+					if (self::getShowDebug()) {
+						Application::log("$awardNo with budget {$specs['start']} and {$specs['end']}");
+					}
+				} else {
+					$projStart = false;
+					$projEnd = false;
+				}
+				if ($projStart && $projEnd) {
+					$yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
+					$isR01EquivEligible = ($specs[$budgetField] > $r01EquivYearlyThreshold * $yearspan) && ($specs[$budgetField] >= $r01EquivYearlyThreshold * $r01EquivNumberOfYears);
+					if (self::getShowDebug()) {
+						Application::log("$awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} / $yearspan years");
+					}
+					if (
+						!$isR01EquivEligible
+						&& isset($specs['num_grants_combined'])
+						&& ($specs['num_grants_combined'] >= 3)
+					) {
+						$isR01EquivEligible = ($specs[$budgetField] / $specs['num_grants_combined'] > $r01EquivYearlyThreshold);
+						if (self::getShowDebug()) {
+							Application::log("Route B: $awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} years");
+						}
+					}
+					if (($yearspan >= $r01EquivNumberOfYears) && $isR01EquivEligible) {
+						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
+							if (self::getShowDebug()) {
+								Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600)));
+							}
+							return "R01 Equivalent";
+						} else {
+							if (self::getShowDebug()) {
+								Application::log($awardNo.": Second Pass - exit D");
+							}
+						}
+					} else {
+						if (self::getShowDebug()) {
+							Application::log($awardNo.": Second Pass - exit C: ".REDCapManagement::pretty($yearspan, 1)." years");
+						}
+					}
+				} else {
+					if (self::getShowDebug()) {
+						Application::log($awardNo.": Second Pass - exit B");
+					}
+				}
+			} else {
+				if (self::getShowDebug()) {
+					Application::log("$awardNo has no direct budget ".REDCapManagement::json_encode_with_spaces($specs));
+				}
+			}
+		}
 
-		if (self::getShowDebug()) { Application::log($awardNo.": Third Pass"); }
+		if (self::getShowDebug()) {
+			Application::log($awardNo.": Third Pass");
+		}
 		if (preg_match("/^[Kk]23 - /", $awardNo)) {
 			return "Individual K";
-		} else if (preg_match("/^\d?[Kk]24/", $awardNo) || preg_match("/^\d?[Kk]26/", $awardNo)) {
+		} elseif (preg_match("/^\d?[Kk]24/", $awardNo) || preg_match("/^\d?[Kk]26/", $awardNo)) {
 			return "Mentoring/Training Grant Admin";
-		} else if (preg_match("/^\d?[Rr]03/", $awardNo)) {
+		} elseif (preg_match("/^\d?[Rr]03/", $awardNo)) {
 			return "N/A";
-		} else if (preg_match("/^\d?I01[BC]X/", $awardNo)) {
+		} elseif (preg_match("/^\d?I01[BC]X/", $awardNo)) {
 			return "R01 Equivalent";
-		} else if (preg_match("/^\d?IK2[BC]X/", $awardNo)) {
+		} elseif (preg_match("/^\d?IK2[BC]X/", $awardNo)) {
 			return "K Equivalent";
-        } else if (preg_match("/^\d?R37/", $awardNo)) {
-            return "R01 Equivalent";
-        } else if (preg_match("/^\d?R35/", $awardNo)) {
-            return "R01 Equivalent";
-        } else if (preg_match("/^\d?[Dd][Pp]1/", $awardNo)) {
-            return "R01 Equivalent";
-        } else if (preg_match("/^\d?DP7/", $awardNo) || preg_match("/^\d?[Rr]25/", $awardNo) || preg_match("/^\d?[Tt]90/", $awardNo)) {
-		    return "Mentoring/Training Grant Admin";
-		} else if (preg_match("/Internal K/", $awardNo)) {
+		} elseif (preg_match("/^\d?R37/", $awardNo)) {
+			return "R01 Equivalent";
+		} elseif (preg_match("/^\d?R35/", $awardNo)) {
+			return "R01 Equivalent";
+		} elseif (preg_match("/^\d?[Dd][Pp]1/", $awardNo)) {
+			return "R01 Equivalent";
+		} elseif (preg_match("/^\d?DP7/", $awardNo) || preg_match("/^\d?[Rr]25/", $awardNo) || preg_match("/^\d?[Tt]90/", $awardNo)) {
+			return "Mentoring/Training Grant Admin";
+		} elseif (preg_match("/Internal K/", $awardNo)) {
 			return "Internal K";
-		} else if (preg_match("/K12\/KL2/", $awardNo)) {
+		} elseif (preg_match("/K12\/KL2/", $awardNo)) {
 			return "K12/KL2";
-		} else if (preg_match("/Individual K/", $awardNo)) {
+		} elseif (preg_match("/Individual K/", $awardNo)) {
 			return "Individual K";
-		} else if (preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
+		} elseif (preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
 			if (!preg_match("/[Kk]99/", $awardNo) && !preg_match("/[Kk]00/", $awardNo)) {
 				# after all other special cases for K
 				return "Individual K";
 			}
-		} else if (isset($specs['sponsor']) && $specs['sponsor'] == "Veterans Administration, Tennessee") {
+		} elseif (isset($specs['sponsor']) && $specs['sponsor'] == "Veterans Administration, Tennessee") {
 			return "K Equivalent";
-		} else if (isset($specs['sponsor_type']) && ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")) {
+		} elseif (isset($specs['sponsor_type']) && ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")) {
 			if (($specs['percent_effort'] >= 50) && ($specs['direct_budget'] >= 50000)) {
 				return "K Equivalent";
 			}
 		}
 
 		if (self::getShowDebug()) {
-		    Application::log($awardNo.": Final Pass");
-		    Application::log($awardNo.": ".json_encode($specs));
-        }
+			Application::log($awardNo.": Final Pass");
+			Application::log($awardNo.": ".json_encode($specs));
+		}
 		return "N/A";
 	}
 
@@ -2913,7 +3070,7 @@ class Grant {
 	public function getREDCapVariables($i) {
 		# key = name of summary_award in REDCap
 		# value = variable name in $specs
-		$variables = array(
+		$variables = [
 					"date" => "start",
 					"end_date" => "end",
 					"title" => "title",
@@ -2926,24 +3083,24 @@ class Grant {
 					"total_budget" => "budget",
 					"direct_budget" => "direct_budget",
 					"percent_effort" => "effort",
-                    "role" => "role",
-					);
-		$ary = array();
+					"role" => "role",
+					];
+		$ary = [];
 		$awardTypeConversion = self::getAwardTypes();
 		foreach ($variables as $redcapVar => $specsVar) {
 			$fullREDCapVar = "summary_award_".$redcapVar."_".$i;
-            if ($specsVar == "last_update") {
-                if (isset($this->specs[$specsVar])) {
-                    $ts = strtotime($this->specs[$specsVar]);
-                    $ary[$fullREDCapVar] = date("Y-m-d", $ts);
-                } else {
-                    $ary[$fullREDCapVar] = "";
-                }
-            } else if ($specsVar == "type") {
+			if ($specsVar == "last_update") {
+				if (isset($this->specs[$specsVar])) {
+					$ts = strtotime($this->specs[$specsVar]);
+					$ary[$fullREDCapVar] = date("Y-m-d", $ts);
+				} else {
+					$ary[$fullREDCapVar] = "";
+				}
+			} elseif ($specsVar == "type") {
 				$ary[$fullREDCapVar] = (isset($this->specs[$specsVar]) ? "{$awardTypeConversion[$this->specs[$specsVar]]}" : "");
-			} else if (preg_match("/budget/", $redcapVar)) {
+			} elseif (preg_match("/budget/", $redcapVar)) {
 				$ary[$fullREDCapVar] = (isset($this->specs[$specsVar]) ? self::convertToMoney($this->specs[$specsVar]) : "");
-			} else if ($redcapVar == "sourcetype") {
+			} elseif ($redcapVar == "sourcetype") {
 				$ary[$fullREDCapVar] = $this->getSourceType();
 			} else {
 				$ary[$fullREDCapVar] = (isset($this->specs[$specsVar]) ? $this->specs[$specsVar] : "");
@@ -2953,9 +3110,9 @@ class Grant {
 	}
 
 	public static function convertToMoney($float) {
-        if ($float === "") {
-            return "";
-        }
+		if ($float === "") {
+			return "";
+		}
 		$str = (string) round($float, 2);
 		if (preg_match("/^\d+\.\d$/", $str)) {
 			return $str."0";
@@ -2979,14 +3136,14 @@ class Grant {
 	}
 
 	public static function getIndustries() {
-		$industries = array(
+		$industries = [
 					"N/A" => 99,
-					);
+					];
 		return $industries;
 	}
 
 	public static function getFundingSources($type = "All") {
-		$federalFundingSources = array(
+		$federalFundingSources = [
 						"NIH" => 1,
 						"NIH Subcontract" => 2,
 						"CDC" => 3,
@@ -3007,20 +3164,20 @@ class Grant {
 						"ONC" => 18,
 						"ONC Subcontract" => 19,
 						"Federal: Other" => 21,
-						);
-		$industryFundingSources = array(
+						];
+		$industryFundingSources = [
 						"Foundation/Non-Profit" => 22,
 						"State" => 23,
 						"Non-Federal: Other" => 24,
 						"Industry: Contract" => 25,
 						"Industry: Grant" => 26,
-						);
-		$na = array(
+						];
+		$na = [
 				"N/A" => 99,
-				);
+				];
 		if ($type == "Federal") {
 			return array_merge($federalFundingSources, $na);
-		} else if (($type == "Non-Federal") || ($type == "Industry")) {
+		} elseif (($type == "Non-Federal") || ($type == "Industry")) {
 			return array_merge($industryFundingSources, $na);
 		} else {
 			# All
@@ -3030,16 +3187,16 @@ class Grant {
 	}
 
 	public static function convertGrantTypesToStrings($ary) {
-	    $awardTypes = self::getReverseAwardTypes();
-	    $newAry = [];
-	    foreach ($ary as $item) {
-	        $newAry[] = $awardTypes[$item];
-        }
-	    return $newAry;
-    }
+		$awardTypes = self::getReverseAwardTypes();
+		$newAry = [];
+		foreach ($ary as $item) {
+			$newAry[] = $awardTypes[$item];
+		}
+		return $newAry;
+	}
 
 	public static function getAwardTypes() {
-		$awardTypes = array (
+		$awardTypes =  [
 				"Internal K" => 1,
 				"K12/KL2" => 2,
 				"Individual K" => 3,
@@ -3048,26 +3205,25 @@ class Grant {
 				"R01 Equivalent" => 6,
 				"Training Appointment" => 10,
 				"Research Fellowship" => 7,
-                "Mentoring/Training Grant Admin" => 8,
-                "Training Grant Admin" => 8,
+				"Mentoring/Training Grant Admin" => 8,
+				"Training Grant Admin" => 8,
 				"Bridge Award" => 9,
 				"N/A" => 99,
-		);
+		];
 		return $awardTypes;
 	}
 
 	public static function setShowDebug($b) {
-	    self::$showDebug = $b;
-    }
+		self::$showDebug = $b;
+	}
 
-    public static function getShowDebug() {
-	    return self::$showDebug;
-    }
+	public static function getShowDebug() {
+		return self::$showDebug;
+	}
 
-	private $specs = array();
+	private $specs = [];
 	private $translator;
-	private static $showDebug = FALSE;
+	private static $showDebug = false;
 	public static $fdnOrOther = "Fdn-or-Other";
 	public static $noNameAssigned = "No Title Assigned";
 }
-

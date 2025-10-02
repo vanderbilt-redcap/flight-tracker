@@ -2,8 +2,8 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Links;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\Sanitizer;
@@ -13,10 +13,10 @@ require_once(dirname(__FILE__)."/../small_base.php");
 
 $pid = Sanitizer::sanitizePid($_GET['pid'] ?? "");
 if (!$pid) {
-    $pid = Application::getSetting("pid");
+	$pid = Application::getSetting("pid");
 }
 if (!$module) {
-    $module = Application::getModule();
+	$module = Application::getModule();
 }
 $validWranglerTypes = ["Patents", "Publications", "FlagPublications", "Grants"];
 $token = Application::getSetting("token", $pid);
@@ -36,7 +36,7 @@ foreach ($lastNames as $rec => $ln) {
 	$fullNames[$rec] = $fn." ".$ln;
 }
 if (CareerDev::isWrangler()) {
-    $allMyRecords = CareerDev::filterOutCopiedRecords($allMyRecords);
+	$allMyRecords = CareerDev::filterOutCopiedRecords($allMyRecords);
 }
 
 function makeHeadersOfTables($type) {
@@ -53,17 +53,17 @@ function makeHeadersOfTables($type) {
 }
 if (!isset($_GET['hideHeader'])) {
 
-?>
+	?>
 <!DOCTYPE html>
 <title>Flight Tracker for Scholars</title>
 <?php
-    if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
-        echo makeHeaders(Application::getModule(), $token, $server, $pid, $tokenName);
-    } else {
-        echo Application::getImportHTML();
-    }
+		if (!isset($_GET['headers']) || ($_GET['headers'] != "false")) {
+			echo makeHeaders(Application::getModule(), $token, $server, $pid, $tokenName);
+		} else {
+			echo Application::getImportHTML();
+		}
 
-?>
+	?>
 <?= CareerDev::makeBackgroundCSSLink() ?>
 
 <script>
@@ -101,19 +101,19 @@ function refreshForRecord(page) {
     const rec = $('#refreshRecord').val();
 	let newStr = "";
 <?php
-	if (isset($_GET['new'])) {
-		if (is_numeric($_GET['new'])) {
-			echo "  newStr = '&new=".REDCapManagement::sanitize($_GET['new'])."';";
-		} else {
-			echo "  newStr = '&new';";
+		if (isset($_GET['new'])) {
+			if (is_numeric($_GET['new'])) {
+				echo "  newStr = '&new=".REDCapManagement::sanitize($_GET['new'])."';";
+			} else {
+				echo "  newStr = '&new';";
+			}
 		}
-	}
 	if (isset($_GET['wranglerType']) && in_array($_GET['wranglerType'], $validWranglerTypes)) {
-        echo "const wranglerType = '&wranglerType=".REDCapManagement::sanitize($_GET['wranglerType'])."';\n";
+		echo "const wranglerType = '&wranglerType=".REDCapManagement::sanitize($_GET['wranglerType'])."';\n";
 	} else {
-        echo "const wranglerType = '';\n";
-    }
-?>
+		echo "const wranglerType = '';\n";
+	}
+	?>
 	if (rec !== '') {
 		window.location.href = page + '?pid=<?= urlencode(REDCapManagement::sanitize($_GET['pid'])) ?>&page=<?= urlencode(REDCapManagement::sanitize($_GET['page'])) ?>&prefix=<?= urlencode(REDCapManagement::sanitize($_GET['prefix'])) ?>&record='+rec+newStr+wranglerType;
 	}

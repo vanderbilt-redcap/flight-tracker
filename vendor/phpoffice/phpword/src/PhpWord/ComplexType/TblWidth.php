@@ -25,36 +25,33 @@ use PhpOffice\PhpWord\SimpleType\TblWidth as TblWidthSimpleType;
  */
 final class TblWidth
 {
-    /** @var string */
-    private $type;
+	/** @var string */
+	private $type;
 
-    /** @var int */
-    private $value;
+	/** @var int */
+	private $value;
 
-    /**
-     * @param int $value If omitted, then its value shall be assumed to be 0
-     * @param string $type If omitted, then its value shall be assumed to be dxa
-     */
-    public function __construct($value = 0, $type = TblWidthSimpleType::TWIP)
-    {
-        $this->value = $value;
-        TblWidthSimpleType::validate($type);
-        $this->type = $type;
-    }
+	/**
+	 * @param int $value If omitted, then its value shall be assumed to be 0
+	 * @param string $type If omitted, then its value shall be assumed to be dxa
+	 */
+	public function __construct($value = 0, $type = TblWidthSimpleType::TWIP) {
+		$this->value = $value;
+		TblWidthSimpleType::validate($type);
+		$this->type = $type;
+	}
 
-    /**
-     * @return string
-     */
-    public function getType()
-    {
-        return $this->type;
-    }
+	/**
+	 * @return string
+	 */
+	public function getType() {
+		return $this->type;
+	}
 
-    /**
-     * @return int
-     */
-    public function getValue()
-    {
-        return $this->value;
-    }
+	/**
+	 * @return int
+	 */
+	public function getValue() {
+		return $this->value;
+	}
 }

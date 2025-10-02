@@ -27,92 +27,86 @@ use DateTime;
  */
 class Comment extends TrackChange
 {
-    /**
-     * Initials.
-     *
-     * @var string
-     */
-    private $initials;
+	/**
+	 * Initials.
+	 *
+	 * @var string
+	 */
+	private $initials;
 
-    /**
-     * The Element where this comment starts.
-     *
-     * @var AbstractElement
-     */
-    private $startElement;
+	/**
+	 * The Element where this comment starts.
+	 *
+	 * @var AbstractElement
+	 */
+	private $startElement;
 
-    /**
-     * The Element where this comment ends.
-     *
-     * @var AbstractElement
-     */
-    private $endElement;
+	/**
+	 * The Element where this comment ends.
+	 *
+	 * @var AbstractElement
+	 */
+	private $endElement;
 
-    /**
-     * Is part of collection.
-     *
-     * @var bool
-     */
-    protected $collectionRelation = true;
+	/**
+	 * Is part of collection.
+	 *
+	 * @var bool
+	 */
+	protected $collectionRelation = true;
 
-    /**
-     * Create a new Comment Element.
-     *
-     * @param string $author
-     * @param null|DateTime $date
-     * @param string $initials
-     */
-    public function __construct($author, $date = null, $initials = null)
-    {
-        parent::__construct(null, $author, $date);
-        $this->initials = $initials;
-    }
+	/**
+	 * Create a new Comment Element.
+	 *
+	 * @param string $author
+	 * @param null|DateTime $date
+	 * @param string $initials
+	 */
+	public function __construct($author, $date = null, $initials = null) {
+		parent::__construct(null, $author, $date);
+		$this->initials = $initials;
+	}
 
-    /**
-     * Get Initials.
-     *
-     * @return string
-     */
-    public function getInitials()
-    {
-        return $this->initials;
-    }
+	/**
+	 * Get Initials.
+	 *
+	 * @return string
+	 */
+	public function getInitials() {
+		return $this->initials;
+	}
 
-    /**
-     * Sets the element where this comment starts.
-     */
-    public function setStartElement(AbstractElement $value): void
-    {
-        $this->startElement = $value;
-        $value->setCommentRangeStart($this);
-    }
+	/**
+	 * Sets the element where this comment starts.
+	 */
+	public function setStartElement(AbstractElement $value): void {
+		$this->startElement = $value;
+		$value->setCommentRangeStart($this);
+	}
 
-    /**
-     * Get the element where this comment starts.
-     *
-     * @return AbstractElement
-     */
-    public function getStartElement()
-    {
-        return $this->startElement;
-    }
+	/**
+	 * Get the element where this comment starts.
+	 *
+	 * @return AbstractElement
+	 */
+	public function getStartElement() {
+		return $this->startElement;
+	}
 
-    /**
-     * Sets the element where this comment ends.
-     */
-    public function setEndElement(AbstractElement $value): void
-    {
-        $this->endElement = $value;
-        $value->setCommentRangeEnd($this);
-    }
+	/**
+	 * Sets the element where this comment ends.
+	 */
+	public function setEndElement(AbstractElement $value): void {
+		$this->endElement = $value;
+		$value->setCommentRangeEnd($this);
+	}
 
-    /**
-     * Get the element where this comment ends.
-     *
-     * @return AbstractElement
-     */
-    public function getEndElement()
-    {
-        return $this->endElement;
-    }
+	/**
+	 * Get the element where this comment ends.
+	 *
+	 * @return AbstractElement
+	 */
+	public function getEndElement() {
+		return $this->endElement;
+	}
 }

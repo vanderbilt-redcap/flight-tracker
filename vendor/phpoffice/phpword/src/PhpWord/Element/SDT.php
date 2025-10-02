@@ -25,172 +25,161 @@ namespace PhpOffice\PhpWord\Element;
  */
 class SDT extends Text
 {
-    /**
-     * Form field type: comboBox|dropDownList|date.
-     *
-     * @var string
-     */
-    private $type;
+	/**
+	 * Form field type: comboBox|dropDownList|date.
+	 *
+	 * @var string
+	 */
+	private $type;
 
-    /**
-     * Value.
-     *
-     * @var null|bool|int|string
-     */
-    private $value;
+	/**
+	 * Value.
+	 *
+	 * @var null|bool|int|string
+	 */
+	private $value;
 
-    /**
-     * CheckBox/DropDown list entries.
-     *
-     * @var array
-     */
-    private $listItems = [];
+	/**
+	 * CheckBox/DropDown list entries.
+	 *
+	 * @var array
+	 */
+	private $listItems = [];
 
-    /**
-     * Alias.
-     *
-     * @var string
-     */
-    private $alias;
+	/**
+	 * Alias.
+	 *
+	 * @var string
+	 */
+	private $alias;
 
-    /**
-     * Tag.
-     *
-     * @var string
-     */
-    private $tag;
+	/**
+	 * Tag.
+	 *
+	 * @var string
+	 */
+	private $tag;
 
-    /**
-     * Create new instance.
-     *
-     * @param string $type
-     * @param mixed $fontStyle
-     * @param mixed $paragraphStyle
-     */
-    public function __construct($type, $fontStyle = null, $paragraphStyle = null)
-    {
-        parent::__construct(null, $fontStyle, $paragraphStyle);
-        $this->setType($type);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param string $type
+	 * @param mixed $fontStyle
+	 * @param mixed $paragraphStyle
+	 */
+	public function __construct($type, $fontStyle = null, $paragraphStyle = null) {
+		parent::__construct(null, $fontStyle, $paragraphStyle);
+		$this->setType($type);
+	}
 
-    /**
-     * Get type.
-     *
-     * @return string
-     */
-    public function getType()
-    {
-        return $this->type;
-    }
+	/**
+	 * Get type.
+	 *
+	 * @return string
+	 */
+	public function getType() {
+		return $this->type;
+	}
 
-    /**
-     * Set type.
-     *
-     * @param string $value
-     *
-     * @return self
-     */
-    public function setType($value)
-    {
-        $enum = ['plainText', 'comboBox', 'dropDownList', 'date'];
-        $this->type = $this->setEnumVal($value, $enum, 'comboBox');
+	/**
+	 * Set type.
+	 *
+	 * @param string $value
+	 *
+	 * @return self
+	 */
+	public function setType($value) {
+		$enum = ['plainText', 'comboBox', 'dropDownList', 'date'];
+		$this->type = $this->setEnumVal($value, $enum, 'comboBox');
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get value.
-     *
-     * @return null|bool|int|string
-     */
-    public function getValue()
-    {
-        return $this->value;
-    }
+	/**
+	 * Get value.
+	 *
+	 * @return null|bool|int|string
+	 */
+	public function getValue() {
+		return $this->value;
+	}
 
-    /**
-     * Set value.
-     *
-     * @param null|bool|int|string $value
-     *
-     * @return self
-     */
-    public function setValue($value)
-    {
-        $this->value = $value;
+	/**
+	 * Set value.
+	 *
+	 * @param null|bool|int|string $value
+	 *
+	 * @return self
+	 */
+	public function setValue($value) {
+		$this->value = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get listItems.
-     *
-     * @return array
-     */
-    public function getListItems()
-    {
-        return $this->listItems;
-    }
+	/**
+	 * Get listItems.
+	 *
+	 * @return array
+	 */
+	public function getListItems() {
+		return $this->listItems;
+	}
 
-    /**
-     * Set listItems.
-     *
-     * @param array $value
-     *
-     * @return self
-     */
-    public function setListItems($value)
-    {
-        $this->listItems = $value;
+	/**
+	 * Set listItems.
+	 *
+	 * @param array $value
+	 *
+	 * @return self
+	 */
+	public function setListItems($value) {
+		$this->listItems = $value;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get tag.
-     *
-     * @return string
-     */
-    public function getTag()
-    {
-        return $this->tag;
-    }
+	/**
+	 * Get tag.
+	 *
+	 * @return string
+	 */
+	public function getTag() {
+		return $this->tag;
+	}
 
-    /**
-     * Set tag.
-     *
-     * @param string $tag
-     *
-     * @return self
-     */
-    public function setTag($tag)
-    {
-        $this->tag = $tag;
+	/**
+	 * Set tag.
+	 *
+	 * @param string $tag
+	 *
+	 * @return self
+	 */
+	public function setTag($tag) {
+		$this->tag = $tag;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get alias.
-     *
-     * @return string
-     */
-    public function getAlias()
-    {
-        return $this->alias;
-    }
+	/**
+	 * Get alias.
+	 *
+	 * @return string
+	 */
+	public function getAlias() {
+		return $this->alias;
+	}
 
-    /**
-     * Set alias.
-     *
-     * @param string $alias
-     *
-     * @return self
-     */
-    public function setAlias($alias)
-    {
-        $this->alias = $alias;
+	/**
+	 * Set alias.
+	 *
+	 * @param string $alias
+	 *
+	 * @return self
+	 */
+	public function setAlias($alias) {
+		$this->alias = $alias;
 
-        return $this;
-    }
+		return $this;
+	}
 }

@@ -25,21 +25,20 @@ use PhpOffice\PhpWord\Exception\Exception;
  */
 class Part
 {
-    /**
-     * Get the fully qualified class name for a specific part type.
-     *
-     * @param string $type The type of part (Content, Manifest, Meta, Mimetype)
-     *
-     * @return string The fully qualified class name
-     */
-    public static function getPartClass(string $type): string
-    {
-        $class = 'PhpOffice\\PhpWord\\Writer\\EPub3\\Part\\' . $type;
+	/**
+	 * Get the fully qualified class name for a specific part type.
+	 *
+	 * @param string $type The type of part (Content, Manifest, Meta, Mimetype)
+	 *
+	 * @return string The fully qualified class name
+	 */
+	public static function getPartClass(string $type): string {
+		$class = 'PhpOffice\\PhpWord\\Writer\\EPub3\\Part\\' . $type;
 
-        if (!class_exists($class)) {
-            throw new Exception("Invalid part type: {$type}");
-        }
+		if (!class_exists($class)) {
+			throw new Exception("Invalid part type: {$type}");
+		}
 
-        return $class;
-    }
+		return $class;
+	}
 }

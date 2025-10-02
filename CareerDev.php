@@ -18,7 +18,7 @@ class CareerDev
 	public static $passedModule = null;
 
 	public static function getVersion() {
-		return "6.22.0";
+		return "6.23.0";
 	}
 
 	public static function getLocalhostPluginPid() {
@@ -118,7 +118,7 @@ class CareerDev
 		$sites = [
 			"NIH RePORTER" => "api.reporter.nih.gov",
 			"PubMed" => "eutils.ncbi.nlm.nih.gov",
-			"PubMed Central Converter" => "www.ncbi.nlm.nih.gov",
+			"PubMed Central Converter" => "pmc.ncbi.nlm.nih.gov",
 			"iCite" => "icite.od.nih.gov",
 			"ORCID" => "pub.orcid.org",
 			"Statistics Reporting" => "redcap.vumc.org",

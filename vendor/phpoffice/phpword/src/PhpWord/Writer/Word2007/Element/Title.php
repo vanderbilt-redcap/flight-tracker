@@ -25,61 +25,60 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Element;
  */
 class Title extends AbstractElement
 {
-    /**
-     * Write title element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\Title) {
-            return;
-        }
+	/**
+	 * Write title element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\Title) {
+			return;
+		}
 
-        $style = $element->getStyle();
+		$style = $element->getStyle();
 
-        $xmlWriter->startElement('w:p');
+		$xmlWriter->startElement('w:p');
 
-        if (!empty($style)) {
-            $xmlWriter->startElement('w:pPr');
-            $xmlWriter->startElement('w:pStyle');
-            $xmlWriter->writeAttribute('w:val', $style);
-            $xmlWriter->endElement();
-            $xmlWriter->endElement();
-        }
+		if (!empty($style)) {
+			$xmlWriter->startElement('w:pPr');
+			$xmlWriter->startElement('w:pStyle');
+			$xmlWriter->writeAttribute('w:val', $style);
+			$xmlWriter->endElement();
+			$xmlWriter->endElement();
+		}
 
-        $bookmarkRId = null;
-        if ($element->getDepth() !== 0) {
-            $rId = $element->getRelationId();
-            $bookmarkRId = $element->getPhpWord()->addBookmark();
+		$bookmarkRId = null;
+		if ($element->getDepth() !== 0) {
+			$rId = $element->getRelationId();
+			$bookmarkRId = $element->getPhpWord()->addBookmark();
 
-            // Bookmark start for TOC
-            $xmlWriter->startElement('w:bookmarkStart');
-            $xmlWriter->writeAttribute('w:id', $bookmarkRId);
-            $xmlWriter->writeAttribute('w:name', "_Toc{$rId}");
-            $xmlWriter->endElement(); //w:bookmarkStart
-        }
+			// Bookmark start for TOC
+			$xmlWriter->startElement('w:bookmarkStart');
+			$xmlWriter->writeAttribute('w:id', $bookmarkRId);
+			$xmlWriter->writeAttribute('w:name', "_Toc{$rId}");
+			$xmlWriter->endElement(); //w:bookmarkStart
+		}
 
-        // Actual text
-        $text = $element->getText();
-        if (is_string($text)) {
-            $xmlWriter->startElement('w:r');
-            $xmlWriter->startElement('w:t');
-            $this->writeText($text);
-            $xmlWriter->endElement(); // w:t
-            $xmlWriter->endElement(); // w:r
-        }
-        if ($text instanceof \PhpOffice\PhpWord\Element\AbstractContainer) {
-            $containerWriter = new Container($xmlWriter, $text);
-            $containerWriter->write();
-        }
+		// Actual text
+		$text = $element->getText();
+		if (is_string($text)) {
+			$xmlWriter->startElement('w:r');
+			$xmlWriter->startElement('w:t');
+			$this->writeText($text);
+			$xmlWriter->endElement(); // w:t
+			$xmlWriter->endElement(); // w:r
+		}
+		if ($text instanceof \PhpOffice\PhpWord\Element\AbstractContainer) {
+			$containerWriter = new Container($xmlWriter, $text);
+			$containerWriter->write();
+		}
 
-        if ($element->getDepth() !== 0) {
-            // Bookmark end
-            $xmlWriter->startElement('w:bookmarkEnd');
-            $xmlWriter->writeAttribute('w:id', $bookmarkRId);
-            $xmlWriter->endElement(); //w:bookmarkEnd
-        }
-        $xmlWriter->endElement(); //w:p
-    }
+		if ($element->getDepth() !== 0) {
+			// Bookmark end
+			$xmlWriter->startElement('w:bookmarkEnd');
+			$xmlWriter->writeAttribute('w:id', $bookmarkRId);
+			$xmlWriter->endElement(); //w:bookmarkEnd
+		}
+		$xmlWriter->endElement(); //w:p
+	}
 }

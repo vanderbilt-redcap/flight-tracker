@@ -25,22 +25,21 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class Shape extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Shape) {
-            return;
-        }
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Shape) {
+			return;
+		}
 
-        $xmlWriter = $this->getXmlWriter();
+		$xmlWriter = $this->getXmlWriter();
 
-        $childStyles = ['Frame', 'Fill', 'Outline', 'Shadow', 'Extrusion'];
-        foreach ($childStyles as $childStyle) {
-            $method = "get{$childStyle}";
-            $this->writeChildStyle($xmlWriter, $childStyle, $style->$method());
-        }
-    }
+		$childStyles = ['Frame', 'Fill', 'Outline', 'Shadow', 'Extrusion'];
+		foreach ($childStyles as $childStyle) {
+			$method = "get{$childStyle}";
+			$this->writeChildStyle($xmlWriter, $childStyle, $style->$method());
+		}
+	}
 }

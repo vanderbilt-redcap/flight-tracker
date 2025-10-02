@@ -26,66 +26,64 @@ use PhpOffice\PhpWord\Writer\EPub3\Part\AbstractPart;
  */
 class EPub3 extends AbstractWriter implements WriterInterface
 {
-    /**
-     * Create new EPub3 writer.
-     */
-    public function __construct(?PhpWord $phpWord = null)
-    {
-        // Assign PhpWord
-        $this->setPhpWord($phpWord);
+	/**
+	 * Create new EPub3 writer.
+	 */
+	public function __construct(?PhpWord $phpWord = null) {
+		// Assign PhpWord
+		$this->setPhpWord($phpWord);
 
-        // Create parts
-        $this->parts = [
-            'Mimetype' => 'mimetype',
-            'Content' => 'content.opf',
-            'Toc' => 'toc.ncx',
-            'Styles' => 'styles.css',
-            'Manifest' => 'META-INF/container.xml',
-            'Nav' => 'nav.xhtml',
-            'ContentXhtml' => 'content.xhtml',
-        ];
-        foreach (array_keys($this->parts) as $partName) {
-            $partClass = static::class . '\\Part\\' . $partName;
-            if (class_exists($partClass)) {
-                /** @var WriterPartInterface $part */
-                $part = new $partClass($partName === 'Content' || $partName === 'ContentXhtml' ? $phpWord : null);
-                $part->setParentWriter($this);
-                $this->writerParts[strtolower($partName)] = $part;
-            }
-        }
+		// Create parts
+		$this->parts = [
+			'Mimetype' => 'mimetype',
+			'Content' => 'content.opf',
+			'Toc' => 'toc.ncx',
+			'Styles' => 'styles.css',
+			'Manifest' => 'META-INF/container.xml',
+			'Nav' => 'nav.xhtml',
+			'ContentXhtml' => 'content.xhtml',
+		];
+		foreach (array_keys($this->parts) as $partName) {
+			$partClass = static::class . '\\Part\\' . $partName;
+			if (class_exists($partClass)) {
+				/** @var WriterPartInterface $part */
+				$part = new $partClass($partName === 'Content' || $partName === 'ContentXhtml' ? $phpWord : null);
+				$part->setParentWriter($this);
+				$this->writerParts[strtolower($partName)] = $part;
+			}
+		}
 
-        // Set package paths
-        $this->mediaPaths = ['image' => 'Images/', 'object' => 'Objects/'];
-    }
+		// Set package paths
+		$this->mediaPaths = ['image' => 'Images/', 'object' => 'Objects/'];
+	}
 
-    /**
-     * Save PhpWord to file.
-     */
-    public function save(string $filename): void
-    {
-        $filename = $this->getTempFile($filename);
-        $zip = $this->getZipArchive($filename);
+	/**
+	 * Save PhpWord to file.
+	 */
+	public function save(string $filename): void {
+		$filename = $this->getTempFile($filename);
+		$zip = $this->getZipArchive($filename);
 
-        // Add mimetype first without compression
-        $zip->addFromString('mimetype', 'application/epub+zip');
-        $zip->addEmptyDir('META-INF');
+		// Add mimetype first without compression
+		$zip->addFromString('mimetype', 'application/epub+zip');
+		$zip->addEmptyDir('META-INF');
 
-        // Add other files
-        foreach ($this->parts as $partName => $fileName) {
-            if ($fileName === '') {
-                continue;
-            }
-            $part = $this->getWriterPart($partName);
-            if (!$part instanceof AbstractPart) {
-                continue;
-            }
-            $zip->addFromString($fileName, $part->write());
-        }
+		// Add other files
+		foreach ($this->parts as $partName => $fileName) {
+			if ($fileName === '') {
+				continue;
+			}
+			$part = $this->getWriterPart($partName);
+			if (!$part instanceof AbstractPart) {
+				continue;
+			}
+			$zip->addFromString($fileName, $part->write());
+		}
 
-        // Close zip archive
-        $zip->close();
+		// Close zip archive
+		$zip->close();
 
-        // Cleanup temp file
-        $this->cleanupTempFile();
-    }
+		// Cleanup temp file
+		$this->cleanupTempFile();
+	}
 }

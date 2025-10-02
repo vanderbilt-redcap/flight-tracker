@@ -27,124 +27,118 @@ use PhpOffice\PhpWord\Shared\XMLWriter;
  */
 class MarginBorder extends AbstractStyle
 {
-    /**
-     * Sizes.
-     *
-     * @var int[]
-     */
-    private $sizes = [];
+	/**
+	 * Sizes.
+	 *
+	 * @var int[]
+	 */
+	private $sizes = [];
 
-    /**
-     * Colors.
-     *
-     * @var string[]
-     */
-    private $colors = [];
+	/**
+	 * Colors.
+	 *
+	 * @var string[]
+	 */
+	private $colors = [];
 
-    /**
-     * Border styles.
-     *
-     * @var string[]
-     */
-    private $styles = [];
+	/**
+	 * Border styles.
+	 *
+	 * @var string[]
+	 */
+	private $styles = [];
 
-    /**
-     * Other attributes.
-     *
-     * @var array
-     */
-    private $attributes = [];
+	/**
+	 * Other attributes.
+	 *
+	 * @var array
+	 */
+	private $attributes = [];
 
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
 
-        $sides = ['top', 'left', 'right', 'bottom', 'insideH', 'insideV'];
+		$sides = ['top', 'left', 'right', 'bottom', 'insideH', 'insideV'];
 
-        foreach ($this->sizes as $i => $size) {
-            if ($size !== null) {
-                $color = null;
-                if (isset($this->colors[$i])) {
-                    $color = $this->colors[$i];
-                }
-                $style = $this->styles[$i] ?? 'single';
-                $this->writeSide($xmlWriter, $sides[$i], $this->sizes[$i], $color, $style);
-            }
-        }
-    }
+		foreach ($this->sizes as $i => $size) {
+			if ($size !== null) {
+				$color = null;
+				if (isset($this->colors[$i])) {
+					$color = $this->colors[$i];
+				}
+				$style = $this->styles[$i] ?? 'single';
+				$this->writeSide($xmlWriter, $sides[$i], $this->sizes[$i], $color, $style);
+			}
+		}
+	}
 
-    /**
-     * Write side.
-     *
-     * @param string $side
-     * @param int $width
-     * @param string $color
-     * @param string $borderStyle
-     */
-    private function writeSide(XMLWriter $xmlWriter, $side, $width, $color = null, $borderStyle = 'solid'): void
-    {
-        $xmlWriter->startElement('w:' . $side);
-        if (!empty($this->colors)) {
-            if ($color === null && !empty($this->attributes)) {
-                if (isset($this->attributes['defaultColor'])) {
-                    $color = $this->attributes['defaultColor'];
-                }
-            }
-            $xmlWriter->writeAttribute('w:val', $borderStyle);
-            $xmlWriter->writeAttribute('w:sz', $width);
-            $xmlWriter->writeAttributeIf($color != null, 'w:color', $color);
-            if (!empty($this->attributes)) {
-                if (isset($this->attributes['space'])) {
-                    $xmlWriter->writeAttribute('w:space', $this->attributes['space']);
-                }
-            }
-        } else {
-            $xmlWriter->writeAttribute('w:w', $width);
-            $xmlWriter->writeAttribute('w:type', 'dxa');
-        }
-        $xmlWriter->endElement();
-    }
+	/**
+	 * Write side.
+	 *
+	 * @param string $side
+	 * @param int $width
+	 * @param string $color
+	 * @param string $borderStyle
+	 */
+	private function writeSide(XMLWriter $xmlWriter, $side, $width, $color = null, $borderStyle = 'solid'): void {
+		$xmlWriter->startElement('w:' . $side);
+		if (!empty($this->colors)) {
+			if ($color === null && !empty($this->attributes)) {
+				if (isset($this->attributes['defaultColor'])) {
+					$color = $this->attributes['defaultColor'];
+				}
+			}
+			$xmlWriter->writeAttribute('w:val', $borderStyle);
+			$xmlWriter->writeAttribute('w:sz', $width);
+			$xmlWriter->writeAttributeIf($color != null, 'w:color', $color);
+			if (!empty($this->attributes)) {
+				if (isset($this->attributes['space'])) {
+					$xmlWriter->writeAttribute('w:space', $this->attributes['space']);
+				}
+			}
+		} else {
+			$xmlWriter->writeAttribute('w:w', $width);
+			$xmlWriter->writeAttribute('w:type', 'dxa');
+		}
+		$xmlWriter->endElement();
+	}
 
-    /**
-     * Set sizes.
-     *
-     * @param int[] $value
-     */
-    public function setSizes($value): void
-    {
-        $this->sizes = $value;
-    }
+	/**
+	 * Set sizes.
+	 *
+	 * @param int[] $value
+	 */
+	public function setSizes($value): void {
+		$this->sizes = $value;
+	}
 
-    /**
-     * Set colors.
-     *
-     * @param array<null|string> $value
-     */
-    public function setColors($value): void
-    {
-        $this->colors = $value;
-    }
+	/**
+	 * Set colors.
+	 *
+	 * @param array<null|string> $value
+	 */
+	public function setColors($value): void {
+		$this->colors = $value;
+	}
 
-    /**
-     * Set border styles.
-     *
-     * @param string[] $value
-     */
-    public function setStyles($value): void
-    {
-        $this->styles = $value;
-    }
+	/**
+	 * Set border styles.
+	 *
+	 * @param string[] $value
+	 */
+	public function setStyles($value): void {
+		$this->styles = $value;
+	}
 
-    /**
-     * Set attributes.
-     *
-     * @param array $value
-     */
-    public function setAttributes($value): void
-    {
-        $this->attributes = $value;
-    }
+	/**
+	 * Set attributes.
+	 *
+	 * @param array $value
+	 */
+	public function setAttributes($value): void {
+		$this->attributes = $value;
+	}
 }

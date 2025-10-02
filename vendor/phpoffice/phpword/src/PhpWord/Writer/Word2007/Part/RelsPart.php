@@ -25,37 +25,35 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Part;
  */
 class RelsPart extends Rels
 {
-    /**
-     * Media relationships.
-     *
-     * @var array
-     */
-    private $media = [];
+	/**
+	 * Media relationships.
+	 *
+	 * @var array
+	 */
+	private $media = [];
 
-    /**
-     * Write part.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $this->writeRels($xmlWriter, [], $this->media);
+	/**
+	 * Write part.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$xmlWriter = $this->getXmlWriter();
+		$this->writeRels($xmlWriter, [], $this->media);
 
-        return $xmlWriter->getData();
-    }
+		return $xmlWriter->getData();
+	}
 
-    /**
-     * Set media.
-     *
-     * @param array $media
-     *
-     * @return self
-     */
-    public function setMedia($media)
-    {
-        $this->media = $media;
+	/**
+	 * Set media.
+	 *
+	 * @param array $media
+	 *
+	 * @return self
+	 */
+	public function setMedia($media) {
+		$this->media = $media;
 
-        return $this;
-    }
+		return $this;
+	}
 }

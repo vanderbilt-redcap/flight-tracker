@@ -1,11 +1,11 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\CohortConfig;
-use \Vanderbilt\CareerDevLibrary\Filter;
-use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\CohortConfig;
+use Vanderbilt\CareerDevLibrary\Filter;
+use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../wrangler/css.php");
@@ -23,7 +23,7 @@ echo "<h1>Existing Cohorts</h1>\n";
 $names = Download::names($token, $server);
 $cohortNames = $cohorts->getCohortNames();
 
-$redcapData = array();
+$redcapData = [];
 if (empty($cohortNames)) {
 	echo "<h4>No cohorts have been created.</h4>\n";
 } else {
@@ -33,7 +33,7 @@ if (empty($cohortNames)) {
 
 
 foreach ($cohortNames as $title) {
-	$config = $cohorts->getCohort($title); 
+	$config = $cohorts->getCohort($title);
 	echo "<br><br>\n";
 	echo "<h2>Cohort: $title</h2>\n";
 	echo $config->getHTML($metadata);
@@ -41,16 +41,16 @@ foreach ($cohortNames as $title) {
 	$filter = new Filter($token, $server, $metadata);
 	$records = $filter->getRecords($config, $redcapData);
 
-	$nameLinks = array();
+	$nameLinks = [];
 	foreach ($records as $recordId) {
 		$name = Links::makeRecordHomeLink($pid, $recordId, $names[$recordId]);
 		array_push($nameLinks, $name);
 	}
 
 	$columnSize = ceil(count($nameLinks) / $numCols);
-	$cols = array();
-	for($i=0; $i < $numCols; $i++) {
-		$cols[$i] = array();
+	$cols = [];
+	for ($i = 0; $i < $numCols; $i++) {
+		$cols[$i] = [];
 	}
 	$i = 0;
 	$numInCol = ceil(count($nameLinks) / count($cols));

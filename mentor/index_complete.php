@@ -8,85 +8,90 @@ require_once dirname(__FILE__)."/base.php";
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 if (isset($_GET['menteeRecord'])) {
-    $records = Download::recordIds($token, $server);
-    $menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
+	$records = Download::recordIds($token, $server);
+	$menteeRecordId = REDCapManagement::getSanitizedRecord($_GET['menteeRecord'], $records);
 } else {
-    throw new \Exception("You must specify a mentee record!");
+	throw new \Exception("You must specify a mentee record!");
 }
 
 if ($_GET['uid']) {
-    $username = REDCapManagement::sanitize($_GET['uid']);
-    $trailingUidString = "&uid=$username";
-    $spoofing = MMAHelper::makeSpoofingNotice($username);
-} else if ($hash) {
-    $username = $hash;
-    $trailingUidString = "&hash=$hash&menteeRecordId=$menteeRecordId";
-    $userids = [];
-    $spoofing = "";
+	$username = REDCapManagement::sanitize($_GET['uid']);
+	$trailingUidString = "&uid=$username";
+	$spoofing = MMAHelper::makeSpoofingNotice($username);
+} elseif ($hash) {
+	$username = $hash;
+	$trailingUidString = "&hash=$hash&menteeRecordId=$menteeRecordId";
+	$userids = [];
+	$spoofing = "";
 } else {
-    $username = Application::getUsername();
-    $trailingUidString = "";
-    $userids = Download::userids($token, $server);
-    $spoofing = "";
+	$username = Application::getUsername();
+	$trailingUidString = "";
+	$userids = Download::userids($token, $server);
+	$spoofing = "";
 }
 
 require_once dirname(__FILE__).'/_header.php';
 
 list($myMentees, $myMentors) = MMAHelper::getMenteesAndMentors($menteeRecordId, $username, $token, $server);
 if (isset($_GET['test'])) {
-    echo "myMentees: ".json_encode($myMentees)."<br>";
-    echo "myMentors: ".json_encode($myMentors)."<br>";
+	echo "myMentees: ".json_encode($myMentees)."<br>";
+	echo "myMentors: ".json_encode($myMentors)."<br>";
 }
 
 if (isset($_GET['instance'])) {
-    $instance = REDCapManagement::sanitize($_GET['instance']);
+	$instance = REDCapManagement::sanitize($_GET['instance']);
 } else {
-    throw new \Exception("You must specify an instance");
+	throw new \Exception("You must specify an instance");
 }
 list($firstName, $lastName) = MMAHelper::getNameFromREDCap($username, $token, $server);
-$metadataFields = Download::metadataFieldsByPid($pid);
+$metadataFields = Download::metadataFieldsByPidWithPrefix($pid, MMAHelper::PREFIX);
 $metadata = MMAHelper::getMetadata($pid, $metadataFields);
 $allMetadataForms = REDCapManagement::getFormsFromMetadata($metadata);
 $notesFields = MMAHelper::getNotesFields($metadataFields);
 $choices = REDCapManagement::getChoices($metadata);
 $redcapData = Download::fieldsForRecordsByPid($pid, array_merge(["record_id", "mentoring_userid", "mentoring_last_update"], $metadataFields), [$menteeRecordId]);
 $row = MMAHelper::pullInstanceFromREDCap($redcapData, $instance);
+unset($row['mentoring_custom_question_json']);
+unset($row['mentoring_custom_question_json_admin']);
+#into values the same as current fields in $row.
+#This code could most likely be reused in index_mentorview
 $date = "";
-$menteeInstance = FALSE;
+$menteeInstance = false;
 if ($hash) {
-    $menteeInstance = 1;
+	$menteeInstance = 1;
 } else {
-    $userids = Download::userids($token, $server);
-    $menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
-    foreach ($menteeUsernames as $menteeUsername) {
-        $menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
-        if ($menteeInstance) {
-            break;
-        }
-    }
+	$userids = Download::userids($token, $server);
+	$menteeUsernames = MMAHelper::getMenteeUserids($userids[$menteeRecordId] ?? "");
+	foreach ($menteeUsernames as $menteeUsername) {
+		$menteeInstance = MMAHelper::getMaxInstanceForUserid($redcapData, $menteeRecordId, $menteeUsername);
+		if ($menteeInstance) {
+			break;
+		}
+	}
 }
 $menteeRow = $menteeInstance ? REDCapManagement::getRow($redcapData, $menteeRecordId, MMAHelper::INSTRUMENT, $menteeInstance) : [];
 $listOfMentors = REDCapManagement::makeConjunction(array_values($myMentors["name"] ?? []));
 if ($hash) {
-    $listOfMentees = REDCapManagement::makeConjunction($myMentees["name"] ?? []);
-} else if (MMAHelper::isMentee($menteeRecordId, $username)) {
-    $listOfMentees =  $firstName." ".$lastName;
+	$listOfMentees = REDCapManagement::makeConjunction($myMentees["name"] ?? []);
+} elseif (MMAHelper::isMentee($menteeRecordId, $username)) {
+	$listOfMentees =  $firstName." ".$lastName;
 } else {
-    $menteeName = Download::fullName($token, $server, $menteeRecordId);
-    if ($menteeName) {
-        $listOfMentees = $menteeName;
-    } else {
-        $listOfMentees = "[Mentee]";
-    }
+	$menteeName = Download::fullName($token, $server, $menteeRecordId);
+	if ($menteeName) {
+		$listOfMentees = $menteeName;
+	} else {
+		$listOfMentees = "[Mentee]";
+	}
 }
 $dateToRevisit = MMAHelper::getDateToRevisit($redcapData, $menteeRecordId, $instance);
 if ($hash) {
-    $revisitText = "";
-    $exampleDates = "";
+	$revisitText = "";
+	$exampleDates = "";
 } else {
-    $revisitText = "<p style='text-align: center;'>We will revisit this agreement on-or-around $dateToRevisit.</p>";
-    $exampleDates = " (e.g., 6, 12, and 18 months from now, as well as on an as needed basis)";
+	$revisitText = "<p style='text-align: center;'>We will revisit this agreement on-or-around $dateToRevisit.</p>";
+	$exampleDates = " (e.g., 6, 12, and 18 months from now, as well as on an as needed basis)";
 }
+
 
 ?>
     <link rel="stylesheet" href="<?= Application::link("css/jquery.sweet-modal.min.css") ?>" />
@@ -109,115 +114,121 @@ if ($hash) {
 
           <?php
 
-          $htmlRows = [];
-          $closing = "</ul></div></p>";
-          $noInfo = "No Information Specified.";
-          $hasRows = FALSE;
-          $skipFieldTypes = ["file", "text"];
-          foreach ($metadata as $metadataRow) {
-              if ($menteeRow['field_type'] == "descriptive") {
-                  continue;
-              }
-              $metadataRow['field_label'] = preg_replace("/:$/", "", $metadataRow["field_label"]);
-              if ($metadataRow['section_header']) {
-                  list($sec_header, $sec_descript) = MMAHelper::parseSectionHeader($metadataRow['section_header']);
-                  if (!empty($htmlRows)) {
-                      if (!$hasRows) {
-                          array_pop($htmlRows);
-                          array_pop($htmlRows);
-                          array_pop($htmlRows);
-                          // $htmlRows[] = "<div>$noInfo</div>";
-                      } else {
-                          $htmlRows[] = $closing;
-                      }
-                  }
-                  $htmlRows[] = '<p class="catquestions">';
-                  $htmlRows[] = "<div class='categ'>$sec_header</div>";
-                  $htmlRows[] = '<div style="width: 100%;"><ul>';
-                  $hasRows = FALSE;
-              }
-              $field = $metadataRow['field_name'];
-              $possibleNotesField = $field."_notes";
-              if (preg_match("/@HIDDEN/", $metadataRow['field_annotation'])) {
-                continue;
-              } else if ($row[$field] && !in_array($field, $notesFields) && !in_array($metadataRow['field_type'], $skipFieldTypes)) {
-                  $value = "";
-                  if ($choices[$field] && $choices[$field][$row[$field]]) {
-                      $value = $choices[$field][$row[$field]];
-                  } else if ($row[$field] !== "") {
-                      $value = preg_replace("/\n/", "<br>", $row[$field]);
-                      $value = preg_replace("/<script>.+<\/script>/", "", $value);   // security
-                  }
+		  $htmlRows = [];
+$closing = "</ul></div></p>";
+$noInfo = "No Information Specified.";
+$hasRows = false;
+$skipFieldTypes = ["file", "text"];
+$index = 0;
+foreach ($metadata as $metadataRow) {
+	$index++;
+	if ($metadataRow['field_type'] == "descriptive") {
+		continue;
+	}
+	$metadataRow['field_label'] = preg_replace("/:$/", "", $metadataRow["field_label"]);
+	if ($metadataRow['section_header']) {
+		list($sec_header, $sec_descript) = MMAHelper::parseSectionHeader($metadataRow['section_header']);
+		if (!empty($htmlRows)) {
+			if (!$hasRows) {
+				array_pop($htmlRows);
+				array_pop($htmlRows);
+				array_pop($htmlRows);
+				// $htmlRows[] = "<div>$noInfo</div>";
+			} else {
+				$htmlRows[] = $closing;
+			}
+		}
+		$htmlRows[] = '<p class="catquestions">';
+		$htmlRows[] = "<div class='categ'>$sec_header</div>";
+		$htmlRows[] = '<div style="width: 100%;"><ul>';
+		$hasRows = false;
+	}
+	$field = $metadataRow['field_name'];
+	$possibleNotesField = $field."_notes";
+	if (preg_match("/@HIDDEN/", $metadataRow['field_annotation'])) {
+		continue;
+	} elseif ($row[$field] && !in_array($field, $notesFields) && !in_array($metadataRow['field_type'], $skipFieldTypes)) {
+		$value = "";
+		if ($choices[$field] && $choices[$field][$row[$field]]) {
+			$value = $choices[$field][$row[$field]];
+		} elseif ($row[$field] !== "") {
+			$value = preg_replace("/\n/", "<br>", $row[$field]);
+			$value = preg_replace("/<script>.+<\/script>/", "", $value);   // security
+		}
 
-                  $notesText = "";
-                  if ($menteeRow[$possibleNotesField]) {
-                      $notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
-                  }
-                  if ($metadataRow['field_type'] == "descriptive") {
-                      $htmlRows[] = MMAHelper::stripPiping($metadataRow['field_label']);
-                  } else if ($metadataRow['field_type'] == "notes") {
-                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><span>".$value."</span></li>";
-                  } else {
-                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": <span>".$value."</span>$notesText</li>";
-                  }
-                  $hasRows = TRUE;
-              } else if (($metadataRow['field_type'] == "file") && ($metadataRow['text_validation_type_or_show_slider_number'] == "signature")) {
-                  $dateField = $field."_date";
-                  if ($row[$field]) {
-                      $base64 = MMAHelper::getBase64OfFile($menteeRecordId, $instance, $field, $pid);
-                      if ($row[$dateField]) {
-                          $date = "<br>".REDCapManagement::YMD2MDY($row[$dateField]);
-                      } else {
-                          $date = "";
-                      }
-                      if ($base64) {
-                          $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><img src='$base64' class='signature' alt='signature'><div class='signatureDate'>$date</div></li>";
-                      } else {
-                          $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": ".$row[$field]."</li>";
-                      }
-                  } else {
-                      $date = date("m-d-Y");
-                      $ymdDate = date("Y-m-d");
-                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\", \"$ymdDate\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
-                      $htmlRows[] = "<script>
+		$notesText = "";
+		if ($menteeRow[$possibleNotesField]) {
+			$notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
+		}
+		if ($metadataRow['field_type'] == "descriptive") {
+			$htmlRows[] = MMAHelper::stripPiping($metadataRow['field_label']);
+		} elseif ($metadataRow['field_type'] == "notes") {
+			if (!preg_match("/^mentoring_custom_question_readable/", $metadataRow['field_name'])) {
+				$htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><span>".$value."</span></li>";
+			} else {
+				$htmlRows[] = "<li><span>".$value."</span></li>";
+			}
+		} else {
+			$htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": <span>".$value."</span>$notesText</li>";
+		}
+		$hasRows = true;
+	} elseif (($metadataRow['field_type'] == "file") && ($metadataRow['text_validation_type_or_show_slider_number'] == "signature")) {
+		$dateField = $field."_date";
+		if ($row[$field]) {
+			$base64 = MMAHelper::getBase64OfFile($menteeRecordId, $instance, $field, $pid);
+			if ($row[$dateField]) {
+				$date = "<br>".REDCapManagement::YMD2MDY($row[$dateField]);
+			} else {
+				$date = "";
+			}
+			if ($base64) {
+				$htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><img src='$base64' class='signature' alt='signature'><div class='signatureDate'>$date</div></li>";
+			} else {
+				$htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": ".$row[$field]."</li>";
+			}
+		} else {
+			$date = date("m-d-Y");
+			$ymdDate = date("Y-m-d");
+			$htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).":<br><div class='signature' id='$field'></div><div class='signatureDate'>$date</div><button onclick='saveSignature(\"$field\", \"$ymdDate\");'>Save</button> <button onclick='resetSignature(\"#$field\");'>Reset</button></li>";
+			$htmlRows[] = "<script>
                             $(document).ready(function() {
                                 $('#$field').jSignature();
                             });
                             </script>";
-                  }
-                  $hasRows = TRUE;
-              } else if ($metadataRow['field_type'] == "checkbox") {
-                  $notesText = "";
-                  if ($menteeRow[$possibleNotesField]) {
-                      $notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
-                  }
-                  $values = [];
-                  foreach ($row as $f => $v) {
-                      if (($v == "1") && preg_match("/^$field"."___/", $f)) {
-                          $index = explode("___", $f)[1];
-                          $label = $choices[$field][$index] ?? "";
-                          if ($label) {
-                              $values[] = $label;
-                          }
-                      }
-                  }
-                  if (!empty($values)) {
-                      $htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": <span>".implode("; ", $values)."</span>$notesText</li>";
-                      $hasRows = TRUE;
-                  }
-              }
-          }
-          if (!$hasRows) {
-              array_pop($htmlRows);
-              array_pop($htmlRows);
-              array_pop($htmlRows);
-              // $htmlRows[] = "<div>$noInfo</div>";
-          } else {
-              $htmlRows[] = $closing;
-          }
-          echo implode("\n", $htmlRows)."\n";
+		}
+		$hasRows = true;
+	} elseif ($metadataRow['field_type'] == "checkbox") {
+		$notesText = "";
+		if ($menteeRow[$possibleNotesField]) {
+			$notesText = "<div class='smaller notesText'>".preg_replace("/\n/", "<br>", $menteeRow[$possibleNotesField])."</div><!-- <div class='smaller'><a href='javascript:;' class='notesShowHide' onclick='showHide(this);'>hide chatter</a></div> -->";
+		}
+		$values = [];
+		foreach ($row as $f => $v) {
+			if (($v == "1") && preg_match("/^$field"."___/", $f)) {
+				$index = explode("___", $f)[1];
+				$label = $choices[$field][$index] ?? "";
+				if ($label) {
+					$values[] = $label;
+				}
+			}
+		}
+		if (!empty($values)) {
+			$htmlRows[] = "<li>".MMAHelper::stripPiping($metadataRow['field_label']).": <span>".implode("; ", $values)."</span>$notesText</li>";
+			$hasRows = true;
+		}
+	}
+}
+if (!$hasRows) {
+	array_pop($htmlRows);
+	array_pop($htmlRows);
+	array_pop($htmlRows);
+	// $htmlRows[] = "<div>$noInfo</div>";
+} else {
+	$htmlRows[] = $closing;
+}
+echo implode("\n", $htmlRows)."\n";
 
-          ?>
+?>
       </div>
     </div>
   </div>

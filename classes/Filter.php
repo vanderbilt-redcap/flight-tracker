@@ -4,33 +4,34 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Filter {
-    # Using this variable returns an array of all the options available for a given variable
-    const GET_CHOICES = "choices";
+class Filter
+{
+	# Using this variable returns an array of all the options available for a given variable
+	public const GET_CHOICES = "choices";
 
-    # Using this variable returns an array of all the actual values stored for a given variable
-    const GET_VALUE = "values";
+	# Using this variable returns an array of all the actual values stored for a given variable
+	public const GET_VALUE = "values";
 
-    public function __construct($token, $server, $metadata) {
+	public function __construct($token, $server, $metadata) {
 		$this->token = $token;
 		$this->server = $server;
 		if (is_array($metadata)) {
-            $this->metadata = $metadata;
-        } else {
-		    $this->metadata = Download::metadata($token, $server);
-        }
+			$this->metadata = $metadata;
+		} else {
+			$this->metadata = Download::metadata($token, $server);
+		}
 		$this->choices = Scholar::getChoices($this->metadata);
 	}
 
 	# function used in dynamic variable
-	public function calc_employment($type, $rows = array()) {
+	public function calc_employment($type, $rows = []) {
 		$func = "getEmploymentStatus";
 		if ($type == self::GET_CHOICES) {
-			$fields = array_unique(array_merge(Application::$institutionFields, array("identifier_last_name", "identifier_first_name")));
+			$fields = array_unique(array_merge(Application::$institutionFields, ["identifier_last_name", "identifier_first_name"]));
 			$bigCalcSettings = $this->getCalcSettingsChoicesFromData($fields, $func);
 
-			$summedChoices = array();
-            $institution = Application::getInstitution();
+			$summedChoices = [];
+			$institution = Application::getInstitution();
 			foreach ($bigCalcSettings->getChoices() as $choice) {
 				if (preg_match("/[aA]t $institution/", $choice)) {
 					if (!in_array($choice, $summedChoices)) {
@@ -47,36 +48,36 @@ class Filter {
 			$smallerCalcSettings = new CalcSettings("choices");
 			$smallerCalcSettings->setChoices($summedChoices);
 			return $smallerCalcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->$func($rows);
 		}
 	}
 
-    public static function getStringComparisons() {
-        return [
-            "eq" => "=",
-            "neq" => "!=",
-            "contains" => "contains",
-            "not_contains" => "does not contain",
-        ];
-    }
+	public static function getStringComparisons() {
+		return [
+			"eq" => "=",
+			"neq" => "!=",
+			"contains" => "contains",
+			"not_contains" => "does not contain",
+		];
+	}
 
-    # function used in dynamic variable
-	public function calc_email_domain($type, $rows = array()) {
+	# function used in dynamic variable
+	public function calc_email_domain($type, $rows = []) {
 		$func = "getEmailDomain";
 		if ($type == self::GET_CHOICES) {
-			$fields = array("record_id", "identifier_email");
+			$fields = ["record_id", "identifier_email"];
 			return $this->getCalcSettingsChoicesFromData($fields, $func);
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->$func($rows);
 		}
 	}
 
 	# function used in dynamic variable
-	public function calc_sponsorno($type, $rows = array()) {
+	public function calc_sponsorno($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			return new CalcSettings("string");
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->getSponsorNumbers($rows);
 		}
 	}
@@ -84,52 +85,52 @@ class Filter {
 	# function used in dynamic variable
 	public function calc_award_type($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
-            return self::getAwardChoicesAsCalcSettings();
-		} else if ($type == self::GET_VALUE) {
+			return self::getAwardChoicesAsCalcSettings();
+		} elseif ($type == self::GET_VALUE) {
 			return $this->getAwardTypes($rows);
 		}
 	}
 
-    private static function getAwardChoicesAsCalcSettings(): CalcSettings {
-        $choicesHash = Grant::getReverseAwardTypes();
-        $calcSettings = new CalcSettings("choices");
-        $calcSettings->setChoicesHash($choicesHash);
-        return $calcSettings;
-    }
+	private static function getAwardChoicesAsCalcSettings(): CalcSettings {
+		$choicesHash = Grant::getReverseAwardTypes();
+		$calcSettings = new CalcSettings("choices");
+		$calcSettings->setChoicesHash($choicesHash);
+		return $calcSettings;
+	}
 
-    # PHP8: Return type is array|CalcSettings - unions invalid in PHP7
-    public function calc_active_award_type(string $type, array $rows = [])  {
-        if ($type == self::GET_CHOICES) {
-            return self::getAwardChoicesAsCalcSettings();
-        } else if ($type == self::GET_VALUE) {
-            return $this->getActiveAwardTypes($rows);
-        }
-    }
+	# PHP8: Return type is array|CalcSettings - unions invalid in PHP7
+	public function calc_active_award_type(string $type, array $rows = []) {
+		if ($type == self::GET_CHOICES) {
+			return self::getAwardChoicesAsCalcSettings();
+		} elseif ($type == self::GET_VALUE) {
+			return $this->getActiveAwardTypes($rows);
+		}
+	}
 
-    # function used in dynamic variable
-    public function calc_activity_code($type, $rows = array()) {
-        $func = "getActivityCodes";
-        if ($type == self::GET_CHOICES) {
-            $fields = REDCapManagement::getGrantNumberFields($this->metadata);
-            return $this->getCalcSettingsChoicesFromData($fields, $func);
-        } else if ($type == self::GET_VALUE) {
-            return $this->$func($rows);
-        }
-    }
+	# function used in dynamic variable
+	public function calc_activity_code($type, $rows = []) {
+		$func = "getActivityCodes";
+		if ($type == self::GET_CHOICES) {
+			$fields = REDCapManagement::getGrantNumberFields($this->metadata);
+			return $this->getCalcSettingsChoicesFromData($fields, $func);
+		} elseif ($type == self::GET_VALUE) {
+			return $this->$func($rows);
+		}
+	}
 
-    # function used in dynamic variable
-    public function calc_institute($type, $rows = array()) {
-        $func = "getInstitutes";
-        if ($type == self::GET_CHOICES) {
-            $fields = REDCapManagement::getGrantNumberFields($this->metadata);
-            return $this->getCalcSettingsChoicesFromData($fields, $func);
-        } else if ($type == self::GET_VALUE) {
-            return $this->$func($rows);
-        }
-    }
+	# function used in dynamic variable
+	public function calc_institute($type, $rows = []) {
+		$func = "getInstitutes";
+		if ($type == self::GET_CHOICES) {
+			$fields = REDCapManagement::getGrantNumberFields($this->metadata);
+			return $this->getCalcSettingsChoicesFromData($fields, $func);
+		} elseif ($type == self::GET_VALUE) {
+			return $this->$func($rows);
+		}
+	}
 
-    # function used in dynamic variable
-	public function calc_pub_category($type, $rows = array()) {
+	# function used in dynamic variable
+	public function calc_pub_category($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			$hashOfChoices = Citation::getCategories();
 			foreach ($hashOfChoices as $value => $label) {
@@ -140,7 +141,7 @@ class Filter {
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->setChoicesHash($hashOfChoices);
 			return $calcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			$cats = $this->getPubCategories($rows);
 			if (!empty($cats)) {
 				Application::log("career_dev: calc_pub_category: ".json_encode($cats));
@@ -150,11 +151,11 @@ class Filter {
 	}
 
 	# function used in dynamic variable
-	public function calc_rcr($type, $rows = array()) {
+	public function calc_rcr($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			$calcSettings = new CalcSettings("number");
 			return $calcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			$pubs = new Publications($this->token, $this->server, $this->metadata);
 			$pubs->setRows($rows);
 			return $pubs->getAverageRCR("Original Included");
@@ -162,25 +163,25 @@ class Filter {
 	}
 
 	# function used in dynamic variable
-	public function calc_pub_type($type, $rows = array()) {
+	public function calc_pub_type($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			$pubTypes = Publications::getAllPublicationTypes($this->token, $this->server);
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->set1DToHash($pubTypes);
 			return $calcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->runFuncOnCitation("getPubTypes", $rows);
 		}
 	}
 
 	# function used in dynamic variable
-	public function calc_mesh_term($type, $rows = array()) {
+	public function calc_mesh_term($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			$meshTerms = Publications::getAllMESHTerms($this->token, $this->server);
 			$calcSettings = new CalcSettings("choices");
 			$calcSettings->set1DToHash($meshTerms);
 			return $calcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->runFuncOnCitation("getMESHTerms", $rows);
 		}
 	}
@@ -188,7 +189,7 @@ class Filter {
 	private function runFuncOnCitation($func, $rows) {
 		$pubs = new Publications($this->token, $this->server, $this->metadata);
 		$pubs->setRows($rows);
-		$items = array();
+		$items = [];
 		foreach ($pubs->getCitations("Original Included") as $citation) {
 			foreach ($citation->$func() as $item) {
 				if (!in_array($item, $items)) {
@@ -200,21 +201,21 @@ class Filter {
 	}
 
 	# function used in dynamic variable
-	public function calc_num_pubs($type, $rows = array()) {
+	public function calc_num_pubs($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			$calcSettings = new CalcSettings("number");
 			return $calcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->getNumPubs($rows);
 		}
 	}
 
 	# function used in dynamic variable
-	public function calc_from_time($type, $rows = array()) {
+	public function calc_from_time($type, $rows = []) {
 		if ($type == self::GET_CHOICES) {
 			$calcSettings = new CalcSettings("date");
 			return $calcSettings;
-		} else if ($type == self::GET_VALUE) {
+		} elseif ($type == self::GET_VALUE) {
 			return $this->getPubTimestamps($rows);
 		}
 	}
@@ -233,7 +234,7 @@ class Filter {
 		$pubs->setRows($rows);
 		$cits = $pubs->getCitations("Included");
 
-		$timestamps = array();
+		$timestamps = [];
 		foreach ($cits as $cit) {
 			$timestamps[] = $cit->getTimestamp();
 		}
@@ -247,7 +248,7 @@ class Filter {
 		$cits = $pubs->getCitations();
 		$recordId = $pubs->getRecordId();
 
-		$categories = array();
+		$categories = [];
 		foreach ($cits as $cit) {
 			$cat = $cit->getCategory();
 			if (!in_array($cat, $categories)) {
@@ -262,14 +263,14 @@ class Filter {
 	}
 
 	# helper function
-	private function getCalcSettingsChoicesFromData($fields, $func, $choices = array()) {
+	private function getCalcSettingsChoicesFromData($fields, $func, $choices = []) {
 		$redcapData = Download::getIndexedRedcapData($this->token, $this->server, $fields);
 
-		$allChoices = array();
+		$allChoices = [];
 		foreach ($redcapData as $recordId => $rows) {
 			$choicesAry = $this->$func($rows);
 			if ($choicesAry && !is_array($choicesAry)) {
-				$choicesAry = array($choicesAry);
+				$choicesAry = [$choicesAry];
 			}
 			foreach ($choicesAry as $currChoice) {
 				if ($currChoice) {
@@ -283,7 +284,7 @@ class Filter {
 			}
 		}
 
-        sort($allChoices);
+		sort($allChoices);
 		$calcSettings = new CalcSettings("choices");
 		$calcSettings->setChoices($allChoices);
 		return $calcSettings;
@@ -305,16 +306,16 @@ class Filter {
 		$scholar = new Scholar($this->token, $this->server, $this->metadata);
 		$scholar->setRows($rows);
 		$status = $scholar->getEmploymentStatus();
-        $institution = Application::getInstitution();
-        if (preg_match("/Left $institution/", $status)) {
-            return "Left $institution";
-        } else {
-            return $status;
-        }
+		$institution = Application::getInstitution();
+		if (preg_match("/Left $institution/", $status)) {
+			return "Left $institution";
+		} else {
+			return $status;
+		}
 	}
 
 	private function getSponsorNumbers($rows) {
-		$numbers = array();
+		$numbers = [];
 		foreach ($rows as $row) {
 			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
 				$field = "summary_award_sponsorno_".$i;
@@ -322,151 +323,151 @@ class Filter {
 					if (!in_array($row[$field], $numbers)) {
 						$numbers[] = $row[$field];
 					}
-				}	
+				}
 			}
 		}
 		return $numbers;
 	}
 
-    private function getAwardTypes(array $rows): array {
-        $types = array();
-        foreach ($rows as $row) {
-            for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
-                $field = "summary_award_type_".$i;
-                if ($row[$field]) {
-                    if (!in_array($row[$field], $types)) {
-                        $types[] = $row[$field];
-                    }
-                }
-            }
-        }
-        return $types;
-    }
+	private function getAwardTypes(array $rows): array {
+		$types = [];
+		foreach ($rows as $row) {
+			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
+				$field = "summary_award_type_".$i;
+				if ($row[$field]) {
+					if (!in_array($row[$field], $types)) {
+						$types[] = $row[$field];
+					}
+				}
+			}
+		}
+		return $types;
+	}
 
-    private function getActiveAwardTypes(array $rows): array {
-        $types = [];
-        $today = date("Y-m-d");
-        foreach ($rows as $row) {
-            for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
-                $typeField = "summary_award_type_".$i;
-                $startField = "summary_award_date_".$i;
-                $endField = "summary_award_end_date_".$i;
-                if ($row[$typeField] && $row[$startField]) {
-                    # no end date assumes that it's still active
-                    $endsInPast = ($row[$endField] !== "") && DateManagement::dateCompare($row[$endField], "<", $today);
-                    if (
-                        !in_array($row[$typeField], $types)
-                        && !$endsInPast
-                        && DateManagement::dateCompare($row[$startField], "<=", $today)
-                    ) {
-                        $types[] = $row[$typeField];
-                    }
-                }
-            }
-        }
-        return $types;
-    }
+	private function getActiveAwardTypes(array $rows): array {
+		$types = [];
+		$today = date("Y-m-d");
+		foreach ($rows as $row) {
+			for ($i = 1; $i < Grants::$MAX_GRANTS; $i++) {
+				$typeField = "summary_award_type_".$i;
+				$startField = "summary_award_date_".$i;
+				$endField = "summary_award_end_date_".$i;
+				if ($row[$typeField] && $row[$startField]) {
+					# no end date assumes that it's still active
+					$endsInPast = ($row[$endField] !== "") && DateManagement::dateCompare($row[$endField], "<", $today);
+					if (
+						!in_array($row[$typeField], $types)
+						&& !$endsInPast
+						&& DateManagement::dateCompare($row[$startField], "<=", $today)
+					) {
+						$types[] = $row[$typeField];
+					}
+				}
+			}
+		}
+		return $types;
+	}
 
-    private function getInstitutes($rows) {
-        $codes = $this->getCodesFromAwardNumber($rows, "getInstituteCode");
-        $texts = [];
-        foreach ($codes as $code) {
-            $institute = Grant::decodeInstituteCode($code, TRUE);
-            if ($institute) {
-                $texts[] = "$institute ($code)";
-            }
-        }
-        return $texts;
-    }
+	private function getInstitutes($rows) {
+		$codes = $this->getCodesFromAwardNumber($rows, "getInstituteCode");
+		$texts = [];
+		foreach ($codes as $code) {
+			$institute = Grant::decodeInstituteCode($code, true);
+			if ($institute) {
+				$texts[] = "$institute ($code)";
+			}
+		}
+		return $texts;
+	}
 
-    private function getCodesFromAwardNumber($rows, $grantClassFunc) {
-        $codes = [];
-        $awardNumberFields = REDCapManagement::getGrantNumberFields($this->metadata);
-        foreach ($rows as $row) {
-            foreach ($awardNumberFields as $field) {
-                if ($row[$field] ?? FALSE) {
-                    if ($code = Grant::$grantClassFunc($row[$field])) {
-                        $codes[] = $code;
-                    }
-                }
-            }
-        }
-        return array_unique($codes);
-    }
+	private function getCodesFromAwardNumber($rows, $grantClassFunc) {
+		$codes = [];
+		$awardNumberFields = REDCapManagement::getGrantNumberFields($this->metadata);
+		foreach ($rows as $row) {
+			foreach ($awardNumberFields as $field) {
+				if ($row[$field] ?? false) {
+					if ($code = Grant::$grantClassFunc($row[$field])) {
+						$codes[] = $code;
+					}
+				}
+			}
+		}
+		return array_unique($codes);
+	}
 
-    private function getActivityCodes($rows) {
-        return $this->getCodesFromAwardNumber($rows, "getActivityCode");
+	private function getActivityCodes($rows) {
+		return $this->getCodesFromAwardNumber($rows, "getActivityCode");
 	}
 
 	# variable => label
 	public function getDemographicChoices() {
-        # optional fields added via foreach loop below
+		# optional fields added via foreach loop below
 		$ary = [
-            "summary_gender" => "Gender",
-            "summary_race_ethnicity" => "Race/Ethnicity",
-            "summary_primary_dept" => "Primary Department",
-            "summary_current_division" => "Current Academic Division",
-            "summary_dob" => "Date of Birth",
-            "summary_degrees" => "Academic Degrees",
-            "summary_citizenship" => "Citizenship",
-            "summary_urm" => "Under-Represented Minority Status",
-            "summary_disability" => "Disability Status",
-            "summary_disadvantaged" => "Disadvantaged Status",
-            "summary_training_start" => "Start of Training Program",
-            "summary_training_end" => "End of Training Program",
-            "summary_did_not_complete" => "Did Not Complete Program",
-            "summary_current_tenure" => "Recorded Tenure Status",
-            // "calc_institution" => "Institution",
-            "summary_current_rank" => "Current Academic Rank",
-            "calc_employment" => "Employment Status",
-            "calc_email_domain" => "Email Domain",
-        ];
-        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
-        $labels = DataDictionaryManagement::getLabels($this->metadata);
-        foreach (REDCapManagement::getOptionalFields() as $field) {
-            if (in_array($field, $metadataFields)) {
-                $ary[$field] = $labels[$field] ?? $field;
-            }
-        }
+			"summary_gender" => "Gender",
+			"summary_race_ethnicity" => "Race/Ethnicity",
+			"summary_primary_dept" => "Primary Department",
+			"summary_current_division" => "Current Academic Division",
+			"summary_dob" => "Date of Birth",
+			"summary_degrees" => "Academic Degrees",
+			"summary_citizenship" => "Citizenship",
+			"summary_urm" => "Under-Represented Minority Status",
+			"summary_disability" => "Disability Status",
+			"summary_disadvantaged" => "Disadvantaged Status",
+			"summary_training_start" => "Start of Training Program",
+			"summary_training_end" => "End of Training Program",
+			"summary_did_not_complete" => "Did Not Complete Program",
+			"summary_current_tenure" => "Recorded Tenure Status",
+			// "calc_institution" => "Institution",
+			"summary_current_rank" => "Current Academic Rank",
+			"calc_employment" => "Employment Status",
+			"calc_email_domain" => "Email Domain",
+		];
+		$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+		$labels = DataDictionaryManagement::getLabels($this->metadata);
+		foreach (REDCapManagement::getOptionalFields() as $field) {
+			if (in_array($field, $metadataFields)) {
+				$ary[$field] = $labels[$field] ?? $field;
+			}
+		}
 		return $ary;
 	}
 
 	# variable => label
 	public function getGrantChoices() {
 		$ary = [
-            "calc_award_type" => "Award Type",
-            "summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
-            "calc_active_award_type" => "Active Award Type",
-            "summary_award_type_1" => "First Award Type",
-            "summary_award_sponsorno_1" => "First Award Sponsor Number",
-            "calc_sponsorno" => "Any Award Sponsor Number",
-            "calc_activity_code" => "Activity Code",
-            "calc_institute" => "Institute/Center Abbrev.",
-            "summary_t_start" => "Start of First Training Grant",
-            "summary_t_end" => "End of Last Training Grant",
-            "summary_first_any_k" => "First Any K",
-            "summary_last_any_k" => "Last Any K",
-            "summary_first_r01_or_equiv" => "First R01 or Equivalent",
-        ];
-        $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
-        foreach ($ary as $field => $label) {
-            if (preg_match("/^summary_/", $field) && !in_array($field, $metadataFields)) {
-                unset($ary[$field]);
-            }
-        }
+			"calc_award_type" => "Award Type",
+			"summary_ever_last_any_k_to_r01_equiv" => "Conversion Status",
+			"calc_active_award_type" => "Active Award Type",
+			"summary_award_type_1" => "First Award Type",
+			"summary_award_sponsorno_1" => "First Award Sponsor Number",
+			"calc_sponsorno" => "Any Award Sponsor Number",
+			"calc_activity_code" => "Activity Code",
+			"calc_institute" => "Institute/Center Abbrev.",
+			"summary_t_start" => "Start of First Training Grant",
+			"summary_t_end" => "End of Last Training Grant",
+			"summary_first_any_k" => "First Any K",
+			"summary_last_any_k" => "Last Any K",
+			"summary_first_r01_or_equiv" => "First R01 or Equivalent",
+		];
+		$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+		foreach ($ary as $field => $label) {
+			if (preg_match("/^summary_/", $field) && !in_array($field, $metadataFields)) {
+				unset($ary[$field]);
+			}
+		}
 		return $ary;
 	}
 
 	# variable => label
 	public function getPublicationChoices() {
-		$ary = array(
+		$ary = [
 				"calc_pub_category" => "Publication Category",
 				"calc_num_pubs" => "Number of Research Articles",
 				"calc_from_time" => "Number of Research Articles from Date",
 				"calc_rcr" => "Scholars with Relative Citation Ratio",
 				"calc_pub_type" => "Scholars with Publication Type",
 				"calc_mesh_term" => "Scholars with MESH Term",
-				);
+				];
 		return $ary;
 	}
 
@@ -481,13 +482,13 @@ class Filter {
 		foreach ($this->metadata as $row) {
 			if ($row['field_name'] == $var) {
 				if ($row['field_type'] == "yesno") {
-					return array("0" => "No", "1" => "Yes");
-				} else if ($row['field_type'] == "truefalse") {
-					return array("0" => "False", "1" => "True");
+					return ["0" => "No", "1" => "Yes"];
+				} elseif ($row['field_type'] == "truefalse") {
+					return ["0" => "False", "1" => "True"];
 				}
 			}
 		}
-		return array();
+		return [];
 	}
 
 	public static function getMaxNumberOfVariables() {
@@ -495,23 +496,23 @@ class Filter {
 	}
 
 	public static function getContainsSettings() {
-		return array(
+		return [
 				"eq" => "Has",
 				"neq" => "Does Not Have",
-                "contains" => "Contains",
-                "not_contains" => "Does Not Contain",
-				);
+				"contains" => "Contains",
+				"not_contains" => "Does Not Contain",
+				];
 	}
 
 	private function makeCombinerSelect($i) {
 		$html = "";
 		$html .= "<select id='combination$i'>\n";
 		$allowedCombiners = CohortConfig::getAllowedCombiners();
-		$firstCombiner = TRUE;
+		$firstCombiner = true;
 		foreach ($allowedCombiners as $combiner) {
 			if ($firstCombiner) {
 				$html .= "<option value='$combiner' selected>$combiner</option>\n";
-				$firstCombiner = FALSE;
+				$firstCombiner = false;
 			} else {
 				$html .= "<option value='$combiner'>$combiner</option>\n";
 			}
@@ -534,10 +535,10 @@ class Filter {
 
 		$cohorts = new Cohorts($this->token, $this->server, Application::getModule());
 		if ($prefillCohort && in_array($prefillCohort, $cohorts->getCohortNames())) {
-            $editableCohort = $cohorts->getCohort($prefillCohort);
-        } else {
-		    $editableCohort = NULL;
-        }
+			$editableCohort = $cohorts->getCohort($prefillCohort);
+		} else {
+			$editableCohort = null;
+		}
 
 		$workshopChoices = $this->getChoices('resources_resource');
 		$blankOption = ["" => "---SELECT---"];
@@ -545,11 +546,11 @@ class Filter {
 		$link = Application::link("this");
 		$viewLink = Application::link("cohorts/viewCohort.php");
 		$existingCohortJSON = json_encode($cohorts->getCohortNames());
-        $demographicChoicesJSON = json_encode(array_merge($blankOption, $this->getDemographicChoices()));
-        $grantChoicesJSON = json_encode(array_merge($blankOption, $this->getGrantChoices()));
-        $publicationChoicesJSON = json_encode(array_merge($blankOption, $this->getPublicationChoices()));
-        $workshopChoicesInOrder = $blankOption + $workshopChoices;
-        $workshopChoicesJSON = json_encode($workshopChoicesInOrder);
+		$demographicChoicesJSON = json_encode(array_merge($blankOption, $this->getDemographicChoices()));
+		$grantChoicesJSON = json_encode(array_merge($blankOption, $this->getGrantChoices()));
+		$publicationChoicesJSON = json_encode(array_merge($blankOption, $this->getPublicationChoices()));
+		$workshopChoicesInOrder = $blankOption + $workshopChoices;
+		$workshopChoicesJSON = json_encode($workshopChoicesInOrder);
 		$html .= "<script>
 		function commit() {
 		    let title = $('#title').val();
@@ -671,8 +672,8 @@ class Filter {
 				$calcSettings = $this->$var(self::GET_CHOICES);
 				$calcSettingsType = $calcSettings->getType();
 				if ($calcSettingsType == "choices") {
-				    $optionsJSON = json_encode($calcSettings->getChoices());
-				    $comparisonsJSON = json_encode(self::getContainsSettings());
+					$optionsJSON = json_encode($calcSettings->getChoices());
+					$comparisonsJSON = json_encode(self::getContainsSettings());
 					$html .= "
 					options = $optionsJSON;
 					nextSelector = '#choice'+i;
@@ -680,7 +681,7 @@ class Filter {
 					$('#button'+i).hide();
 					comparisons = $comparisonsJSON;
 					";
-				} else if (in_array($calcSettingsType, array_merge($dateChoices, $textChoices))) {
+				} elseif (in_array($calcSettingsType, array_merge($dateChoices, $textChoices))) {
 					$inputType = CalcSettings::transformToInputType($calcSettingsType);
 					if ($inputType) {
 						$html .= "\t\t\t$('#value'+i).prop('type', '$inputType');\n";
@@ -697,17 +698,17 @@ class Filter {
 					comparisons = $comparisonsJSON;
 					";
 				}
-			} else if (isset($workshopChoices[$var])) {
-			    $comparisonsJSON = json_encode(self::getContainsSettings());
+			} elseif (isset($workshopChoices[$var])) {
+				$comparisonsJSON = json_encode(self::getContainsSettings());
 				$html .= "
 				options = false;
 				$('#button'+i).show();
 				if (i == 1) { $('#commitButton').show(); }
 				comparisons = $comparisonsJSON;
 				";
-			} else if ($this->getChoices($var)) {
-			    $optionsJSON = json_encode($this->getChoices($var));
-			    $comparisonsJSON = json_encode(self::getContainsSettings());
+			} elseif ($this->getChoices($var)) {
+				$optionsJSON = json_encode($this->getChoices($var));
+				$comparisonsJSON = json_encode(self::getContainsSettings());
 				$html .= "
 				options = $optionsJSON;
 				nextSelector = '#choice'+i;
@@ -732,9 +733,9 @@ class Filter {
 					comparisons = $comparisonsJSON;
 					$('#value'+i).prop('type', '$inputType');
 					";
-				} else if ($var) {
-				    Application::log("Warning! Could not find values for $var ($calcSettingsType $inputType)");
-                }
+				} elseif ($var) {
+					Application::log("Warning! Could not find values for $var ($calcSettingsType $inputType)");
+				}
 			}
 			$html .= "\t\t}\n";
 		}
@@ -776,37 +777,37 @@ class Filter {
     }
     ";
 		if ($editableCohort) {
-            $defaultRows = $editableCohort->getRows();
-            if (!empty($defaultRows)) {
-                $html .= "
+			$defaultRows = $editableCohort->getRows();
+			if (!empty($defaultRows)) {
+				$html .= "
     		    $(document).ready(function() {
 	    	    ";
 
-                # order is important
-                $fields = ["type", "variable", "choice", "comparison", "value"];
-                for ($i = 1; $i <= count($defaultRows); $i++) {
-                    $defaultRow = $defaultRows[$i - 1];
-                    if (!empty($defaultRow)) {
-                        foreach ($fields as $field) {
-                            if ($defaultRow[$field]) {
-                                $html .= "\t\t\t\t\t$('#$field$i').val('{$defaultRow[$field]}').trigger('change');\n";
-                                if ($field == "choice") {
-                                    $html .= "\t\t\t\t\tlet text$i = $('#$field$i option:selected').text();\n";
-                                    $html .= "\t\t\t\t\t$('#$field$i').parent().find('.custom-combobox-input').val(text$i).trigger('change');\n";
-                                }
-                            }
-                        }
-                        $combiner = $defaultRow['combiner'] ?? $editableCohort->getCombiner();
-                        $html .= "\t\t\t\t\t$('#combination$i').val('$combiner').trigger('change');\n";
-                        $html .= "\t\t\t\t\tshowNextRow('.options$i', '$i');\n";
-                    }
-                }
+				# order is important
+				$fields = ["type", "variable", "choice", "comparison", "value"];
+				for ($i = 1; $i <= count($defaultRows); $i++) {
+					$defaultRow = $defaultRows[$i - 1];
+					if (!empty($defaultRow)) {
+						foreach ($fields as $field) {
+							if ($defaultRow[$field]) {
+								$html .= "\t\t\t\t\t$('#$field$i').val('{$defaultRow[$field]}').trigger('change');\n";
+								if ($field == "choice") {
+									$html .= "\t\t\t\t\tlet text$i = $('#$field$i option:selected').text();\n";
+									$html .= "\t\t\t\t\t$('#$field$i').parent().find('.custom-combobox-input').val(text$i).trigger('change');\n";
+								}
+							}
+						}
+						$combiner = $defaultRow['combiner'] ?? $editableCohort->getCombiner();
+						$html .= "\t\t\t\t\t$('#combination$i').val('$combiner').trigger('change');\n";
+						$html .= "\t\t\t\t\tshowNextRow('.options$i', '$i');\n";
+					}
+				}
 
-                $html .= "
+				$html .= "
 		        });
 		        ";
-            }
-        } 
+			}
+		}
 
 		$html .= "</script>";
 
@@ -820,7 +821,7 @@ class Filter {
 		$html .= "<th></th>\n";
 		$html .= "</tr>\n";
 
-        for ($i = 1; $i <= $num; $i++) {
+		for ($i = 1; $i <= $num; $i++) {
 			$html .= "<tr id='filter$i' class='filter'";
 			if ($i > 1) {
 				$html .= " style='display: none;'";
@@ -846,7 +847,7 @@ class Filter {
 			$html .= "</td>\n";
 			$html .= "</tr>\n";
 			if ($i != $num) {
-				$html .= "<tr><td class='cells' colspan='5'><div id='combiner".($i+1)."' class='combinator' style='display: none;'>".self::makeCombinerSelect($i+1)."</div></td></tr>\n";
+				$html .= "<tr><td class='cells' colspan='5'><div id='combiner".($i + 1)."' class='combinator' style='display: none;'>".self::makeCombinerSelect($i + 1)."</div></td></tr>\n";
 			} else {
 				$html .= "<tr><td colspan='5' class='centered'><button onclick='commit(); return false;' id='commitButton' style='display: none;' class='biggerButton'>Commit Filter</button></td></tr>\n";
 			}
@@ -858,27 +859,27 @@ class Filter {
 		return $html;
 	}
 
-	public function getRecords($config, $redcapData = array()) {
+	public function getRecords($config, $redcapData = []) {
 		if (empty($redcapData)) {
-			$fields = array_merge(array("record_id"), $config->getFields($this->metadata));
+			$fields = array_merge(["record_id"], $config->getFields($this->metadata));
 			$redcapData = Download::getIndexedRedcapData($this->token, $this->server, $fields);
 		}
 
-        $in = [];
+		$in = [];
 		$records = $config->getManualRecords();
 		if (!empty($records)) {
-            foreach ($redcapData as $recordId => $rows) {
-                if (in_array($recordId, $records)) {
-                    $in[] = $recordId;
-                }
-            }
-        } else {
-            foreach ($redcapData as $recordId => $rows) {
-                if ($config->isIn($rows, $this)) {
-                    $in[] = $recordId;
-                }
-            }
-        }
+			foreach ($redcapData as $recordId => $rows) {
+				if (in_array($recordId, $records)) {
+					$in[] = $recordId;
+				}
+			}
+		} else {
+			foreach ($redcapData as $recordId => $rows) {
+				if ($config->isIn($rows, $this)) {
+					$in[] = $recordId;
+				}
+			}
+		}
 		return $in;
 	}
 

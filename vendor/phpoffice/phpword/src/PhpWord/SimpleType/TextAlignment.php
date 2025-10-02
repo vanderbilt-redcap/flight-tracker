@@ -28,18 +28,18 @@ use PhpOffice\PhpWord\Shared\AbstractEnum;
  */
 final class TextAlignment extends AbstractEnum
 {
-    //Align Text at Top
-    const TOP = 'top';
+	//Align Text at Top
+	public const TOP = 'top';
 
-    //Align Text at Center
-    const CENTER = 'center';
+	//Align Text at Center
+	public const CENTER = 'center';
 
-    //Align Text at Baseline
-    const BASELINE = 'baseline';
+	//Align Text at Baseline
+	public const BASELINE = 'baseline';
 
-    //Align Text at Bottom
-    const BOTTOM = 'bottom';
+	//Align Text at Bottom
+	public const BOTTOM = 'bottom';
 
-    //Automatically Determine Alignment
-    const AUTO = 'auto';
+	//Automatically Determine Alignment
+	public const AUTO = 'auto';
 }

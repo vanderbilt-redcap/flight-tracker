@@ -2,9 +2,9 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -38,12 +38,12 @@ tr.even td,th { background-color: #eeeeee; }
 function addToMentors($value, $listOfMentors) {
 	# split into individual names
 	$smallValues = preg_split("/\s*[\s;,\.]\s*/", $value);
-	$values = array();
+	$values = [];
 	if (count($smallValues) == 3) {
 		$values[] = $smallValues[0]." ".$smallValues[1]." ".$smallValues[2];
 	} else {
-		for ($i=1; $i<count($smallValues); $i+=2) {
-			$values[] = $smallValues[$i-1]." ".$smallValues[$i];
+		for ($i = 1; $i < count($smallValues); $i += 2) {
+			$values[] = $smallValues[$i - 1]." ".$smallValues[$i];
 		}
 	}
 
@@ -62,10 +62,10 @@ function addToMentors($value, $listOfMentors) {
 			# no match
 			if ($value == "Ikizler T") {
 				if (!in_array("Ikizler Alp", $listOfMentors)) {
-                    $listOfMentors[] = "Ikizler Alp";
+					$listOfMentors[] = "Ikizler Alp";
 				}
 			} else {
-                $listOfMentors[] = $value;
+				$listOfMentors[] = $value;
 			}
 		}
 	}
@@ -76,14 +76,14 @@ echo "<h1>Current Scholars and Their Mentors</h1>";
 echo "<table style='display: none; margin-left: auto; margin-right: auto;'><tr class='even'><th>Record</th><th>Scholar</th><th>Mentor(s)</th><th>Qualifying Award</th><th>Converted On</th></tr>";
 $cnt = 1;
 $revAwardTypes = \Vanderbilt\FlightTrackerExternalModule\getReverseAwardTypes();
-$menteesByMentor = array();
-$numMentors = array();
-$mentorRows = array();
-$skip = array("vfrs_mentor2", "vfrs_mentor3", "vfrs_mentor4", "vfrs_mentor5");
+$menteesByMentor = [];
+$numMentors = [];
+$mentorRows = [];
+$skip = ["vfrs_mentor2", "vfrs_mentor3", "vfrs_mentor4", "vfrs_mentor5"];
 foreach ($redcapData as $row) {
-    if (!$row['identifier_last_name'] || !$row['identifier_first_name']) {
-        continue;
-    }
+	if (!$row['identifier_last_name'] || !$row['identifier_first_name']) {
+		continue;
+	}
 	$i = \Vanderbilt\FlightTrackerExternalModule\findEligibleAward($row);
 	if ($cnt % 2 == 1) {
 		$rowClass = "odd";
@@ -119,18 +119,18 @@ foreach ($redcapData as $row) {
 				}
 				if ($matches >= 2) {
 					$found = true;
-                    $name = $row['identifier_first_name']." ".$row['identifier_last_name'];
-                    if (!in_array($name, array_values($menteesByRecordId))) {
-                        $menteesByRecordId[$row['record_id']] = $name;
-                        $mentorRows[$currMentor][] = $row;
-                        $numMentors[$currMentor]++;
-                        $menteesByMentor[$currMentor] = $menteesByRecordId;
-                    }
-                    break;
+					$name = $row['identifier_first_name']." ".$row['identifier_last_name'];
+					if (!in_array($name, array_values($menteesByRecordId))) {
+						$menteesByRecordId[$row['record_id']] = $name;
+						$mentorRows[$currMentor][] = $row;
+						$numMentors[$currMentor]++;
+						$menteesByMentor[$currMentor] = $menteesByRecordId;
+					}
+					break;
 				}
 			}
 			if (!$found) {
-                $menteesByMentor[$myMentor] = [$row['record_id'] => $row['identifier_first_name']." ".$row['identifier_last_name']];
+				$menteesByMentor[$myMentor] = [$row['record_id'] => $row['identifier_first_name']." ".$row['identifier_last_name']];
 				$numMentors[$myMentor] = 1;
 				$mentorRows[$myMentor] = [$row];
 			}
@@ -144,35 +144,36 @@ function getConversionRate($rows) {
 	$denom = 0;
 
 	$today = date("Y-m-d");
-	$converted = array();
-	$onK = array();
-	$left = array();
+	$converted = [];
+	$onK = [];
+	$left = [];
 	foreach ($rows as $row) {
 		list($status, $date) = \Vanderbilt\FlightTrackerExternalModule\getConvertedStatus($row);
 		if ($status == "Converted") {
 			$converted[] = $row['identifier_first_name']." ".$row['identifier_last_name'];
 			$numer++;
 			$denom++;
-		} else if ($status == "Left") {
+		} elseif ($status == "Left") {
 			$left[] = $row['identifier_first_name']." ".$row['identifier_last_name'];
-		} else if ($status == "On External K") {
+		} elseif ($status == "On External K") {
 			$onK[] = $row['identifier_first_name']." ".$row['identifier_last_name'];
-		} else if ($status == "On Internal K") {
+		} elseif ($status == "On Internal K") {
 			$onK[] = $row['identifier_first_name']." ".$row['identifier_last_name'];
-		} else if ($status == "Not Converted") {
+		} elseif ($status == "Not Converted") {
 			$denom++;
 		}
 	}
 	if ($denom === 0) {
-		return array( "rate" => -100, "onK" => $onK, "converted" => $converted, "calc" => "0/0", "left" => $left);;
+		return [ "rate" => -100, "onK" => $onK, "converted" => $converted, "calc" => "0/0", "left" => $left];
+		;
 	}
-	return array(
+	return [
 			"calc" => $numer."/".$denom,
 			"rate" => (round($numer * 1000 / $denom) / 10),
 			"onK" => $onK,
 			"converted" => $converted,
 			"left" => $left,
-			);
+			];
 }
 
 function reformatMentees($menteesByRecordId, $convRateReturned) {
@@ -182,11 +183,11 @@ function reformatMentees($menteesByRecordId, $convRateReturned) {
 		$url = Links::makeRecordHomeLink($pid, $recordId, $mentee);
 		if (in_array($mentee, $convRateReturned['converted'])) {
 			$menteesOut[] = $url." (R)";
-		} else if (in_array($mentee, $convRateReturned['onK'])) {
+		} elseif (in_array($mentee, $convRateReturned['onK'])) {
 			$menteesOut[] = $url." (K)";
-		} else if (in_array($mentee, $convRateReturned['left'])) {
+		} elseif (in_array($mentee, $convRateReturned['left'])) {
 			$menteesOut[] = $url." (left)";
-		} else if ($mentee) {
+		} elseif ($mentee) {
 			$menteesOut[] = $url." (off K)";
 		}
 	}
@@ -199,8 +200,8 @@ echo "<p class='centered'>(K) denotes on K or equivalent; (R) denotes on R01 or 
 echo "<h2><a class='button' href='javascript:;' onclick='$(\"#table1\").show(); $(\"#table2\").hide();'>Sorted by Number of Mentees</a></h2>";
 echo "<h2><a class='button' href='javascript:;' onclick='$(\"#table1\").hide(); $(\"#table2\").show();'>Sorted by Conversion Rate</a></h2>";
 echo "<table id='table1' style='display: none; margin-left: auto; margin-right: auto;'><tr class='even'><th>Mentor</th><th>Number of Mentees</th><th>Mentees</th><th>Conversion Rate</th></tr>";
-$conversionRate = array();
-$conversionCalc = array();
+$conversionRate = [];
+$conversionCalc = [];
 foreach ($numMentors as $mentor => $num) {
 	if ($cnt % 2 == 1) {
 		$rowClass = "odd";
@@ -212,7 +213,7 @@ foreach ($numMentors as $mentor => $num) {
 	$mentees = reformatMentees($menteesByMentor[$mentor], $a);
 
 	$conversionRate[$mentor] = $a['rate'];
-	$conversionCalc[$mentor] = $a['calc']; 
+	$conversionCalc[$mentor] = $a['calc'];
 	$convRate = $conversionRate[$mentor];
 	$convCalc = $conversionCalc[$mentor];
 	if ($convRate < 0) {

@@ -3,13 +3,13 @@
 require_once(dirname(__FILE__)."/../small_base.php");
 
 # file with columns for lastName, firstName
-$files = array("edge.csv" => array(0, 1), "grant_pacing.csv" => array(1,2));
-$redcapValue = array("edge.csv" => 1, "grant_pacing.csv" => 2);
+$files = ["edge.csv" => [0, 1], "grant_pacing.csv" => [1,2]];
+$redcapValue = ["edge.csv" => 1, "grant_pacing.csv" => 2];
 
-$matches = array();
+$matches = [];
 foreach ($files as $file => $cols) {
-	$lastNames = array();
-	$firstNames = array();
+	$lastNames = [];
+	$firstNames = [];
 
 	$fp = fopen(dirname(__FILE__)."/".$file, "r");
 	$i = 0;
@@ -35,7 +35,7 @@ foreach ($files as $file => $cols) {
 
 	$matches[$file] = matchNames($firstNames, $lastNames);
 	$j = 0;
-	for ($i=0; $i < count($lastNames) && $i < count($firstNames) && $i < count($matches[$file]); $i++) {
+	for ($i = 0; $i < count($lastNames) && $i < count($firstNames) && $i < count($matches[$file]); $i++) {
 		if ($matches[$file][$i] === "") {
 			// echo $j.". ".$lastNames[$i]." ".$firstNames[$i]." not found\n";
 			$j++;
@@ -48,12 +48,12 @@ foreach ($files as $file => $cols) {
 
 echo "\n";
 
-foreach($matches as $file => $recordIds) {
-	$upload = array();
-	$done = array();
+foreach ($matches as $file => $recordIds) {
+	$upload = [];
+	$done = [];
 	foreach ($recordIds as $recordId) {
 		if ($recordId && !in_array($recordId, $done)) {
-			$row = array();
+			$row = [];
 			$row["record_id"] = $recordId;
 			$row['identifier_workshops___'.$redcapValue[$file]] = '1';
 			$upload[] = $row;
@@ -61,7 +61,7 @@ foreach($matches as $file => $recordIds) {
 		}
 	}
 
-	$data = array(
+	$data = [
 		'token' => $token,
 		'content' => 'record',
 		'format' => 'json',
@@ -71,7 +71,7 @@ foreach($matches as $file => $recordIds) {
 		'data' => json_encode($upload),
 		'returnContent' => 'count',
 		'returnFormat' => 'json'
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $server);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -84,6 +84,7 @@ foreach($matches as $file => $recordIds) {
 	curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
 	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 	$output = curl_exec($ch);
-	echo "Upload (".count($upload).") $file: ".$output."\n";;
+	echo "Upload (".count($upload).") $file: ".$output."\n";
+	;
 	curl_close($ch);
 }

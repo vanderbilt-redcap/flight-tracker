@@ -23,59 +23,58 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Element;
  */
 class Ruby extends AbstractElement
 {
-    /**
-     * Write ruby element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
-        if (!$element instanceof \PhpOffice\PhpWord\Element\Ruby) {
-            return;
-        }
-        /** @var \PhpOffice\PhpWord\Element\Ruby $element */
-        $this->startElementP();
+	/**
+	 * Write ruby element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
+		if (!$element instanceof \PhpOffice\PhpWord\Element\Ruby) {
+			return;
+		}
+		/** @var \PhpOffice\PhpWord\Element\Ruby $element */
+		$this->startElementP();
 
-        $xmlWriter->startElement('w:r');
-        $xmlWriter->startElement('w:ruby');
+		$xmlWriter->startElement('w:r');
+		$xmlWriter->startElement('w:ruby');
 
-        // write properties
-        $xmlWriter->startElement('w:rubyPr');
-        $properties = $element->getProperties();
-        $xmlWriter->startElement('w:rubyAlign');
-        $xmlWriter->writeAttribute('w:val', $properties->getAlignment());
-        $xmlWriter->endElement(); // w:rubyAlign
-        $xmlWriter->startElement('w:hps');
-        $xmlWriter->writeAttribute('w:val', $properties->getFontFaceSize());
-        $xmlWriter->endElement(); // w:hps
-        $xmlWriter->startElement('w:hpsRaise');
-        $xmlWriter->writeAttribute('w:val', $properties->getFontPointsAboveBaseText());
-        $xmlWriter->endElement(); // w:hpsRaise
-        $xmlWriter->startElement('w:hpsBaseText');
-        $xmlWriter->writeAttribute('w:val', $properties->getFontSizeForBaseText());
-        $xmlWriter->endElement(); // w:hpsBaseText
-        $xmlWriter->startElement('w:lid');
-        $xmlWriter->writeAttribute('w:val', $properties->getLanguageId());
-        $xmlWriter->endElement(); // w:lid
+		// write properties
+		$xmlWriter->startElement('w:rubyPr');
+		$properties = $element->getProperties();
+		$xmlWriter->startElement('w:rubyAlign');
+		$xmlWriter->writeAttribute('w:val', $properties->getAlignment());
+		$xmlWriter->endElement(); // w:rubyAlign
+		$xmlWriter->startElement('w:hps');
+		$xmlWriter->writeAttribute('w:val', $properties->getFontFaceSize());
+		$xmlWriter->endElement(); // w:hps
+		$xmlWriter->startElement('w:hpsRaise');
+		$xmlWriter->writeAttribute('w:val', $properties->getFontPointsAboveBaseText());
+		$xmlWriter->endElement(); // w:hpsRaise
+		$xmlWriter->startElement('w:hpsBaseText');
+		$xmlWriter->writeAttribute('w:val', $properties->getFontSizeForBaseText());
+		$xmlWriter->endElement(); // w:hpsBaseText
+		$xmlWriter->startElement('w:lid');
+		$xmlWriter->writeAttribute('w:val', $properties->getLanguageId());
+		$xmlWriter->endElement(); // w:lid
 
-        $xmlWriter->endElement(); // w:rubyPr
+		$xmlWriter->endElement(); // w:rubyPr
 
-        // write ruby text
-        $xmlWriter->startElement('w:rt');
-        $rubyTextRun = $element->getRubyTextRun();
-        $textRunWriter = new TextRun($xmlWriter, $rubyTextRun, true);
-        $textRunWriter->write();
-        $xmlWriter->endElement(); // w:rt
-        // write base text
-        $xmlWriter->startElement('w:rubyBase');
-        $baseTextRun = $element->getBaseTextRun();
-        $textRunWriter = new TextRun($xmlWriter, $baseTextRun, true);
-        $textRunWriter->write();
-        $xmlWriter->endElement(); // w:rubyBase
+		// write ruby text
+		$xmlWriter->startElement('w:rt');
+		$rubyTextRun = $element->getRubyTextRun();
+		$textRunWriter = new TextRun($xmlWriter, $rubyTextRun, true);
+		$textRunWriter->write();
+		$xmlWriter->endElement(); // w:rt
+		// write base text
+		$xmlWriter->startElement('w:rubyBase');
+		$baseTextRun = $element->getBaseTextRun();
+		$textRunWriter = new TextRun($xmlWriter, $baseTextRun, true);
+		$textRunWriter->write();
+		$xmlWriter->endElement(); // w:rubyBase
 
-        $xmlWriter->endElement(); // w:ruby
-        $xmlWriter->endElement(); // w:r
+		$xmlWriter->endElement(); // w:ruby
+		$xmlWriter->endElement(); // w:r
 
-        $this->endElementP();
-    }
+		$this->endElementP();
+	}
 }

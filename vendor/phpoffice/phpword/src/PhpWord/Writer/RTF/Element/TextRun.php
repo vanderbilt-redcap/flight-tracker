@@ -25,23 +25,22 @@ namespace PhpOffice\PhpWord\Writer\RTF\Element;
  */
 class TextRun extends AbstractElement
 {
-    /**
-     * Write element.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $writer = new Container($this->parentWriter, $this->element);
-        $this->getStyles();
+	/**
+	 * Write element.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$writer = new Container($this->parentWriter, $this->element);
+		$this->getStyles();
 
-        $content = '';
-        $content .= $this->writeOpening();
-        $content .= '{';
-        $content .= $writer->write();
-        $content .= '}';
-        $content .= $this->writeClosing();
+		$content = '';
+		$content .= $this->writeOpening();
+		$content .= '{';
+		$content .= $writer->write();
+		$content .= '}';
+		$content .= $this->writeClosing();
 
-        return $content;
-    }
+		return $content;
+	}
 }

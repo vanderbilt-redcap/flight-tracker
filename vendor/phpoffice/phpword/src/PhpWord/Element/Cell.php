@@ -25,54 +25,51 @@ use PhpOffice\PhpWord\Style\Cell as CellStyle;
  */
 class Cell extends AbstractContainer
 {
-    /**
-     * @var string Container type
-     */
-    protected $container = 'Cell';
+	/**
+	 * @var string Container type
+	 */
+	protected $container = 'Cell';
 
-    /**
-     * Cell width.
-     *
-     * @var ?int
-     */
-    private $width;
+	/**
+	 * Cell width.
+	 *
+	 * @var ?int
+	 */
+	private $width;
 
-    /**
-     * Cell style.
-     *
-     * @var ?CellStyle
-     */
-    private $style;
+	/**
+	 * Cell style.
+	 *
+	 * @var ?CellStyle
+	 */
+	private $style;
 
-    /**
-     * Create new instance.
-     *
-     * @param null|int $width
-     * @param array|CellStyle $style
-     */
-    public function __construct($width = null, $style = null)
-    {
-        $this->width = $width;
-        $this->style = $this->setNewStyle(new CellStyle(), $style, true);
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param null|int $width
+	 * @param array|CellStyle $style
+	 */
+	public function __construct($width = null, $style = null) {
+		$this->width = $width;
+		$this->style = $this->setNewStyle(new CellStyle(), $style, true);
+	}
 
-    /**
-     * Get cell style.
-     *
-     * @return ?CellStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get cell style.
+	 *
+	 * @return ?CellStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 
-    /**
-     * Get cell width.
-     *
-     * @return ?int
-     */
-    public function getWidth()
-    {
-        return $this->width;
-    }
+	/**
+	 * Get cell width.
+	 *
+	 * @return ?int
+	 */
+	public function getWidth() {
+		return $this->width;
+	}
 }

@@ -3,62 +3,61 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use PhpParser\Node\Expr\AssignOp\BitwiseOr;
-use \Vanderbilt\CareerDevLibrary\Citation;
-use \Vanderbilt\CareerDevLibrary\CohortConfig;
-use \Vanderbilt\CareerDevLibrary\Cohorts;
-use \Vanderbilt\CareerDevLibrary\Consortium;
-use \Vanderbilt\CareerDevLibrary\CronManager;
-use \Vanderbilt\CareerDevLibrary\Definitions;
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\EmailManager;
-use \Vanderbilt\CareerDevLibrary\Filter;
-use \Vanderbilt\CareerDevLibrary\Grant;
-use \Vanderbilt\CareerDevLibrary\GrantFactory;
-use \Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
-use \Vanderbilt\CareerDevLibrary\Grants;
-use \Vanderbilt\CareerDevLibrary\LDAP;
-use \Vanderbilt\CareerDevLibrary\Links;
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\NavigationBar;
-use \Vanderbilt\CareerDevLibrary\NIHExPORTER;
-use \Vanderbilt\CareerDevLibrary\OracleConnection;
-use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\Scholar;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\iCite;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\ConnectionStatus;
-use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
-use \Vanderbilt\CareerDevLibrary\FeatureSwitches;
-use \Vanderbilt\CareerDevLibrary\DateManagement;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
-use \Vanderbilt\CareerDevLibrary\URLManagement;
-use \Vanderbilt\CareerDevLibrary\FileManagement;
-use \Vanderbilt\CareerDevLibrary\Dashboard;
-use \Vanderbilt\CareerDevLibrary\ReactNIHTables;
-use \Vanderbilt\CareerDevLibrary\NIHTables;
+use Vanderbilt\CareerDevLibrary\Citation;
+use Vanderbilt\CareerDevLibrary\CohortConfig;
+use Vanderbilt\CareerDevLibrary\Cohorts;
+use Vanderbilt\CareerDevLibrary\Consortium;
+use Vanderbilt\CareerDevLibrary\CronManager;
+use Vanderbilt\CareerDevLibrary\Definitions;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\EmailManager;
+use Vanderbilt\CareerDevLibrary\Filter;
+use Vanderbilt\CareerDevLibrary\Grant;
+use Vanderbilt\CareerDevLibrary\GrantFactory;
+use Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
+use Vanderbilt\CareerDevLibrary\Grants;
+use Vanderbilt\CareerDevLibrary\LDAP;
+use Vanderbilt\CareerDevLibrary\Links;
+use Vanderbilt\CareerDevLibrary\NameMatcher;
+use Vanderbilt\CareerDevLibrary\NavigationBar;
+use Vanderbilt\CareerDevLibrary\NIHExPORTER;
+use Vanderbilt\CareerDevLibrary\OracleConnection;
+use Vanderbilt\CareerDevLibrary\Publications;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\Scholar;
+use Vanderbilt\CareerDevLibrary\Upload;
+use Vanderbilt\CareerDevLibrary\iCite;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\ConnectionStatus;
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use Vanderbilt\CareerDevLibrary\DateManagement;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\URLManagement;
+use Vanderbilt\CareerDevLibrary\FileManagement;
+use Vanderbilt\CareerDevLibrary\Dashboard;
+use Vanderbilt\CareerDevLibrary\ReactNIHTables;
+use Vanderbilt\CareerDevLibrary\NIHTables;
 
 require_once(__DIR__."/autoload.php");
 
 ini_set("memory_limit", "4096M");
-ini_set("auto_detect_line_endings", true);
 if (!Application::isWebBrowser() && CareerDev::getPid()) {
-    date_default_timezone_set(CareerDev::getTimezone());
+	date_default_timezone_set(CareerDev::getTimezone());
 }
 
 $pid = Sanitizer::sanitize(isset($module) ? $module->getProjectId($_GET['pid'] ?? "") : Sanitizer::sanitizePid($_GET['pid'] ?? ""));
 if (!$pid && !Application::isWebBrowser() && is_array($argv) && (count($argv) >= 2) && in_array($argv[1], Application::getPids())) {
-    $pid = $argv[1];
-    $_GET['pid'] = $pid;
+	$pid = $argv[1];
+	$_GET['pid'] = $pid;
 }
 if (!$pid) {
-    if (isset($_GET['project_id']) && $_GET['project_id']) {
-        $pid = CareerDev::getSetting("pid", $_GET['project_id']);
-    } else {
-        $pid = CareerDev::getSetting("pid");
-    }
-    $_GET['pid'] = $pid;
+	if (isset($_GET['project_id']) && $_GET['project_id']) {
+		$pid = CareerDev::getSetting("pid", $_GET['project_id']);
+	} else {
+		$pid = CareerDev::getSetting("pid");
+	}
+	$_GET['pid'] = $pid;
 }
 define('INSTITUTION', CareerDev::getInstitution($pid));
 define('PROGRAM_NAME', CareerDev::getProgramName());
@@ -68,18 +67,18 @@ if (!isset($module) || !$module) {
 	$module = Application::getModule();
 }
 if (!$module) {
-    throw new \Exception("The base class has no module!");
+	throw new \Exception("The base class has no module!");
 }
 
 $token = Application::getSetting("token", $pid);
 try {
-    $token = Application::checkOrResetToken($token, $pid);
+	$token = Application::checkOrResetToken($token, $pid);
 } catch (\Exception $e) {
-    if (!$token && USERID && $module->canRedirectToInstall()) {
-        header("Location: ".CareerDev::link("install.php"));
-    } else if (Sanitizer::sanitize($_GET['page'] ?? "") != "install") {
-        throw $e;
-    }
+	if (!$token && USERID && $module->canRedirectToInstall()) {
+		header("Location: ".CareerDev::link("install.php"));
+	} elseif (Sanitizer::sanitize($_GET['page'] ?? "") != "install") {
+		throw $e;
+	}
 }
 
 $server = Application::getSetting("server", $pid);
@@ -103,14 +102,14 @@ set_exception_handler('\Vanderbilt\FlightTrackerExternalModule\displayException'
 ############# FUNCTIONS ################
 
 function displayException($exception) {
-    global $pid;
-    $header = "Flight Tracker Error!";
-    Application::log("Exception: ".$exception->getMessage(), $pid);
-    echo "<div class='red padded max-width' style='text-align: center;'><strong>".$header."</strong><br/>".$exception->getMessage()."<br/>File: ".$exception->getFile()."; Line: ".$exception->getLine()."<br/><code class='alignLeft'>".$exception->getTraceAsString()."</code></div>";
+	global $pid;
+	$header = "Flight Tracker Error!";
+	Application::log("Exception: ".$exception->getMessage(), $pid);
+	echo "<div class='red padded max-width' style='text-align: center;'><strong>".$header."</strong><br/>".$exception->getMessage()."<br/>File: ".$exception->getFile()."; Line: ".$exception->getLine()."<br/><code class='alignLeft'>".$exception->getTraceAsString()."</code></div>";
 }
 
 function displayError($error) {
-    # unimplemented
+	# unimplemented
 }
 
 function getBaseAwardNumber($num) {
@@ -118,95 +117,95 @@ function getBaseAwardNumber($num) {
 }
 
 function getDepartmentChoices() {
-    $choices2 = [];
-		$choices2[104300] = "Anesthesiology [104300]";
-		$choices2[104250] = "Biochemistry [104250]";
-		$choices2[120450] = "Biological Sciences [120450]";
-		$choices2[104785] = "Biomedical Informatics [104785]";
-		$choices2[104286] = "Cancer Biology [104286]";
-		$choices2[104280] = "Cell and Developmental Biology [104280]";
-		$choices2[104226] = "Center for Human Genetics Research [104226]";
-		$choices2[120430] = "Chemistry [120430]";
-		$choices2[104791] = "Emergency Medicine/Administration [104791]";
-		$choices2[104625] = "Health Policy [104625]";
-		$choices2[104782] = "Hearing And Speech Sciences [104782]";
-		$choices2[104216] = "Institute for Global Health [104216]";
-		$choices2[130100] = "Kennedy Center Institute (MC) [130100]";
-		$choices2[122450] = "Mechanical Engineering [122450]";
-		$choices2[104368] = "Medicine [104368]";
-		$choices2[104383] = "Medicine/Allergy Pulmonary & Critical Care [104383]";
-		$choices2[104333] = "Medicine/Cardiovascular Medicine [104333]";
-		$choices2[104342] = "Medicine/Clinical Pharmacology [104342]";
-		$choices2[104348] = "Medicine/Dermatology [104348]";
-		$choices2[104351] = "Medicine/Diabetes Endocrinology [104351]";
-		$choices2[104370] = "Medicine/Epidemiology [104370]";
-		$choices2[104355] = "Medicine/Gastroenterology [104355]";
-		$choices2[104366] = "Medicine/General Internal Medicine [104366]";
-		$choices2[104353] = "Medicine/Genetic Medicine [104353]";
-		$choices2[104379] = "Medicine/Hematology Oncology [104379]";
-		$choices2[104362] = "Medicine/Infectious Disease [104362]";
-		$choices2[104375] = "Medicine/Nephrology [104375]";
-		$choices2[104386] = "Medicine/Rheumatology [104386]";
-		$choices2[104336] = "Medicine/Stahlman Cardio Research [104336]";
-		$choices2[104270] = "Molecular Physiology & Biophysics [104270]";
-		$choices2[104400] = "Neurology [104400]";
-		$choices2[104407] = "Neurology/Cognitive Disorders [104407]";
-		$choices2[104403] = "Neurology/Epilepsy [104403]";
-		$choices2[104412] = "Neurology/Immunology [104412]";
-		$choices2[104409] = "Neurology/Movement Disorders [104409]";
-		$choices2[104415] = "Neurology/Neuromuscular [104415]";
-		$choices2[104418] = "Neurology/Oncology [104418]";
-		$choices2[104410] = "Neurology/Sleep Disorders [104410]";
-		$choices2[104425] = "Obstetrics and Gynecology [104425]";
-		$choices2[104450] = "Ophthalmology [104450]";
-		$choices2[104481] = "Ortho - Oncology [104481]";
-		$choices2[104475] = "Orthopaedics and Rehabilitation [104475]";
-		$choices2[999999] = "Other (999999)";
-		$choices2[104781] = "Otolaryngology [104781]";
-		$choices2[104500] = "Pathology [104500]";
-		$choices2[104555] = "Pediatrics/Adolescent Medicine [104555]";
-		$choices2[104565] = "Pediatrics/Cardiology [104565]";
-		$choices2[104570] = "Pediatrics/Child Development [104570]";
-		$choices2[104568] = "Pediatrics/Clinical Research Office [104568]";
-		$choices2[104582] = "Pediatrics/Emergency Medicine [104582]";
-		$choices2[104580] = "Pediatrics/Endocrinology [104580]";
-		$choices2[104585] = "Pediatrics/Gastroenterology [104585]";
-		$choices2[104595] = "Pediatrics/General Pediatrics [104595]";
-		$choices2[104590] = "Pediatrics/Genetics [104590]";
-		$choices2[104598] = "Pediatrics/Hematology [104598]";
-		$choices2[104623] = "Pediatrics/Hospital Medicine [104623]";
-		$choices2[104606] = "Pediatrics/Infectious Disease [104606]";
-		$choices2[104610] = "Pediatrics/Neonatology [104610]";
-		$choices2[104600] = "Pediatrics/Neurology [104600]";
-		$choices2[104621] = "Pediatrics/Pulmonary [104621]";
-		$choices2[104592] = "Pediatrics/Vanderbilt-Meharry Center in Sickle Cell [104592]";
-		$choices2[104290] = "Pharmacology [104290]";
-		$choices2[104291] = "Pharmacology/Clin Pharm [104291]";
-		$choices2[104795] = "Physical Medicine and Rehabilitation [104795]";
-		$choices2[104529] = "Psychiatry/Adult Psychiatry [104529]";
-		$choices2[104535] = "Psychiatry/Child & Adolescent Psychiatry [104535]";
-		$choices2[120660] = "Psychology [120660]";
-		$choices2[104675] = "Radiation Oncology [104675]";
-		$choices2[104650] = "Radiology and Radiological Science [104650]";
-		$choices2[106052] = "School of Nursing - Research Faculty [106052]";
-		$choices2[104703] = "Section of Surgical Science [104703]";
-		$choices2["SFS"] = "Service Free Stipends [SFS]";
-		$choices2[126230] = "Special Education [126230]";
-		$choices2[104477] = "Sports Medicine [104477]";
-		$choices2[104705] = "Surgery [104705]";
-		$choices2[104714] = "Surgery/Liver Transplant [104714]";
-		$choices2[104760] = "Surgery/Pediatric Surgery [104760]";
-		$choices2[104709] = "Surgery/Surgical Oncology [104709]";
-		$choices2[104726] = "Surgery/Thoracic Surgery [104726]";
-		$choices2[104717] = "Surgery/Trauma [104717]";
-		$choices2[104775] = "Urologic Surgery [104775]";
-		$choices2[104201] = "Vanderbilt Vaccine Center [104201]";
-		$choices2[104268] = "Biostatistics (104268)";
-		$choices2[104267] = "Biostatistics/Cancer Biostatistics (104267)";
-		$choices2[104202] = "Center for Biomedical Ethics and Society (104202)";
-		$choices2[104790] = "Emergency Medicine (104790)";
-		$choices2[104204] = "Institute of Medicine and Public Health (104204)";
-		$choices2[120727] = "Medicine, Health & Society (120727)";
+	$choices2 = [];
+	$choices2[104300] = "Anesthesiology [104300]";
+	$choices2[104250] = "Biochemistry [104250]";
+	$choices2[120450] = "Biological Sciences [120450]";
+	$choices2[104785] = "Biomedical Informatics [104785]";
+	$choices2[104286] = "Cancer Biology [104286]";
+	$choices2[104280] = "Cell and Developmental Biology [104280]";
+	$choices2[104226] = "Center for Human Genetics Research [104226]";
+	$choices2[120430] = "Chemistry [120430]";
+	$choices2[104791] = "Emergency Medicine/Administration [104791]";
+	$choices2[104625] = "Health Policy [104625]";
+	$choices2[104782] = "Hearing And Speech Sciences [104782]";
+	$choices2[104216] = "Institute for Global Health [104216]";
+	$choices2[130100] = "Kennedy Center Institute (MC) [130100]";
+	$choices2[122450] = "Mechanical Engineering [122450]";
+	$choices2[104368] = "Medicine [104368]";
+	$choices2[104383] = "Medicine/Allergy Pulmonary & Critical Care [104383]";
+	$choices2[104333] = "Medicine/Cardiovascular Medicine [104333]";
+	$choices2[104342] = "Medicine/Clinical Pharmacology [104342]";
+	$choices2[104348] = "Medicine/Dermatology [104348]";
+	$choices2[104351] = "Medicine/Diabetes Endocrinology [104351]";
+	$choices2[104370] = "Medicine/Epidemiology [104370]";
+	$choices2[104355] = "Medicine/Gastroenterology [104355]";
+	$choices2[104366] = "Medicine/General Internal Medicine [104366]";
+	$choices2[104353] = "Medicine/Genetic Medicine [104353]";
+	$choices2[104379] = "Medicine/Hematology Oncology [104379]";
+	$choices2[104362] = "Medicine/Infectious Disease [104362]";
+	$choices2[104375] = "Medicine/Nephrology [104375]";
+	$choices2[104386] = "Medicine/Rheumatology [104386]";
+	$choices2[104336] = "Medicine/Stahlman Cardio Research [104336]";
+	$choices2[104270] = "Molecular Physiology & Biophysics [104270]";
+	$choices2[104400] = "Neurology [104400]";
+	$choices2[104407] = "Neurology/Cognitive Disorders [104407]";
+	$choices2[104403] = "Neurology/Epilepsy [104403]";
+	$choices2[104412] = "Neurology/Immunology [104412]";
+	$choices2[104409] = "Neurology/Movement Disorders [104409]";
+	$choices2[104415] = "Neurology/Neuromuscular [104415]";
+	$choices2[104418] = "Neurology/Oncology [104418]";
+	$choices2[104410] = "Neurology/Sleep Disorders [104410]";
+	$choices2[104425] = "Obstetrics and Gynecology [104425]";
+	$choices2[104450] = "Ophthalmology [104450]";
+	$choices2[104481] = "Ortho - Oncology [104481]";
+	$choices2[104475] = "Orthopaedics and Rehabilitation [104475]";
+	$choices2[999999] = "Other (999999)";
+	$choices2[104781] = "Otolaryngology [104781]";
+	$choices2[104500] = "Pathology [104500]";
+	$choices2[104555] = "Pediatrics/Adolescent Medicine [104555]";
+	$choices2[104565] = "Pediatrics/Cardiology [104565]";
+	$choices2[104570] = "Pediatrics/Child Development [104570]";
+	$choices2[104568] = "Pediatrics/Clinical Research Office [104568]";
+	$choices2[104582] = "Pediatrics/Emergency Medicine [104582]";
+	$choices2[104580] = "Pediatrics/Endocrinology [104580]";
+	$choices2[104585] = "Pediatrics/Gastroenterology [104585]";
+	$choices2[104595] = "Pediatrics/General Pediatrics [104595]";
+	$choices2[104590] = "Pediatrics/Genetics [104590]";
+	$choices2[104598] = "Pediatrics/Hematology [104598]";
+	$choices2[104623] = "Pediatrics/Hospital Medicine [104623]";
+	$choices2[104606] = "Pediatrics/Infectious Disease [104606]";
+	$choices2[104610] = "Pediatrics/Neonatology [104610]";
+	$choices2[104600] = "Pediatrics/Neurology [104600]";
+	$choices2[104621] = "Pediatrics/Pulmonary [104621]";
+	$choices2[104592] = "Pediatrics/Vanderbilt-Meharry Center in Sickle Cell [104592]";
+	$choices2[104290] = "Pharmacology [104290]";
+	$choices2[104291] = "Pharmacology/Clin Pharm [104291]";
+	$choices2[104795] = "Physical Medicine and Rehabilitation [104795]";
+	$choices2[104529] = "Psychiatry/Adult Psychiatry [104529]";
+	$choices2[104535] = "Psychiatry/Child & Adolescent Psychiatry [104535]";
+	$choices2[120660] = "Psychology [120660]";
+	$choices2[104675] = "Radiation Oncology [104675]";
+	$choices2[104650] = "Radiology and Radiological Science [104650]";
+	$choices2[106052] = "School of Nursing - Research Faculty [106052]";
+	$choices2[104703] = "Section of Surgical Science [104703]";
+	$choices2["SFS"] = "Service Free Stipends [SFS]";
+	$choices2[126230] = "Special Education [126230]";
+	$choices2[104477] = "Sports Medicine [104477]";
+	$choices2[104705] = "Surgery [104705]";
+	$choices2[104714] = "Surgery/Liver Transplant [104714]";
+	$choices2[104760] = "Surgery/Pediatric Surgery [104760]";
+	$choices2[104709] = "Surgery/Surgical Oncology [104709]";
+	$choices2[104726] = "Surgery/Thoracic Surgery [104726]";
+	$choices2[104717] = "Surgery/Trauma [104717]";
+	$choices2[104775] = "Urologic Surgery [104775]";
+	$choices2[104201] = "Vanderbilt Vaccine Center [104201]";
+	$choices2[104268] = "Biostatistics (104268)";
+	$choices2[104267] = "Biostatistics/Cancer Biostatistics (104267)";
+	$choices2[104202] = "Center for Biomedical Ethics and Society (104202)";
+	$choices2[104790] = "Emergency Medicine (104790)";
+	$choices2[104204] = "Institute of Medicine and Public Health (104204)";
+	$choices2[120727] = "Medicine, Health & Society (120727)";
 }
 
 function getReverseAwardTypes() {
@@ -247,7 +246,7 @@ function coeusMatch($fn1, $ln1, $fn2, $ln2) {
 	if (preg_match("/\s+\(.+\)/", $fn1)) {
 		$fn1 = preg_replace("/\s+\(.+\)/", "", $fn1);
 	}
-	$ln1s = array($ln1);
+	$ln1s = [$ln1];
 	if (preg_match("/[\s\-]/", $ln1)) {
 		array_push($ln1s, preg_replace("/\-/", " ", $ln1), preg_replace("/\s/", "-", $ln1));
 	}
@@ -260,7 +259,7 @@ function coeusMatch($fn1, $ln1, $fn2, $ln2) {
 	if (preg_match("/\s+\(.+\)/", $fn2)) {
 		$fn2 = preg_replace("/\s+\(.+\)/", "", $fn2);
 	}
-	$ln2s =  array($ln2);
+	$ln2s =  [$ln2];
 	if (preg_match("/[\s\-]/", $ln2)) {
 		array_push($ln2s, preg_replace("/\-/", " ", $ln2), preg_replace("/\s/", "-", $ln2));
 	}
@@ -300,17 +299,17 @@ function matchNames($firsts, $lasts) {
 	return NameMatcher::matchNames($firsts, $lasts, $token, $server);
 }
 
-function prettyMoney($n, $displayCents = TRUE) {
-    return REDCapManagement::prettyMoney($n, $displayCents);
+function prettyMoney($n, $displayCents = true) {
+	return REDCapManagement::prettyMoney($n, $displayCents);
 }
 
 function pretty($n, $numDecimalPlaces = 3) {
-    return REDCapManagement::pretty($n, $numDecimalPlaces);
+	return REDCapManagement::pretty($n, $numDecimalPlaces);
 }
 
 function downloadURL($url) {
-    global $pid;
-    return REDCapManagement::downloadURL($url, $pid);
+	global $pid;
+	return REDCapManagement::downloadURL($url, $pid);
 }
 
 # given two timestamps (UNIX) $start, $end - let's call this duration.
@@ -329,10 +328,10 @@ function calculateFractionEffort($start, $end, $yearStart, $yearEnd) {
 			} else {
 				$currDur = $end - $start;
 			}
-		} else if (($end >= $yearStart) && ($end <= $yearEnd)) {
+		} elseif (($end >= $yearStart) && ($end <= $yearEnd)) {
 			# currStart before yearStart
 			$currDur = $end - $yearStart;
-		} else if (($end > $yearEnd) && ($start < $yearStart)) {
+		} elseif (($end > $yearEnd) && ($start < $yearStart)) {
 			$currDur = $yearDur;
 		}
 		return $currDur / $grantDur;
@@ -364,7 +363,7 @@ function addToGrantTotals($totals, $row, $instrument, $fraction, $usedBaseAwardN
 		} else {
 			// echo "SUMMARY GRANTS D '{$row['coeus_total_cost_budget_period']}' $baseAwardNumber: ".json_encode($usedBaseAwardNumbers)."\n";
 		}
-	} else if ($instrument == "exporter") {
+	} elseif ($instrument == "exporter") {
 		$awardNo = $row['exporter_full_project_num'];
 		$baseAwardNumber = getBaseAwardNumber($awardNo);
 		if ($row['exporter_org_name'] && preg_match("/vanderbilt/", strtolower($row['exporter_org_name']))) {
@@ -378,7 +377,7 @@ function addToGrantTotals($totals, $row, $instrument, $fraction, $usedBaseAwardN
 		} else {
 			$totals['nonvumc'] += floor($fraction * $row['exporter_total_cost']);
 		}
-	} else if ($instrument == "reporter") {
+	} elseif ($instrument == "reporter") {
 		$awardNo = $row['reporter_projectnumber'];
 		$baseAwardNumber = getBaseAwardNumber($awardNo);
 		if ($row['reporter_orgname'] && preg_match("/vanderbilt/", strtolower($row['reporter_orgname']))) {
@@ -392,7 +391,7 @@ function addToGrantTotals($totals, $row, $instrument, $fraction, $usedBaseAwardN
 		} else {
 			$totals['nonvumc'] += floor($fraction * $row['reporter_totalcostamount']);
 		}
-	} else if ($instrument == "custom_grant") {
+	} elseif ($instrument == "custom_grant") {
 		$awardNo = $row['custom_number'];
 		$baseAwardNumber = getBaseAwardNumber($awardNo);
 		if (!in_array($baseAwardNumber, $usedBaseAwardNumbers) && $row['custom_costs']) {
@@ -417,31 +416,31 @@ function getReporterTime($dt) {
 # gets the date from a RePORTER formatting (YYYY-MM-DDThh:mm:ss);
 # returns YYYY-MM-DD
 function getReporterDate($dt) {
-    return REDCapManagement::getReporterDateInYMD($dt);
+	return REDCapManagement::getReporterDateInYMD($dt);
 }
 
 function getCohorts($row) {
-	$ary = array();
+	$ary = [];
 
 	$years = getCohort($row);
 	$ary[] = $years;
 
-	$KL2s = array("VCTRSKL2", "KL2", "VPSD", "VCTRS");
+	$KL2s = ["VCTRSKL2", "KL2", "VPSD", "VCTRS"];
 	for ($i = 1; $i <= 15; $i++) {
 		# KL2 or Internal K
 		if (preg_match("/KL2/", $row['summary_award_sponsorno_'.$i]) || (in_array($row['summary_award_sponsorno_'.$i], $KL2s) && ($row['summary_award_type_'.$i] == 2)) || ($row['summary_award_type_'.$i] == 1)) {
 			if (!in_array("KL2s + Int_Ks", $ary)) {
 				$ary[] = "KL2s + Int_Ks";
 			}
-		} 
+		}
 	}
 
 	return $ary;
 }
 
 function getCohort($row) {
-	$begins = array(1998, 2003, 2008, 2013);
-	$ends = array(2002, 2007, 2012, 2017);
+	$begins = [1998, 2003, 2008, 2013];
+	$ends = [2002, 2007, 2012, 2017];
 	for ($i = 1; $i <= 15; $i++) {
 		if ($row['summary_award_date_'.$i] && ($row['summary_award_type_'.$i] >= 1) && ($row['summary_award_type_'.$i] <= 4)) {
 			$nodes = preg_split("/-/", $row['summary_award_date_'.$i]);
@@ -456,7 +455,7 @@ function getCohort($row) {
 }
 
 function json_encode_with_spaces($data) {
-    return REDCapManagement::json_encode_with_spaces($data);
+	return REDCapManagement::json_encode_with_spaces($data);
 }
 
 function YMD2MDY($ymd) {
@@ -480,16 +479,16 @@ function getAlphabetizedNames($token, $server) {
 	$lastNames = Download::lastnames($token, $server);
 	asort($lastNames);
 
-	$orderedNames = array();
+	$orderedNames = [];
 	foreach ($lastNames as $recordId => $lastName) {
 		$orderedNames[$recordId] = $names[$recordId];
-	} 
+	}
 	return $orderedNames;
 }
 
 function getNamesForRow($row) {
 	$firstNamesPre = preg_split("/[\s\-]/", $row['identifier_first_name']);
-	$firstNames = array();
+	$firstNames = [];
 	foreach ($firstNamesPre as $firstName) {
 		if (preg_match("/^\(.+\)$/", $firstName, $matches)) {
 			$match = preg_replace("/^\(/", "", $matches[0]);
@@ -502,7 +501,7 @@ function getNamesForRow($row) {
 
 	$lastNames = preg_split("/[\s\-]/", $row['identifier_last_name']);
 
-	$names = array($row['identifier_first_name']." ".$row['identifier_last_name']);
+	$names = [$row['identifier_first_name']." ".$row['identifier_last_name']];
 	foreach ($firstNames as $firstName) {
 		foreach ($lastNames as $lastName) {
 			if (!in_array($firstName." ".$lastName, $names)) {
@@ -518,10 +517,10 @@ function getNamesForRow($row) {
 # second item: the time the event has happened or will happen. NULL if Not Converted
 function getConvertedStatus($normativeRow) {
 	if ($normativeRow['summary_first_r01']) {
-		return array("Converted", $normativeRow['summary_first_r01']);
+		return ["Converted", $normativeRow['summary_first_r01']];
 	}
 	if ($normativeRow['summary_left_vanderbilt']) {
-		return array("Left", $normativeRow['summary_left_vanderbilt']);
+		return ["Left", $normativeRow['summary_left_vanderbilt']];
 	}
 	if ($normativeRow["summary_last_external_k"]) {
 		$today = time();
@@ -530,7 +529,7 @@ function getConvertedStatus($normativeRow) {
 		$endYear = date("Y", $start) + 5;
 		$end = strtotime($endYear."-".$endDate);
 
-		$extKs = array(3, 4);
+		$extKs = [3, 4];
 		for ($i = 1; $i <= 15; $i++) {
 			if (in_array($normativeRow['summary_award_type_'.$i], $extKs)) {
 				if ($normativeRow['summary_award_end_date_'.$i]) {
@@ -540,10 +539,10 @@ function getConvertedStatus($normativeRow) {
 					}
 				}
 			}
-		} 
+		}
 
 		if ($end > $today) {
-			return array("On External K", date("Y-m-d", $end));
+			return ["On External K", date("Y-m-d", $end)];
 		}
 	}
 	if ($normativeRow["summary_last_any_k"]) {
@@ -553,7 +552,7 @@ function getConvertedStatus($normativeRow) {
 		$endYear = date("Y", $start) + 3;
 		$end = strtotime($endYear."-".$endDate);
 
-		$allKs = array(1, 2, 3, 4);
+		$allKs = [1, 2, 3, 4];
 		for ($i = 1; $i <= 15; $i++) {
 			if (in_array($normativeRow['summary_award_type_'.$i], $allKs)) {
 				if ($normativeRow['summary_award_end_date_'.$i]) {
@@ -565,10 +564,10 @@ function getConvertedStatus($normativeRow) {
 			}
 		}
 		if ($end > $today) {
-			return array("On Internal K", date("Y-m-d", $end));
+			return ["On Internal K", date("Y-m-d", $end)];
 		}
 	}
-	return array("Not Converted", null);
+	return ["Not Converted", null];
 }
 
 function getNextRecord($record) {
@@ -584,11 +583,11 @@ function getNextRecord($record) {
 			}
 		}
 		$i++;
-	} 
+	}
 }
 
 function decodeCitations($citationStr) {
-	$citationAry = array();
+	$citationAry = [];
 	if ($citationStr) {
 		$citationAry = json_decode($citationStr, true);
 	}
@@ -610,10 +609,10 @@ function getSurveys() {
 	if ($emailSurveys && !empty($emailSurveys)) {
 		return $emailSurveys;
 	} else {
-		$default = array(
+		$default = [
 				"Initial Survey" => "check_date",
 				"Follow-Up Survey(s)" => "followup_date",
-				);
+				];
 		$json = json_encode($default);
 		saveEmailSetting(getSurveySettingName(), $default);
 		return $default;
@@ -641,13 +640,13 @@ function getEmailSetting($setting) {
 }
 
 function dateSort(&$data) {
-	$newData = array();
+	$newData = [];
 	foreach ($data as $key => $date) {
 		$newData[$key] = strtotime($date);
 	}
 	arsort($newData);
 
-	$returnData = array();
+	$returnData = [];
 	foreach ($newData as $key => $ts) {
 		$returnData[$key] = $data[$key];
 	}
@@ -662,10 +661,10 @@ function getAllSettings() {
 	global $module;
 	$data = $module->getProjectSetting(CareerDev::getGeneralSettingName());
 	if (is_array($data)) {
-		$isDate = TRUE;
+		$isDate = true;
 		foreach ($data as $key => $value) {
 			if (!preg_match("/^\d\d\d\d-\d+-\d+$/", $value)) {
-				$isDate = FALSE;
+				$isDate = false;
 				break;
 			}
 		}
@@ -674,11 +673,11 @@ function getAllSettings() {
 		}
 		return $data;
 	}
-	return array();
+	return [];
 }
 
 function convertTo1DArray($ary) {
-	$ary2 = array();
+	$ary2 = [];
 	foreach ($ary as $i => $id) {
 		array_push($ary2, $id);
 	}
@@ -689,33 +688,33 @@ function indexREDCapData($redcapData) {
 	return REDCapManagement::indexREDCapData($redcapData);
 }
 
-function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = array()) {
+function getIndexedRedcapData($token, $server, $fields, $cohort = "", $metadata = []) {
 	if ($token && $server && $fields && !empty($fields)) {
 		if ($cohort) {
 			$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 		} else {
-            $records = Download::recordIds($token, $server);
-        }
+			$records = Download::recordIds($token, $server);
+		}
 
 		$redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
 		return indexREDCapData($redcapData);
 	}
-	return array();
+	return [];
 }
 
 function getCohortSelect($token, $server, $pid) {
-    $page = Sanitizer::sanitize($_GET['page'] ?? "");
-    $prefix = Sanitizer::sanitize($_GET['prefix'] ?? "");
+	$page = Sanitizer::sanitize($_GET['page'] ?? "");
+	$prefix = Sanitizer::sanitize($_GET['prefix'] ?? "");
 	$html = "<select onchange='var base = \"?page=".urlencode($page)."&prefix=".urlencode($prefix)."&pid=$pid\"; if ($(this).val()) { window.location.href = base+\"&cohort=\" + $(this).val(); } else { window.location.href = base; }'>\n";
 	$cohorts = new Cohorts($token, $server, CareerDev::getModule());
 	$cohortTitles = $cohorts->getCohortTitles();
 	$html .= "<option value=''>---ALL---</option>\n";
 	foreach ($cohortTitles as $title) {
-	       $html .= "<option value='$title'";
-	       if ($title == $_GET['cohort']) {
-		      $html .= " selected";
-	       }
-	       $html .= ">$title</option>\n";
+		$html .= "<option value='$title'";
+		if ($title == $_GET['cohort']) {
+			$html .= " selected";
+		}
+		$html .= ">$title</option>\n";
 	}
 	$html .= "</select>\n";
 	return $html;
@@ -730,9 +729,9 @@ function getCohortHeaderHTML() {
 	$html .= "<a class='purple' href='".CareerDev::link("cohorts/exportCohort.php")."'>Export a Cohort</a>";
 	$html .= "<a class='green' href='".CareerDev::link("cohorts/profile.php")."'>Cohort Profiles</a>";
 	$html .= "<a class='green' href='".CareerDev::link("cohorts/selectCohort.php")."'>View Cohort Metrics</a>";
-    # this CSS gives dropdowns enough space to stay above the footer
-    # I put it here so that it'd only apply to cohorts, not other pages, which seem not to have this problem
-    $html .= "<style>
+	# this CSS gives dropdowns enough space to stay above the footer
+	# I put it here so that it'd only apply to cohorts, not other pages, which seem not to have this problem
+	$html .= "<style>
 #ui-id-1 { padding-bottom: 75px; }
 .ui-dialog #ui-id-1 { padding-bottom: 0; }
 </style>";
@@ -742,22 +741,22 @@ function getCohortHeaderHTML() {
 }
 
 function makeHTMLId($id) {
-    return REDCapManagement::makeHTMLId($id);
+	return REDCapManagement::makeHTMLId($id);
 }
 
 function makeSafe($htmlStr) {
-    $htmlStr = REDCapManagement::stripHTML($htmlStr);
-    $htmlStr = REDCapManagement::sanitize($htmlStr);
+	$htmlStr = REDCapManagement::stripHTML($htmlStr);
+	$htmlStr = REDCapManagement::sanitize($htmlStr);
 	return $htmlStr;
 }
 
 function changeTextColorOfLink($str, $color) {
-    return Links::changeTextColorOfLink($str, $color);
+	return Links::changeTextColorOfLink($str, $color);
 }
 
 function isAssoc($ary) {
 	if (empty($ary)) {
-		return FALSE;
+		return false;
 	}
 	return array_keys($ary) !== range(0, count($ary) - 1);
 }
@@ -768,22 +767,22 @@ function avg($ary) {
 
 function quartile($ary, $quartile) {
 	if (!is_int($quartile)) {
-		return FALSE;
+		return false;
 	}
 	if (($quartile < 0) || ($quartile > 4)) {
-		return FALSE;
+		return false;
 	}
 	if (isAssoc($ary)) {
-		return FALSE;
+		return false;
 	}
 
 	sort($ary);
 	$size = count($ary);
-	switch($quartile) {
+	switch ($quartile) {
 		case 0:
 			return $ary[0];
 		case 1:
-			$ary2 = array();
+			$ary2 = [];
 			for ($i = 0; $i < $size / 2; $i++) {
 				array_push($ary2, $ary[$i]);
 			}
@@ -791,7 +790,7 @@ function quartile($ary, $quartile) {
 		case 2:
 			return getMedian($ary);
 		case 3:
-			$ary2 = array();
+			$ary2 = [];
 			for ($i = (int) ceil($size / 2); $i < $size; $i++) {
 				array_push($ary2, $ary[$i]);
 			}
@@ -805,10 +804,10 @@ function getMedian($ary) {
 	sort($ary);
 	$size = count($ary);
 	if ($size % 2 == 0) {
-	    $idx = (int) ($size / 2);
+		$idx = (int) ($size / 2);
 		return ($ary[$idx - 1] + $ary[$idx]) / 2;
 	} else {
-        $idx = (int) (($size - 1) / 2);
+		$idx = (int) (($size - 1) / 2);
 		return $ary[$idx];
 	}
 }
@@ -829,12 +828,12 @@ function getFieldForCurrentEmailSetting() {
 
 function isEmailAddress($str) {
 	if (preg_match("/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/", $str)) {
-		return TRUE;
+		return true;
 	}
-	return FALSE;
+	return false;
 }
 
-function getBrandLogoName($currModule = NULL) {
+function getBrandLogoName($currModule = null) {
 	if ($currModule) {
 		return $currModule->getBrandLogoName();
 	}
@@ -842,7 +841,7 @@ function getBrandLogoName($currModule = NULL) {
 	return $module->getBrandLogoName();
 }
 
-function getBrandLogo($currModule = NULL) {
+function getBrandLogo($currModule = null) {
 	if ($currModule) {
 		return $currModule->getBrandLogo();
 	}
@@ -850,12 +849,22 @@ function getBrandLogo($currModule = NULL) {
 	return $module->getBrandLogo();
 }
 
-function makeHeaders($module = NULL, $token = NULL, $server = NULL, $pid = NULL, $tokenName = NULL) {
-	if (!$module) { global $module; }
-	if (!$token) { global $token; }
-	if (!$server) { global $server; }
-	if (!$pid) { global $pid; }
-	if (!$tokenName) { global $tokenName; }
+function makeHeaders($module = null, $token = null, $server = null, $pid = null, $tokenName = null) {
+	if (!$module) {
+		global $module;
+	}
+	if (!$token) {
+		global $token;
+	}
+	if (!$server) {
+		global $server;
+	}
+	if (!$pid) {
+		global $pid;
+	}
+	if (!$tokenName) {
+		global $tokenName;
+	}
 	if ($module) {
 		return $module->makeHeaders($token, $server, $pid, $tokenName);
 	}
@@ -874,14 +883,14 @@ function isFAQ() {
 # returns false if ineligible
 # else returns index (1-15) of summary award
 function findEligibleAward($row) {
-    if (isset($_GET['test'])) {
-        echo "findEligibleAward with ".$row['record_id']."<br>";
-    }
+	if (isset($_GET['test'])) {
+		echo "findEligibleAward with ".$row['record_id']."<br>";
+	}
 	if ($row['redcap_repeat_instance'] !== "") {
 		return false;
 	}
 
-	$rs = array(5, 6);
+	$rs = [5, 6];
 	$hasR = false;
 	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $rs)) {
@@ -889,13 +898,13 @@ function findEligibleAward($row) {
 		}
 	}
 	if ($hasR) {
-	    if (isset($_GET['test'])) {
-	        echo $row['record_id']." has R<br>";
-        }
+		if (isset($_GET['test'])) {
+			echo $row['record_id']." has R<br>";
+		}
 		return false;
 	}
 
-	$extKs = array(3, 4);
+	$extKs = [3, 4];
 	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $extKs)) {
 			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
@@ -903,31 +912,31 @@ function findEligibleAward($row) {
 			if ($row['summary_award_end_date_'.$i]) {
 				$intendedYearSpan = Grants::datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
 			}
-            if (isset($_GET['test'])) {
-                echo $row['record_id']." comparing $diff and $intendedYearSpan for $i<br>";
-            }
+			if (isset($_GET['test'])) {
+				echo $row['record_id']." comparing $diff and $intendedYearSpan for $i<br>";
+			}
 			if ($diff <= $intendedYearSpan) {
 				return $i;
 			}
 		}
 	}
 
-	$intKs = array(1, 2);
+	$intKs = [1, 2];
 	for ($i = 1; $i <= Grants::$MAX_GRANTS; $i++) {
 		if (in_array($row['summary_award_type_'.$i], $intKs)) {
 			$diff = Grants::datediff(date("Y-m-d"), $row['summary_award_date_'.$i], "y");
 			$intendedYearSpan = 0;
 			if ($row['summary_award_type_'.$i] == 1) {
-                $intendedYearSpan = Application::getInternalKLength();
-            } else if ($row['summary_award_type_'.$i] == 2) {
-			    $intendedYearSpan = Application::getK12KL2Length();
-            }
+				$intendedYearSpan = Application::getInternalKLength();
+			} elseif ($row['summary_award_type_'.$i] == 2) {
+				$intendedYearSpan = Application::getK12KL2Length();
+			}
 			if ($row['summary_award_end_date_'.$i]) {
 				$intendedYearSpan = Grants::datediff($row['summary_award_end_date_'.$i], $row['summary_award_date_'.$i], "y");
 			}
-            if (isset($_GET['test'])) {
-                echo $row['record_id']." comparing $diff and $intendedYearSpan for $i<br>";
-            }
+			if (isset($_GET['test'])) {
+				echo $row['record_id']." comparing $diff and $intendedYearSpan for $i<br>";
+			}
 			if ($diff <= $intendedYearSpan) {
 				return $i;
 			}
@@ -935,8 +944,8 @@ function findEligibleAward($row) {
 	}
 
 	if (isset($_GET['test'])) {
-        echo $row['record_id']." returning FALSE<br>";
-    }
+		echo $row['record_id']." returning FALSE<br>";
+	}
 	return false;
 }
 
@@ -944,82 +953,82 @@ function findEligibleAward($row) {
 # returns a set of REDCap data sorted by last name
 # if a record does not have a name, it is appended at the end
 function alphabetizeREDCapData($data) {
-    if (!is_array($data)) {
-        $data = json_decode($data, true);
-    }
-    if ($data) {
-        $names = array();
-        $excluded = array();
-        if (!isAssoc($data)) {
-            foreach ($data as $row) {
-                if ($row['identifier_last_name'] && $row['identifier_first_name']) {
-                    $names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
-                }
-            }
-            foreach ($data as $row) {
-                if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
-                    $excluded[] = $row['record_id'];
-                }
-            }
-        } else {
-            foreach ($data as $recordId => $rows) {
-                foreach ($rows as $row) {
-                    if ($row['identifier_last_name'] && $row['identifier_first_name']) {
-                        $names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
-                    }
-                }
-            }
-            foreach ($data as $recordId => $rows) {
-                foreach ($rows as $row) {
-                    if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
-                        $excluded[] = $row['record_id'];
-                    }
-                }
-            }
-        }
-        asort($names);
+	if (!is_array($data)) {
+		$data = json_decode($data, true);
+	}
+	if ($data) {
+		$names = [];
+		$excluded = [];
+		if (!isAssoc($data)) {
+			foreach ($data as $row) {
+				if ($row['identifier_last_name'] && $row['identifier_first_name']) {
+					$names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
+				}
+			}
+			foreach ($data as $row) {
+				if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
+					$excluded[] = $row['record_id'];
+				}
+			}
+		} else {
+			foreach ($data as $recordId => $rows) {
+				foreach ($rows as $row) {
+					if ($row['identifier_last_name'] && $row['identifier_first_name']) {
+						$names[$row['record_id']] = $row['identifier_last_name'].", ".$row['identifier_first_name'];
+					}
+				}
+			}
+			foreach ($data as $recordId => $rows) {
+				foreach ($rows as $row) {
+					if (!in_array($row['record_id'], $excluded) && !isset($names[$row['record_id']])) {
+						$excluded[] = $row['record_id'];
+					}
+				}
+			}
+		}
+		asort($names);
 
-        $returnData = array();
-        foreach ($names as $recordId => $name) {
-            if (!isAssoc($data)) {
-                foreach ($data as $row) {
-                    if ($recordId == $row['record_id']) {
-                        $returnData[] = $row;
-                    }
-                }
-            } else {
-                foreach ($data as $recordIdData => $rows) {
-                    if ($recordId == $recordIdData) {
-                        $returnData[$recordId] = $rows;
-                    }
-                }
-            }
-        }
-        foreach ($excluded as $recordId) {
-            if (!isAssoc($data)) {
-                foreach ($data as $row) {
-                    if ($recordId == $row['record_id']) {
-                        $returnData[] = $row;
-                    }
-                }
-            } else {
-                foreach ($data as $recordIdData => $rows) {
-                    if ($recordId == $recordIdData) {
-                        $returnData[$recordId] = $rows;
-                    }
-                }
-            }
-        }
-        return $returnData;
-    }
-    return $data;
+		$returnData = [];
+		foreach ($names as $recordId => $name) {
+			if (!isAssoc($data)) {
+				foreach ($data as $row) {
+					if ($recordId == $row['record_id']) {
+						$returnData[] = $row;
+					}
+				}
+			} else {
+				foreach ($data as $recordIdData => $rows) {
+					if ($recordId == $recordIdData) {
+						$returnData[$recordId] = $rows;
+					}
+				}
+			}
+		}
+		foreach ($excluded as $recordId) {
+			if (!isAssoc($data)) {
+				foreach ($data as $row) {
+					if ($recordId == $row['record_id']) {
+						$returnData[] = $row;
+					}
+				}
+			} else {
+				foreach ($data as $recordIdData => $rows) {
+					if ($recordId == $recordIdData) {
+						$returnData[$recordId] = $rows;
+					}
+				}
+			}
+		}
+		return $returnData;
+	}
+	return $data;
 }
 
 function filterForCoeusFields($fields) {
 	$hasCoeus = CareerDev::getSetting("hasCoeus");
 	$newFields = $fields;
 	if ($hasCoeus) {
-		$newFields = array();
+		$newFields = [];
 		foreach ($fields as $field) {
 			if (!preg_match("/^coeus_/", $field)) {
 				array_push($newFields, $field);
@@ -1038,7 +1047,7 @@ function makeHelpLink() {
 }
 
 function getFieldsOfType($metadata, $fieldType, $validationType = "") {
-    return REDCapManagement::getFieldsOfType($metadata, $fieldType, $validationType);
+	return REDCapManagement::getFieldsOfType($metadata, $fieldType, $validationType);
 }
 
 function findMaxInstance($data, $instrument) {
@@ -1052,14 +1061,14 @@ function findMaxInstance($data, $instrument) {
 }
 
 function getMetadataRow($field, $metadata) {
-    return REDCapManagement::getRowForFieldFromMetadata($field, $metadata);
+	return REDCapManagement::getRowForFieldFromMetadata($field, $metadata);
 }
 
 # return array
 function filterFields($fields, $metadata) {
-	$filtered = array();
+	$filtered = [];
 
-	$metadataFields = array();
+	$metadataFields = [];
 	foreach ($metadata as $row) {
 		array_push($metadataFields, $row['field_name']);
 	}
@@ -1074,11 +1083,11 @@ function filterFields($fields, $metadata) {
 
 function queueUpInitialEmail($record) {
 	global $token, $server, $pid;
-    return;    // turned off for now
+	return;    // turned off for now
 
 	$dateToEmail1 = date("Y-m-d", 14 * 24 * 3600 + time())." 09:15:00";
 	$dateToEmail2 = date("Y-m-d", 28 * 24 * 3600 + time())." 09:15:00";
-	$recordData = Download::records($token, $server, array($record));
+	$recordData = Download::records($token, $server, [$record]);
 	$name = "";
 	$email = "";
 	foreach ($recordData as $row) {
@@ -1100,7 +1109,7 @@ function queueUpInitialEmail($record) {
 		$emailManager = new EmailManager($token, $server, $pid, Application::getModule(), $metadata);
 		$settingName = CareerDev::getEmailName($record);
 		if (!$emailManager->hasItem($settingName)) {
-			$links = EmailManager::getSurveyLinks($pid, array($record), "initial_survey");
+			$links = EmailManager::getSurveyLinks($pid, [$record], "initial_survey");
 			if (isset($links[$record])) {
 				$link = $links[$record];
 			} else {
@@ -1121,14 +1130,14 @@ function queueUpInitialEmail($record) {
 			}
 		}
 	} else {
-	    # make silent because someone might not save name and email
-        Application::log("Could not queue up initial email for Record $record because the name and email are not specified!");
+		# make silent because someone might not save name and email
+		Application::log("Could not queue up initial email for Record $record because the name and email are not specified!");
 		// throw new \Exception("Could not queue up initial email for Record $record because the name and email are not specified!");
 	}
 }
 
 function cleanOutJSONs($metadata) {
-	$fieldsToClean = array("identifier_vunet", "identifier_first_name");
+	$fieldsToClean = ["identifier_vunet", "identifier_first_name"];
 	for ($i = 0; $i < count($metadata); $i++) {
 		if (in_array($metadata[$i]['field_name'], $fieldsToClean)) {
 			$metadata[$i]['field_annotation'] = "[]";
@@ -1138,37 +1147,37 @@ function cleanOutJSONs($metadata) {
 }
 
 function resetRepeatingInstruments($srcPid, $destPid, $destMetadata) {
-    $srcEventId = REDCapManagement::getEventIdForClassical($srcPid);
-    $destEventId = REDCapManagement::getEventIdForClassical($destPid);
-    $srcRepeatingForms = DataDictionaryManagement::getRepeatingFormsAndLabelsForProject($srcEventId);
-    $destRepeatingForms = DataDictionaryManagement::getRepeatingFormsAndLabelsForProject($destEventId);
-    $destForms = DataDictionaryManagement::getFormsFromMetadata($destMetadata);
-    $newRepeatingForms = [];
-    foreach ($srcRepeatingForms as $form => $label) {
-        if (in_array($form, $destForms) && !isset($destRepeatingForms[$form])) {
-            $destRepeatingForms[$form] = $label;
-            $newRepeatingForms[] = $form;
-        }
-    }
-    if (!empty($newRepeatingForms)) {
-        DataDictionaryManagement::setupRepeatingForms($destEventId, $destRepeatingForms);
-        Application::log("Uploading repeating instruments: ".implode(", ", $newRepeatingForms), $destPid);
-    }
+	$srcEventId = REDCapManagement::getEventIdForClassical($srcPid);
+	$destEventId = REDCapManagement::getEventIdForClassical($destPid);
+	$srcRepeatingForms = DataDictionaryManagement::getRepeatingFormsAndLabelsForProject($srcEventId);
+	$destRepeatingForms = DataDictionaryManagement::getRepeatingFormsAndLabelsForProject($destEventId);
+	$destForms = DataDictionaryManagement::getFormsFromMetadata($destMetadata);
+	$newRepeatingForms = [];
+	foreach ($srcRepeatingForms as $form => $label) {
+		if (in_array($form, $destForms) && !isset($destRepeatingForms[$form])) {
+			$destRepeatingForms[$form] = $label;
+			$newRepeatingForms[] = $form;
+		}
+	}
+	if (!empty($newRepeatingForms)) {
+		DataDictionaryManagement::setupRepeatingForms($destEventId, $destRepeatingForms);
+		Application::log("Uploading repeating instruments: ".implode(", ", $newRepeatingForms), $destPid);
+	}
 }
 
 function resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $destMetadata) {
-    $destServer = Sanitizer::sanitizeURL($destServer);
-    $srcServer = Sanitizer::sanitizeURL($srcServer);
-    if (!$destServer || !$srcServer) {
-        throw new \Exception("Invalid URL");
-    }
+	$destServer = Sanitizer::sanitizeURL($destServer);
+	$srcServer = Sanitizer::sanitizeURL($srcServer);
+	if (!$destServer || !$srcServer) {
+		throw new \Exception("Invalid URL");
+	}
 
-    $data = array(
+	$data = [
 		'token' => $srcToken,
 		'content' => 'repeatingFormsEvents',
 		'format' => 'json',
 		'returnFormat' => 'json'
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $srcServer);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1183,23 +1192,23 @@ function resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $des
 	$output = (string) curl_exec($ch);
 	curl_close($ch);
 
-    $destMetadataForms = DataDictionaryManagement::getFormsFromMetadata($destMetadata);
+	$destMetadataForms = DataDictionaryManagement::getFormsFromMetadata($destMetadata);
 	Application::log("Metadata forms: ".implode(", ", $destMetadataForms));
-	$data = json_decode($output, TRUE);
+	$data = json_decode($output, true);
 	$newData = [];
 	foreach ($data as $row) {
-	    if (in_array($row['form_name'], $destMetadataForms)) {
-	        $newData[] = $row;
-        }
-    }
+		if (in_array($row['form_name'], $destMetadataForms)) {
+			$newData[] = $row;
+		}
+	}
 
-	$data = array(
+	$data = [
 		'token' => $destToken,
 		'content' => 'repeatingFormsEvents',
 		'format' => 'json',
 		'data' => json_encode($newData),
 		'returnFormat' => 'json'
-	);
+	];
 	$ch = curl_init();
 	curl_setopt($ch, CURLOPT_URL, $destServer);
 	curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -1213,427 +1222,426 @@ function resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $des
 	curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 	$output = (string) curl_exec($ch);
 	curl_close($ch);
-	return json_decode($output, TRUE);
+	return json_decode($output, true);
 }
 
 function deleteRecords($token, $server, $records) {
-    return Upload::deleteRecords($token, $server, $records);
+	return Upload::deleteRecords($token, $server, $records);
 }
 
 function copyExternalModuleSettings($module, $srcPid, $destPid, $overwriteList, $omitList) {
-    $projectSettings = $module->getProjectSettings($srcPid);
-    $copiedKeys = [];
-    foreach ($projectSettings as $key => $value) {
-        if (!in_array($key, $omitList)) {
-            $copiedKeys[] = $key;
-            if (isset($overwriteList[$key])) {
-                $module->setProjectSetting($key, $overwriteList[$key], $destPid);
-            } else if (isset($value['value'])) {
-                $module->setProjectSetting($key, $value['value'], $destPid);
-            } else {
-                $module->setProjectSetting($key, $value, $destPid);
-            }
-        }
-    }
-    Application::log("Copied External Module Settings from $srcPid to $destPid: ".implode(", ", $copiedKeys));
+	$projectSettings = $module->getProjectSettings($srcPid);
+	$copiedKeys = [];
+	foreach ($projectSettings as $key => $value) {
+		if (!in_array($key, $omitList)) {
+			$copiedKeys[] = $key;
+			if (isset($overwriteList[$key])) {
+				$module->setProjectSetting($key, $overwriteList[$key], $destPid);
+			} elseif (isset($value['value'])) {
+				$module->setProjectSetting($key, $value['value'], $destPid);
+			} else {
+				$module->setProjectSetting($key, $value, $destPid);
+			}
+		}
+	}
+	Application::log("Copied External Module Settings from $srcPid to $destPid: ".implode(", ", $copiedKeys));
 }
 
 function uploadProjectSettings($token, $server, $title) {
-    $redcapData = [
-        "is_longitudinal" => 0,
-        "surveys_enabled" => 1,
-        "record_autonumbering_enabled" => 1,
-        "project_title" => Application::getProgramName()." - ".$title,
-        "custom_record_label" => "[identifier_first_name] [identifier_last_name]",
-    ];
-    $feedback = Upload::projectSettings($redcapData, $token, $server);
-    return $feedback;
+	$redcapData = [
+		"is_longitudinal" => 0,
+		"surveys_enabled" => 1,
+		"record_autonumbering_enabled" => 1,
+		"project_title" => Application::getProgramName()." - ".$title,
+		"custom_record_label" => "[identifier_first_name] [identifier_last_name]",
+	];
+	$feedback = Upload::projectSettings($redcapData, $token, $server);
+	return $feedback;
 }
 
 
 function getPIDFromToken($token, $server) {
-    return REDCapManagement::getPIDFromToken($token, $server);
+	return REDCapManagement::getPIDFromToken($token, $server);
 }
 
 function getEventIdForClassical($projectId) {
-    return REDCapManagement::getEventIdForClassical($projectId);
+	return REDCapManagement::getEventIdForClassical($projectId);
 }
 
 function getExternalModuleId($prefix) {
-    return REDCapManagement::getExternalModuleId($prefix);
+	return REDCapManagement::getExternalModuleId($prefix);
 }
 
 function setupModuleSettings($projectId, $fields) {
-    foreach ($fields as $field => $value) {
-        CareerDev::setSetting($field, $value, $projectId);
-    }
+	foreach ($fields as $field => $value) {
+		CareerDev::setSetting($field, $value, $projectId);
+	}
 }
 
 function copyEntireProject($srcToken, $destToken, $server, $metadata, $cohort) {
-    if ($srcToken == $destToken) {
-        return ["error" => "The destination project is the same as the source project. This should never happen! Aborting."];
-    }
-    $allFeedback = array();
-    $destRecords = Download::recordIds($destToken, $server);
-    if (!empty($destRecords)) {
-        $feedback = Upload::deleteRecords($destToken, $server, $destRecords);
-        CareerDev::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
-        $allFeedback[] = $feedback;
-    }
+	if ($srcToken == $destToken) {
+		return ["error" => "The destination project is the same as the source project. This should never happen! Aborting."];
+	}
+	$allFeedback = [];
+	$destRecords = Download::recordIds($destToken, $server);
+	if (!empty($destRecords)) {
+		$feedback = Upload::deleteRecords($destToken, $server, $destRecords);
+		CareerDev::log("Delete project: ".count($destRecords)." records: ".json_encode($feedback));
+		$allFeedback[] = $feedback;
+	}
 
-    # turn off autonumbering in new project
-    $projectSettings = [
-        "record_autonumbering_enabled" => 0,
-        "project_title" => Application::getProgramName()." - ".$cohort,
-    ];
-    Upload::projectSettings($projectSettings, $destToken, $server);
+	# turn off autonumbering in new project
+	$projectSettings = [
+		"record_autonumbering_enabled" => 0,
+		"project_title" => Application::getProgramName()." - ".$cohort,
+	];
+	Upload::projectSettings($projectSettings, $destToken, $server);
 
-    $feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $server);
-    $calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
-    $timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
+	$feedback = Upload::metadata(cleanOutJSONs($metadata), $destToken, $server);
+	$calcFields = REDCapManagement::getFieldsOfType($metadata, "calc");
+	$timeFields = REDCapManagement::getFieldsOfType($metadata, "text", "datetime_ymd");
 
-    $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $server, $destToken, $server, $metadata);
-    CareerDev::log("Reset Repeating Instruments: ".json_encode($feedback));
+	$feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $server, $destToken, $server, $metadata);
+	CareerDev::log("Reset Repeating Instruments: ".json_encode($feedback));
 
-    $cohortRecords = Download::cohortRecordIds($srcToken, $server, CareerDev::getModule(), $cohort);
-    foreach ($cohortRecords as $record) {
-        $recordData = Download::records($srcToken, $server, array($record));
-        $newRecordData = array();
-        foreach ($recordData as $row) {
-            $newRow = array();
-            foreach ($row as $field => $value) {
-                if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
-                    $newRow[$field] = $value;
-                }
-            }
-            if (!empty($newRow)) {
-                $newRecordData[] = $newRow;
-            }
-        }
-        if (!empty($newRecordData)) {
-            try {
-                $feedback = Upload::rows($newRecordData, $destToken, $server);
-                CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
-                $allFeedback[] = $feedback;
-            } catch (\Exception $e) {
-                # sometimes REDCap might miss some choices, so skip the record with the problem
-                $allFeedback[] = ["error" => $e->getMessage(), "record" => $record];
-            }
-        }
-    }
-    return $allFeedback;
+	$cohortRecords = Download::cohortRecordIds($srcToken, $server, CareerDev::getModule(), $cohort);
+	foreach ($cohortRecords as $record) {
+		$recordData = Download::records($srcToken, $server, [$record]);
+		$newRecordData = [];
+		foreach ($recordData as $row) {
+			$newRow = [];
+			foreach ($row as $field => $value) {
+				if (!in_array($field, $calcFields) && !in_array($field, $timeFields)) {
+					$newRow[$field] = $value;
+				}
+			}
+			if (!empty($newRow)) {
+				$newRecordData[] = $newRow;
+			}
+		}
+		if (!empty($newRecordData)) {
+			try {
+				$feedback = Upload::rows($newRecordData, $destToken, $server);
+				CareerDev::log("Copy project: Record $record: ".json_encode($feedback));
+				$allFeedback[] = $feedback;
+			} catch (\Exception $e) {
+				# sometimes REDCap might miss some choices, so skip the record with the problem
+				$allFeedback[] = ["error" => $e->getMessage(), "record" => $record];
+			}
+		}
+	}
+	return $allFeedback;
 }
 
-function copyBackAnyMentoringAgreements($srcToken, $destToken, $destServer, $destMetadata, $cohort = "all", $srcServer = NULL) {
-    Application::log("copyBackAnyMentoringAgreements");
-    if (!$srcServer) {
-        $srcServer = $destServer;
-    }
-    $srcMetadata = Download::metadata($srcToken, $srcServer);
-    $srcMetadataForms = REDCapManagement::getFormsFromMetadata($srcMetadata);
-    $destMetadataForms = REDCapManagement::getFormsFromMetadata($destMetadata);
+function copyBackAnyMentoringAgreements($srcToken, $destToken, $destServer, $destMetadata, $cohort = "all", $srcServer = null) {
+	Application::log("copyBackAnyMentoringAgreements");
+	if (!$srcServer) {
+		$srcServer = $destServer;
+	}
+	$srcMetadata = Download::metadata($srcToken, $srcServer);
+	$srcMetadataForms = REDCapManagement::getFormsFromMetadata($srcMetadata);
+	$destMetadataForms = REDCapManagement::getFormsFromMetadata($destMetadata);
 
-    $relevantFormsWithFields = [
-        "mentoring_agreement" => REDCapManagement::getFieldsFromMetadata($srcMetadata, "mentoring_agreement"),
-    ];
-    $evalFields = [
-        "mentoring_agreement" => ["mentoring_last_update", "mentoring_userid", "mentoring_start"],
-    ];
-    if (in_array("mentoring_agreement_evaluations", $srcMetadataForms)) {
-        $fields = REDCapManagement::getFieldsFromMetadata($srcMetadata, "mentoring_agreement_evaluations");
-        $relevantFormsWithFields["mentoring_agreement_evaluations"] = $fields;
-        $evalFields["mentoring_agreement_evaluations"] = $fields;
-    }
-    $srcRecords = Download::recordIds($srcToken, $srcServer);
-    $destRecords = Download::recordIds($destToken, $destServer);
-    if ($cohort == "all") {
-        $srcCohortRecords = $srcRecords;
-        $destCohortRecords = $destRecords;
-    } else {
-        $srcCohorts = new Cohorts($srcToken, $srcServer, Application::getModule());
-        if (in_array($cohort, $srcCohorts->getCohortNames())) {
-            $srcCohortRecords = Download::cohortRecordIds($srcToken, $srcServer, Application::getModule(), $cohort);
-        } else {
-            $srcCohortRecords = $srcRecords;
-        }
-        $destCohortRecords = Download::cohortRecordIds($destToken, $destServer, Application::getModule(), $cohort);
-    }
-    foreach ($relevantFormsWithFields as $instrument => $fields) {
-        if (in_array($instrument, $destMetadataForms)) {
-            if (!in_array("record_id", $fields)) {
-                $fields[] = "record_id";
-                $fields[] = "summary_mentor";
-                $fields[] = "summary_mentor_userid";
-            }
-            foreach ($srcCohortRecords as $recordId) {
-                if (in_array($recordId, $destCohortRecords)) {
-                    $destUploadRows = [];
-                    $redcapData = [ "src" => [], "dest" => []];
-                    $redcapData["src"] = Download::fieldsForRecords($srcToken, $srcServer, $fields, [$recordId]);
-                    $redcapData["dest"] = Download::fieldsForRecords($destToken, $destServer, $fields, [$recordId]);
+	$relevantFormsWithFields = [
+		"mentoring_agreement" => REDCapManagement::getFieldsFromMetadata($srcMetadata, "mentoring_agreement"),
+	];
+	$evalFields = [
+		"mentoring_agreement" => ["mentoring_last_update", "mentoring_userid", "mentoring_start"],
+	];
+	if (in_array("mentoring_agreement_evaluations", $srcMetadataForms)) {
+		$fields = REDCapManagement::getFieldsFromMetadata($srcMetadata, "mentoring_agreement_evaluations");
+		$relevantFormsWithFields["mentoring_agreement_evaluations"] = $fields;
+		$evalFields["mentoring_agreement_evaluations"] = $fields;
+	}
+	$srcRecords = Download::recordIds($srcToken, $srcServer);
+	$destRecords = Download::recordIds($destToken, $destServer);
+	if ($cohort == "all") {
+		$srcCohortRecords = $srcRecords;
+		$destCohortRecords = $destRecords;
+	} else {
+		$srcCohorts = new Cohorts($srcToken, $srcServer, Application::getModule());
+		if (in_array($cohort, $srcCohorts->getCohortNames())) {
+			$srcCohortRecords = Download::cohortRecordIds($srcToken, $srcServer, Application::getModule(), $cohort);
+		} else {
+			$srcCohortRecords = $srcRecords;
+		}
+		$destCohortRecords = Download::cohortRecordIds($destToken, $destServer, Application::getModule(), $cohort);
+	}
+	foreach ($relevantFormsWithFields as $instrument => $fields) {
+		if (in_array($instrument, $destMetadataForms)) {
+			if (!in_array("record_id", $fields)) {
+				$fields[] = "record_id";
+				$fields[] = "summary_mentor";
+				$fields[] = "summary_mentor_userid";
+			}
+			foreach ($srcCohortRecords as $recordId) {
+				if (in_array($recordId, $destCohortRecords)) {
+					$destUploadRows = [];
+					$redcapData = [ "src" => [], "dest" => []];
+					$redcapData["src"] = Download::fieldsForRecords($srcToken, $srcServer, $fields, [$recordId]);
+					$redcapData["dest"] = Download::fieldsForRecords($destToken, $destServer, $fields, [$recordId]);
 
-                    $srcMentor = REDCapManagement::findField($redcapData['src'], $recordId, "summary_mentor");
-                    $destMentor = REDCapManagement::findField($redcapData['dest'], $recordId, "summary_mentor");
-                    $srcMentorUserid = REDCapManagement::findField($redcapData['src'], $recordId, "summary_mentor_userid");
-                    $destMentorUserid = REDCapManagement::findField($redcapData['dest'], $recordId, "summary_mentor_userid");
+					$srcMentor = REDCapManagement::findField($redcapData['src'], $recordId, "summary_mentor");
+					$destMentor = REDCapManagement::findField($redcapData['dest'], $recordId, "summary_mentor");
+					$srcMentorUserid = REDCapManagement::findField($redcapData['src'], $recordId, "summary_mentor_userid");
+					$destMentorUserid = REDCapManagement::findField($redcapData['dest'], $recordId, "summary_mentor_userid");
 
-                    if (($srcMentor != $destMentor) || ($srcMentorUserid != $destMentorUserid)) {
-                        $regex = "/\s*[,;]\s*/";
-                        $mentors = [
-                            "src" => $srcMentor ? preg_split($regex, $srcMentor) : [],
-                            "dest" => $destMentor ? preg_split($regex, $destMentor) : [],
-                        ];
-                        $mentorUserids = [
-                            "src" => $srcMentorUserid ? preg_split($regex, $srcMentorUserid) : [],
-                            "dest" => $destMentorUserid ? preg_split($regex, $destMentorUserid) : [],
-                        ];
+					if (($srcMentor != $destMentor) || ($srcMentorUserid != $destMentorUserid)) {
+						$regex = "/\s*[,;]\s*/";
+						$mentors = [
+							"src" => $srcMentor ? preg_split($regex, $srcMentor) : [],
+							"dest" => $destMentor ? preg_split($regex, $destMentor) : [],
+						];
+						$mentorUserids = [
+							"src" => $srcMentorUserid ? preg_split($regex, $srcMentorUserid) : [],
+							"dest" => $destMentorUserid ? preg_split($regex, $destMentorUserid) : [],
+						];
 
-                        $mentors['new'] = array_unique(array_merge($mentors['src'], $mentors['dest']));
-                        $mentorUserids['new'] = array_unique(array_merge($mentorUserids['src'], $mentorUserids['dest']));
-                        $blankRow = [
-                            "record_id" => $recordId,
-                            "redcap_repeat_instrument" => "",
-                            "redcap_repeat_instance" => "",
-                        ];
-                        $uploadRow = [
-                            'src' => $blankRow,
-                            'dest' => $blankRow,
-                        ];
-                        foreach (array_keys($uploadRow) as $category) {
-                            if (count($mentors['new']) > count($mentors[$category])) {
-                                $uploadRow[$category]["summary_mentor"] = implode(", ", $mentors['new']);
-                            }
-                            if (count($mentorUserids['new']) > count($mentorUserids[$category])) {
-                                $uploadRow[$category]["summary_mentor_userid"] = implode(", ", $mentorUserids['new']);
-                            }
-                        }
-                        if (count($uploadRow['dest']) > count($blankRow)) {
-                            $destUploadRows[] = $uploadRow['dest'];
-                        }
-                        if (count($uploadRow['src']) > count($blankRow)) {
-                            Upload::oneRow($uploadRow['src'], $srcToken, $srcServer);
-                        }
-                    }
+						$mentors['new'] = array_unique(array_merge($mentors['src'], $mentors['dest']));
+						$mentorUserids['new'] = array_unique(array_merge($mentorUserids['src'], $mentorUserids['dest']));
+						$blankRow = [
+							"record_id" => $recordId,
+							"redcap_repeat_instrument" => "",
+							"redcap_repeat_instance" => "",
+						];
+						$uploadRow = [
+							'src' => $blankRow,
+							'dest' => $blankRow,
+						];
+						foreach (array_keys($uploadRow) as $category) {
+							if (count($mentors['new']) > count($mentors[$category])) {
+								$uploadRow[$category]["summary_mentor"] = implode(", ", $mentors['new']);
+							}
+							if (count($mentorUserids['new']) > count($mentorUserids[$category])) {
+								$uploadRow[$category]["summary_mentor_userid"] = implode(", ", $mentorUserids['new']);
+							}
+						}
+						if (count($uploadRow['dest']) > count($blankRow)) {
+							$destUploadRows[] = $uploadRow['dest'];
+						}
+						if (count($uploadRow['src']) > count($blankRow)) {
+							Upload::oneRow($uploadRow['src'], $srcToken, $srcServer);
+						}
+					}
 
-                    $instances = [];
-                    foreach ($redcapData as $category => $rows) {
-                        $instances[$category] = [];
-                        foreach ($rows as $row) {
-                            if ($row['redcap_repeat_instrument'] == $instrument) {
-                                $instances[$category][] = $row['redcap_repeat_instance'];
-                            }
-                        }
-                    }
-                    foreach ($redcapData['src'] as $srcRow) {
-                        if ($srcRow['redcap_repeat_instrument'] == $instrument) {
-                            $foundRow = FALSE;
-                            $fieldsToCompare = $evalFields[$instrument] ?? [];
-                            foreach ($redcapData['dest'] as $destRow) {
-                                $allFieldsSame = FALSE;
-                                if ($destRow['redcap_repeat_instrument'] == $instrument) {
-                                    $allFieldsSame = !empty($fieldsToCompare);
-                                    foreach ($fieldsToCompare as $field) {
-                                        if ($srcRow[$field] != $destRow[$field]) {
-                                            $allFieldsSame = FALSE;
-                                            break;
-                                        }
-                                    }
-                                }
-                                if ($allFieldsSame) {
-                                    $foundRow = TRUE;
-                                }
-                            }
-                            if (!$foundRow) {
-                                # copy from src to dest
-                                $newDestInstance = $srcRow['redcap_repeat_instance'];
-                                if (in_array($newDestInstance, $instances['dest'])) {
-                                    $destInstances = [];
-                                    foreach ($instances['dest'] as $instance) {
-                                        if (is_numeric($instance)) {
-                                            $destInstances[] = $instance;
-                                        }
-                                    }
-                                    if (!empty($destInstances)) {
-                                        $destMax = max($destInstances);
-                                    } else {
-                                        $destMax = 0;
-                                    }
-                                    $newDestInstance = $destMax + 1;
-                                }
-                                $instances['dest'][] = $newDestInstance;
-                                $destUploadRow = $srcRow;
-                                $destUploadRow["redcap_repeat_instance"] = $newDestInstance;
-                                $destUploadRow[$instrument."_complete"] = "2";
-                                $destUploadRows[] = $destUploadRow;
-                            }
-                        }
-                    }
-                    if (!empty($destUploadRows)) {
-                        $uploadInstances = [];
-                        foreach ($destUploadRows as $row) {
-                            if ($row['redcap_repeat_instance']) {
-                                $uploadInstances[] = $row['redcap_repeat_instance'];
-                            } else {
-                                $uploadInstances[] = "[blank]";
-                            }
-                        }
-                        Application::log("Record $recordId: Copying instances on $instrument to destination: ".implode(", ", $uploadInstances));
-                        Upload::rows($destUploadRows, $destToken, $destServer);
-                    }
-                }
-            }
-        }
-    }
+					$instances = [];
+					foreach ($redcapData as $category => $rows) {
+						$instances[$category] = [];
+						foreach ($rows as $row) {
+							if ($row['redcap_repeat_instrument'] == $instrument) {
+								$instances[$category][] = $row['redcap_repeat_instance'];
+							}
+						}
+					}
+					foreach ($redcapData['src'] as $srcRow) {
+						if ($srcRow['redcap_repeat_instrument'] == $instrument) {
+							$foundRow = false;
+							$fieldsToCompare = $evalFields[$instrument] ?? [];
+							foreach ($redcapData['dest'] as $destRow) {
+								$allFieldsSame = false;
+								if ($destRow['redcap_repeat_instrument'] == $instrument) {
+									$allFieldsSame = !empty($fieldsToCompare);
+									foreach ($fieldsToCompare as $field) {
+										if ($srcRow[$field] != $destRow[$field]) {
+											$allFieldsSame = false;
+											break;
+										}
+									}
+								}
+								if ($allFieldsSame) {
+									$foundRow = true;
+								}
+							}
+							if (!$foundRow) {
+								# copy from src to dest
+								$newDestInstance = $srcRow['redcap_repeat_instance'];
+								if (in_array($newDestInstance, $instances['dest'])) {
+									$destInstances = [];
+									foreach ($instances['dest'] as $instance) {
+										if (is_numeric($instance)) {
+											$destInstances[] = $instance;
+										}
+									}
+									if (!empty($destInstances)) {
+										$destMax = max($destInstances);
+									} else {
+										$destMax = 0;
+									}
+									$newDestInstance = $destMax + 1;
+								}
+								$instances['dest'][] = $newDestInstance;
+								$destUploadRow = $srcRow;
+								$destUploadRow["redcap_repeat_instance"] = $newDestInstance;
+								$destUploadRow[$instrument."_complete"] = "2";
+								$destUploadRows[] = $destUploadRow;
+							}
+						}
+					}
+					if (!empty($destUploadRows)) {
+						$uploadInstances = [];
+						foreach ($destUploadRows as $row) {
+							if ($row['redcap_repeat_instance']) {
+								$uploadInstances[] = $row['redcap_repeat_instance'];
+							} else {
+								$uploadInstances[] = "[blank]";
+							}
+						}
+						Application::log("Record $recordId: Copying instances on $instrument to destination: ".implode(", ", $uploadInstances));
+						Upload::rows($destUploadRows, $destToken, $destServer);
+					}
+				}
+			}
+		}
+	}
 }
 
 function getValidProjectSettingsForUpload() {
-    return [
-        "project_title",
-        "project_language",
-        "purpose",
-        "purpose_other",
-        "project_notes",
-        "custom_record_label",
-        "secondary_unique_field",
-        "is_longitudinal",
-        "surveys_enabled",
-        "scheduling_enabled",
-        "record_autonumbering_enabled",
-        "randomization_enabled",
-        "project_irb_number",
-        "project_grant_number",
-        "project_pi_firstname",
-        "project_pi_lastname",
-        "display_today_now_button",
-    ];
+	return [
+		"project_title",
+		"project_language",
+		"purpose",
+		"purpose_other",
+		"project_notes",
+		"custom_record_label",
+		"secondary_unique_field",
+		"is_longitudinal",
+		"surveys_enabled",
+		"scheduling_enabled",
+		"record_autonumbering_enabled",
+		"randomization_enabled",
+		"project_irb_number",
+		"project_grant_number",
+		"project_pi_firstname",
+		"project_pi_lastname",
+		"display_today_now_button",
+	];
 }
 
-function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, $restartNumbering)
-{
-    $srcPid = Application::getPID($srcToken);
-    if ($srcServer == $destServer) {
-        $destPid = REDCapManagement::getPIDFromTokenFromDatabase($destToken);
-        $destRecords = Download::recordIdsByPid($destPid);
-        if (!empty($destRecords) && $restartNumbering) {
-            Application::log("Deleting " . count($destRecords) . " Records: " . implode(", ", $destRecords), $destPid);
-            foreach ($destRecords as $recordId) {
-                \REDCap::deleteRecord($destPid, $recordId);
-            }
-            $maxDestRecord = 0;
-        } else if (!empty($destRecords)) {
-            $maxDestRecord = max($destRecords);
-        } else {
-            $maxDestRecord = 0;
-        }
+function copyProjectToNewServer($srcToken, $srcServer, $destToken, $destServer, $restartNumbering) {
+	$srcPid = Application::getPID($srcToken);
+	if ($srcServer == $destServer) {
+		$destPid = REDCapManagement::getPIDFromTokenFromDatabase($destToken);
+		$destRecords = Download::recordIdsByPid($destPid);
+		if (!empty($destRecords) && $restartNumbering) {
+			Application::log("Deleting " . count($destRecords) . " Records: " . implode(", ", $destRecords), $destPid);
+			foreach ($destRecords as $recordId) {
+				\REDCap::deleteRecord($destPid, $recordId);
+			}
+			$maxDestRecord = 0;
+		} elseif (!empty($destRecords)) {
+			$maxDestRecord = max($destRecords);
+		} else {
+			$maxDestRecord = 0;
+		}
 
-        $projectSettings = Download::projectSettingsByPid($srcPid);
-        $validProjectSettingsForUpload = getValidProjectSettingsForUpload();
-        foreach ($projectSettings as $key => $value) {
-            if (!in_array($key, $validProjectSettingsForUpload)) {
-                unset($projectSettings[$key]);
-            }
-        }
-        Upload::projectSettingsNotAPI($projectSettings, $destPid);
+		$projectSettings = Download::projectSettingsByPid($srcPid);
+		$validProjectSettingsForUpload = getValidProjectSettingsForUpload();
+		foreach ($projectSettings as $key => $value) {
+			if (!in_array($key, $validProjectSettingsForUpload)) {
+				unset($projectSettings[$key]);
+			}
+		}
+		Upload::projectSettingsNotAPI($projectSettings, $destPid);
 
-        $metadata = Download::metadataByPid($srcPid);
-        if ($restartNumbering) {
-            $destMetadata = cleanOutJSONs($metadata);
-            $feedback = Upload::metadataNoAPI($destMetadata, $destPid);
-            Application::log("Upload metadata: " . json_encode($feedback), $destPid);
-        } else {
-            $destMetadata = Download::metadataByPid($destPid);
-        }
-        \Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcPid, $destPid, $destMetadata);
-        Application::log("Reset Repeating Instruments: Local", $destPid);
-    } else {
-        $metadata = Download::metadata($srcToken, $srcServer);
-        $destRecords = Download::recordIds($destToken, $destServer);
-        if (!empty($destRecords) && $restartNumbering) {
-            $feedback = Upload::deleteRecords($destToken, $destServer, $destRecords);
-            Application::log("Delete project: " . count($destRecords) . " records: " . json_encode($feedback));
-            $maxDestRecord = 0;
-        } else if (!empty($destRecords)) {
-            $maxDestRecord = max($destRecords);
-        } else {
-            $maxDestRecord = 0;
-        }
+		$metadata = Download::metadataByPid($srcPid);
+		if ($restartNumbering) {
+			$destMetadata = cleanOutJSONs($metadata);
+			$feedback = Upload::metadataNoAPI($destMetadata, $destPid);
+			Application::log("Upload metadata: " . json_encode($feedback), $destPid);
+		} else {
+			$destMetadata = Download::metadataByPid($destPid);
+		}
+		\Vanderbilt\FlightTrackerExternalModule\resetRepeatingInstruments($srcPid, $destPid, $destMetadata);
+		Application::log("Reset Repeating Instruments: Local", $destPid);
+	} else {
+		$metadata = Download::metadata($srcToken, $srcServer);
+		$destRecords = Download::recordIds($destToken, $destServer);
+		if (!empty($destRecords) && $restartNumbering) {
+			$feedback = Upload::deleteRecords($destToken, $destServer, $destRecords);
+			Application::log("Delete project: " . count($destRecords) . " records: " . json_encode($feedback));
+			$maxDestRecord = 0;
+		} elseif (!empty($destRecords)) {
+			$maxDestRecord = max($destRecords);
+		} else {
+			$maxDestRecord = 0;
+		}
 
-        $projectSettings = Download::getProjectSettings($srcToken, $srcServer);
-        $validProjectSettingsForUpload = getValidProjectSettingsForUpload();
-        foreach ($projectSettings as $key => $value) {
-            if (!in_array($key, $validProjectSettingsForUpload)) {
-                unset($projectSettings[$key]);
-            }
-        }
-        Upload::projectSettings($projectSettings, $destToken, $destServer);
-        $destProjectSettings = Download::getProjectSettings($destToken, $destServer);
-        $destPid = $destProjectSettings['project_id'];
+		$projectSettings = Download::getProjectSettings($srcToken, $srcServer);
+		$validProjectSettingsForUpload = getValidProjectSettingsForUpload();
+		foreach ($projectSettings as $key => $value) {
+			if (!in_array($key, $validProjectSettingsForUpload)) {
+				unset($projectSettings[$key]);
+			}
+		}
+		Upload::projectSettings($projectSettings, $destToken, $destServer);
+		$destProjectSettings = Download::getProjectSettings($destToken, $destServer);
+		$destPid = $destProjectSettings['project_id'];
 
-        if ($restartNumbering) {
-            $destMetadata = cleanOutJSONs($metadata);
-            $feedback = Upload::metadata($destMetadata, $destToken, $destServer);
-            Application::log("Upload metadata: " . json_encode($feedback), $destPid);
-        } else {
-            Application::log("Skipping uploading metadata", $destPid);
-            $destMetadata = Download::metadata($destToken, $destServer);
-        }
-        $feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $destMetadata);
-        Application::log("Reset Repeating Instruments Remote: " . json_encode($feedback), $destPid);
-    }
-    $newRecordData = \Vanderbilt\FlightTrackerExternalModule\getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord);
-    if (!empty($newRecordData) && ($srcServer == $destServer)) {
-        $feedback = Upload::rowsByPid($newRecordData, $destPid);
-    } else if (!empty($newRecordData)) {
-        $feedback = Upload::rows($newRecordData, $destToken, $destServer);
-    } else {
-        $feedback = [];
-    }
-    Application::log("Copy project (".count($newRecordData)." rows): " . json_encode($feedback), $destPid);
-    return $destPid;
+		if ($restartNumbering) {
+			$destMetadata = cleanOutJSONs($metadata);
+			$feedback = Upload::metadata($destMetadata, $destToken, $destServer);
+			Application::log("Upload metadata: " . json_encode($feedback), $destPid);
+		} else {
+			Application::log("Skipping uploading metadata", $destPid);
+			$destMetadata = Download::metadata($destToken, $destServer);
+		}
+		$feedback = \Vanderbilt\FlightTrackerExternalModule\resetRemoteRepeatingInstruments($srcToken, $srcServer, $destToken, $destServer, $destMetadata);
+		Application::log("Reset Repeating Instruments Remote: " . json_encode($feedback), $destPid);
+	}
+	$newRecordData = \Vanderbilt\FlightTrackerExternalModule\getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord);
+	if (!empty($newRecordData) && ($srcServer == $destServer)) {
+		$feedback = Upload::rowsByPid($newRecordData, $destPid);
+	} elseif (!empty($newRecordData)) {
+		$feedback = Upload::rows($newRecordData, $destToken, $destServer);
+	} else {
+		$feedback = [];
+	}
+	Application::log("Copy project (".count($newRecordData)." rows): " . json_encode($feedback), $destPid);
+	return $destPid;
 }
 
 function getProjectsREDCapDataToCopy($destMetadata, $srcPid, $maxDestRecord = 0) {
-    $calcFields = REDCapManagement::getFieldsOfType($destMetadata, "calc");
-    $timeFields = REDCapManagement::getFieldsOfType($destMetadata, "text", "datetime_ymd");
-    $destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($destMetadata);
-    $descriptiveFields = REDCapManagement::getFieldsOfType($destMetadata, "descriptive");
-    $srcRecords = Download::recordIdsByPid($srcPid);
-    $newRecordData = [];
-    foreach ($srcRecords as $record) {
-        $recordData = Download::recordsByPid($srcPid, [$record]);
-        foreach ($recordData as $row) {
-            $newRow = [];
-            foreach ($row as $field => $value) {
-                if ($field == "record_id") {
-                    if (is_numeric($value) && ($maxDestRecord > 0)) {
-                        $value += $maxDestRecord;
-                    } else if (!is_numeric($value) && ($maxDestRecord > 0)) {
-                        throw new \Exception("Invalid Record ID $value! Record IDs must be numeric to automatically increment.");
-                    }
-                    $newRow[$field] = $value;
-                } else if (
-                    in_array($field, ["redcap_repeat_instance", "redcap_repeat_instrument"])
-                    || (
-                        !in_array($field, $calcFields)
-                        && !in_array($field, $timeFields)
-                        && in_array($field, $destMetadataFields)
-                        && !in_array($field, $descriptiveFields)
-                    )
-                ) {
-                    $newRow[$field] = $value;
-                }
-            }
-            if (!empty($newRow)) {
-                $newRecordData[] = $newRow;
-            }
-        }
-    }
-    return $newRecordData;
+	$calcFields = REDCapManagement::getFieldsOfType($destMetadata, "calc");
+	$timeFields = REDCapManagement::getFieldsOfType($destMetadata, "text", "datetime_ymd");
+	$destMetadataFields = DataDictionaryManagement::getFieldsFromMetadata($destMetadata);
+	$descriptiveFields = REDCapManagement::getFieldsOfType($destMetadata, "descriptive");
+	$srcRecords = Download::recordIdsByPid($srcPid);
+	$newRecordData = [];
+	foreach ($srcRecords as $record) {
+		$recordData = Download::recordsByPid($srcPid, [$record]);
+		foreach ($recordData as $row) {
+			$newRow = [];
+			foreach ($row as $field => $value) {
+				if ($field == "record_id") {
+					if (is_numeric($value) && ($maxDestRecord > 0)) {
+						$value += $maxDestRecord;
+					} elseif (!is_numeric($value) && ($maxDestRecord > 0)) {
+						throw new \Exception("Invalid Record ID $value! Record IDs must be numeric to automatically increment.");
+					}
+					$newRow[$field] = $value;
+				} elseif (
+					in_array($field, ["redcap_repeat_instance", "redcap_repeat_instrument"])
+					|| (
+						!in_array($field, $calcFields)
+						&& !in_array($field, $timeFields)
+						&& in_array($field, $destMetadataFields)
+						&& !in_array($field, $descriptiveFields)
+					)
+				) {
+					$newRow[$field] = $value;
+				}
+			}
+			if (!empty($newRow)) {
+				$newRecordData[] = $newRow;
+			}
+		}
+	}
+	return $newRecordData;
 }
 
 function getQuestionsForForm($token, $server, $form) {
-	$formMetadata = Download::formMetadata($token, $server, array($form));
-	$labels = array();
+	$formMetadata = Download::formMetadata($token, $server, [$form]);
+	$labels = [];
 	foreach ($formMetadata as $row) {
 		$labels[] = $row['field_label'];
 	}
@@ -1654,26 +1662,26 @@ function uploadOrderToMetadata($token, $server, $post) {
 }
 
 function produceNewOrderForMetadata($post, $metadata) {
-	$config = json_decode($post['config'], TRUE);
-	$order = json_decode($post['order'], TRUE);
+	$config = json_decode($post['config'], true);
+	$order = json_decode($post['order'], true);
 	if ($config && $order) {
 		foreach ($config as $fieldForOrder => $sources) {
 			# have to do this because JS does not ensure order
-			$newSources = array();
+			$newSources = [];
 			foreach ($order[$fieldForOrder] as $field) {
 				$source = $sources[$field];
 				$newSources[$field] = $source;
 			}
-			switch($fieldForOrder) {
+			switch ($fieldForOrder) {
 				case "summary_race_ethnicity".getUploadDelim()."ethnicity":
 				case "summary_race_ethnicity".getUploadDelim()."race":
 					$type = str_replace("summary_race_ethnicity".getUploadDelim(), "", $fieldForOrder);
 					$i = 0;
 					foreach ($metadata as $row) {
 						if ($row['field_name'] == "summary_race_ethnicity") {
-							$modifiedSources = array();
+							$modifiedSources = [];
 							if ($row['field_annotation']) {
-								 $modifiedSources = json_decode($row['field_annotation'], TRUE);
+								$modifiedSources = json_decode($row['field_annotation'], true);
 							}
 							$modifiedSources[$type] = $newSources;
 							$metadata[$i]['field_annotation'] = json_encode($modifiedSources);
@@ -1704,8 +1712,8 @@ function produceNewOrderForMetadata($post, $metadata) {
 function produceSourcesAndTypes($scholar, $metadata) {
 	$choices = Scholar::getChoices($metadata);
 	if (isset($_GET['test'])) {
-	    echo "metadata has ".count($metadata)." rows<br>";
-    }
+		echo "metadata has ".count($metadata)." rows<br>";
+	}
 	$exampleField = Scholar::getExampleField();
 	$orders = Scholar::getDefaultOrder("all");
 	$sources = [];
@@ -1716,9 +1724,9 @@ function produceSourcesAndTypes($scholar, $metadata) {
 		$newOrder = $scholar->getOrder($order, $fieldForOrder);
 		foreach ($newOrder as $field => $source) {
 			if (!isset($sources[$fieldForOrder])) {
-			    if (isset($_GET['test'])) {
-			        echo "Resetting sources and sourceTypes for $fieldForOrder under $field<br>";
-                }
+				if (isset($_GET['test'])) {
+					echo "Resetting sources and sourceTypes for $fieldForOrder under $field<br>";
+				}
 				$sources[$fieldForOrder] = [];
 				$sourceTypes[$fieldForOrder] = [];
 			}
@@ -1726,7 +1734,7 @@ function produceSourcesAndTypes($scholar, $metadata) {
 				$sourceRow = $source;
 				if (is_numeric($field)) {
 					# summary_degrees
-					$rowFields = array();
+					$rowFields = [];
 					$sourceType = "custom";
 					$foundRowSource = "";
 					foreach ($sourceRow as $rowSourceField => $rowSource) {
@@ -1751,8 +1759,8 @@ function produceSourcesAndTypes($scholar, $metadata) {
 					# race/ethnicity
 					$type = $field;
 					$sources[$fieldForOrder][$type] = [];
-                    $sourceTypes[$fieldForOrder][$type] = [];
-                    foreach ($sourceRow as $field2 => $source2) {
+					$sourceTypes[$fieldForOrder][$type] = [];
+					foreach ($sourceRow as $field2 => $source2) {
 						if (in_array($field2, $allFields)) {
 							if ($choices[$exampleField][$source2]) {
 								$sources[$fieldForOrder][$type][$field2] = $choices[$exampleField][$source2];
@@ -1780,12 +1788,12 @@ function produceSourcesAndTypes($scholar, $metadata) {
 						$sourceType = "original";
 					}
 					$sourceTypes[$fieldForOrder][$field] = $sourceType;
-				} else if (strpos($field, getUploadDelim()) !== FALSE) {
+				} elseif (strpos($field, getUploadDelim()) !== false) {
 					$fields = explode(getUploadDelim(), $field);
-					$inAllFields = TRUE;
+					$inAllFields = true;
 					foreach ($fields as $compoundField) {
 						if (!in_array($compoundField, $allFields)) {
-							$inAllFields = FALSE;
+							$inAllFields = false;
 							break;
 						}
 					}
@@ -1822,12 +1830,12 @@ function importCustomFields($filename, $token, $server, $pid) {
 			foreach ($line as $j => $item) {
 				$line[$j] = preg_replace('/[\x00-\x1F\x80-\xFF]/', '', $item);
 				if (DateManagement::isDate($line[$j]) && !DateManagement::isYMD($line[$j])) {
-				    if (DateManagement::isMDY($line[$j])) {
-                        $line[$j] = DateManagement::MDY2YMD($line[$j]);
-                    } else if (DateManagement::isDMY($line[$j])) {
-				        $line[$j] = DateManagement::DMY2YMD($line[$j]);
-                    }
-                }
+					if (DateManagement::isMDY($line[$j])) {
+						$line[$j] = DateManagement::MDY2YMD($line[$j]);
+					} elseif (DateManagement::isDMY($line[$j])) {
+						$line[$j] = DateManagement::DMY2YMD($line[$j]);
+					}
+				}
 			}
 			if (($i > 0) && !REDCapManagement::isArrayBlank($line)) {
 				$lines[$i] = $line;
@@ -1844,88 +1852,88 @@ function importCustomFields($filename, $token, $server, $pid) {
 	$html = "";
 	if (!empty($errors)) {
 		$html .= "<div class='red centered'>".implode("<br>", $errors)."</div>\n";
-	} else if (!empty($upload)) {
-	    try {
-            $feedback = Upload::rows($upload, $token, $server);
-            $hasCitation = FALSE;
-            foreach ($upload as $row) {
-                if ($row['redcap_repeat_instrument'] == "citation") {
-                    $hasCitation = TRUE;
-                    break;
-                }
-            }
-            $pubsLine = "";
-            if ($hasCitation) {
-                $metadata = Download::metadata($token, $server);
-                $indexedUpload = REDCapManagement::indexREDCapData($upload);
-                $numPubsAffected = 0;
-                foreach ($indexedUpload as $recordId => $rows) {
-                    $numPubsAffected += Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $rows);
-                }
-                $pubsLine = " $numPubsAffected publications downloaded.";
-            }
-            if ($feedback['error']) {
-                $html .= "<div class='red centered'>Error: {$feedback['error']}</div>\n";
-            } else if ($feedback['errors']) {
-                $html .= "<div class='red centered'>Errors: " . implode("<br>", $feedback['errors']) . "</div>\n";
-            } else {
-                $html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
-            }
-        } catch (\Exception $e) {
-            $html .= "<div class='red centered'>Error: ".$e->getMessage()."</div>\n";
-        }
-    } else {
+	} elseif (!empty($upload)) {
+		try {
+			$feedback = Upload::rows($upload, $token, $server);
+			$hasCitation = false;
+			foreach ($upload as $row) {
+				if ($row['redcap_repeat_instrument'] == "citation") {
+					$hasCitation = true;
+					break;
+				}
+			}
+			$pubsLine = "";
+			if ($hasCitation) {
+				$metadata = Download::metadata($token, $server);
+				$indexedUpload = REDCapManagement::indexREDCapData($upload);
+				$numPubsAffected = 0;
+				foreach ($indexedUpload as $recordId => $rows) {
+					$numPubsAffected += Publications::uploadBlankPMCsAndPMIDs($token, $server, $recordId, $metadata, $rows);
+				}
+				$pubsLine = " $numPubsAffected publications downloaded.";
+			}
+			if ($feedback['error']) {
+				$html .= "<div class='red centered'>Error: {$feedback['error']}</div>\n";
+			} elseif ($feedback['errors']) {
+				$html .= "<div class='red centered'>Errors: " . implode("<br>", $feedback['errors']) . "</div>\n";
+			} else {
+				$html .= "<div class='green centered'>Success! Imported {$newCounts['new']} lines for new scholars and {$newCounts['existing']} lines for existing scholars.$pubsLine</div>\n";
+			}
+		} catch (\Exception $e) {
+			$html .= "<div class='red centered'>Error: ".$e->getMessage()."</div>\n";
+		}
+	} else {
 		$html .= "<div class='red centered'>No action taken!</div>\n";
 	}
 	return $html;
 }
 
 function importNIHTable($post, $filename, $token, $server) {
-    $tableNum = Sanitizer::sanitizeInteger($post['tableNumber'] ?? "");
-    $action = Sanitizer::sanitize($post['action'] ?? "");
-    $importTrainees = in_array($action, ["importTrainees", "importBoth"]);
-    $importFaculty = in_array($action, ["importFaculty", "importBoth"]);
-    $html = "";
-    if ($filename && file_exists($filename)) {
-        $fp = fopen($filename, "r");
-        if ($fp) {
-            $headers = fgetcsv($fp);
-            foreach ($headers as $i => $header) {
-                $headers[$i] = REDCapManagement::clearUnicode($header);
-            }
-            $cols = [];
-            $colsToTest = [];
-            if ($tableNum == 5) {
-                if (preg_match("/Faculty/", $headers[0]) && $importFaculty) {
-                    $cols[] = 0;
-                }
-                if (($headers[1] == "Trainee Name") && $importTrainees) {
-                    $cols[] = 1;
-                }
-                $colsToTest = [2, 3];
-            } else if ($tableNum == 8) {
-                if (($headers[0] == "Trainee") && $importTrainees) {
-                    $cols[] = 0;
-                }
-                if (preg_match("/Faculty/", $headers[1]) && $importFaculty) {
-                    $cols[] = 1;
-                }
-                $colsToTest = [2];
-            }
-            if (!empty($cols)) {
-                $html .= NIHTables::importNamesFromCSV($fp, $cols, $colsToTest, $token, $server);
-            } else {
-                $nihLink = NIHTables::NIH_LINK;
-                $html .= "<div class='red padded'>ERROR! The header/first row must contain 'Trainee Name', 'Trainee', or 'Faculty Member' according to <a href='$nihLink'>NIH Formatting</a>.</div>\n";
-            }
-            fclose($fp);
-        } else {
-            $html .= "<div class='red padded'>ERROR! Could not read file.</div>\n";
-        }
-    } else {
-        $html .= "<div class='red padded'>ERROR! Could not find file.</div>\n";
-    }
-    return $html;
+	$tableNum = Sanitizer::sanitizeInteger($post['tableNumber'] ?? "");
+	$action = Sanitizer::sanitize($post['action'] ?? "");
+	$importTrainees = in_array($action, ["importTrainees", "importBoth"]);
+	$importFaculty = in_array($action, ["importFaculty", "importBoth"]);
+	$html = "";
+	if ($filename && file_exists($filename)) {
+		$fp = fopen($filename, "r");
+		if ($fp) {
+			$headers = fgetcsv($fp);
+			foreach ($headers as $i => $header) {
+				$headers[$i] = REDCapManagement::clearUnicode($header);
+			}
+			$cols = [];
+			$colsToTest = [];
+			if ($tableNum == 5) {
+				if (preg_match("/Faculty/", $headers[0]) && $importFaculty) {
+					$cols[] = 0;
+				}
+				if (($headers[1] == "Trainee Name") && $importTrainees) {
+					$cols[] = 1;
+				}
+				$colsToTest = [2, 3];
+			} elseif ($tableNum == 8) {
+				if (($headers[0] == "Trainee") && $importTrainees) {
+					$cols[] = 0;
+				}
+				if (preg_match("/Faculty/", $headers[1]) && $importFaculty) {
+					$cols[] = 1;
+				}
+				$colsToTest = [2];
+			}
+			if (!empty($cols)) {
+				$html .= NIHTables::importNamesFromCSV($fp, $cols, $colsToTest, $token, $server);
+			} else {
+				$nihLink = NIHTables::NIH_LINK;
+				$html .= "<div class='red padded'>ERROR! The header/first row must contain 'Trainee Name', 'Trainee', or 'Faculty Member' according to <a href='$nihLink'>NIH Formatting</a>.</div>\n";
+			}
+			fclose($fp);
+		} else {
+			$html .= "<div class='red padded'>ERROR! Could not read file.</div>\n";
+		}
+	} else {
+		$html .= "<div class='red padded'>ERROR! Could not find file.</div>\n";
+	}
+	return $html;
 }
 
 require_once(dirname(__FILE__)."/cronLoad.php");

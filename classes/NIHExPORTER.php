@@ -5,33 +5,34 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(__DIR__ . '/ClassLoader.php');
 
 if (!defined("DATA_DIRECTORY")) {
-    define("DATA_DIRECTORY", "filterData/");
+	define("DATA_DIRECTORY", "filterData/");
 }
 if (!defined("INTERMEDIATE_1")) {
-    define("INTERMEDIATE_1", "R01AndEquivsList.txt");
+	define("INTERMEDIATE_1", "R01AndEquivsList.txt");
 }
 if (!defined("INTERMEDIATE_2")) {
-    define("INTERMEDIATE_2", "R01AndEquivsList2.txt");
+	define("INTERMEDIATE_2", "R01AndEquivsList2.txt");
 }
 if (!defined("INTERMEDIATE_3")) {
-    define("INTERMEDIATE_3", "R01AndEquivsList3.txt");
+	define("INTERMEDIATE_3", "R01AndEquivsList3.txt");
 }
 if (!defined("INTERMEDIATE_4")) {
-    define("INTERMEDIATE_4", "R01AndEquivsList4.txt");
+	define("INTERMEDIATE_4", "R01AndEquivsList4.txt");
 }
 if (!defined("PI_LIST")) {
-    define("PI_LIST", "PIList.txt");
+	define("PI_LIST", "PIList.txt");
 }
 
-class NIHExPORTER {
+class NIHExPORTER
+{
 	public function __construct($pid) {
 		$this->data = [];
 		$this->pid = $pid;
 	}
 
 	private static function clearBlanks($ary) {
-		$ary2 = array();
-		foreach($ary as $item) {
+		$ary2 = [];
+		foreach ($ary as $item) {
 			if ($item) {
 				array_push($ary2, $item);
 			}
@@ -59,7 +60,7 @@ class NIHExPORTER {
 
 		// echo "<table style='margin-left: auto; margin-right: auto;'>\n";
 		// foreach ($rows as $row) {
-			// echo "<tr><td>{$row['name']}</td><td>{$row['email']}</td></tr>\n";
+		// echo "<tr><td>{$row['name']}</td><td>{$row['email']}</td></tr>\n";
 		// }
 		// echo "</table>\n";
 		// echo $this->display();
@@ -67,7 +68,7 @@ class NIHExPORTER {
 
 	public static function printPIs() {
 		$col = "PI_NAMEs";
-		$allPIs = array();
+		$allPIs = [];
 		$fpin = fopen(DATA_DIRECTORY.INTERMEDIATE_4, "r");
 		$fpout = fopen(DATA_DIRECTORY.PI_LIST, "w");
 		$headers = fgetcsv($fpin);
@@ -79,7 +80,7 @@ class NIHExPORTER {
 			foreach ($line as $item) {
 				if ($headers[$i] == "ADMINISTERING_IC") {
 					$IC = $item;
-				} else if ($headers[$i] == "PROJECT_TITLE") {
+				} elseif ($headers[$i] == "PROJECT_TITLE") {
 					$title = $item;
 				}
 				$i++;
@@ -94,7 +95,7 @@ class NIHExPORTER {
 						$pi = preg_replace("/\s*;$/", "", $pi);
 						if ($pi && !in_array($pi, $allPIs)) {
 							Application::log("Found PI: $pi");
-							array_push($allPIs, array("PI" => $pi, "IC" => $IC, "Title" => $title));
+							array_push($allPIs, ["PI" => $pi, "IC" => $IC, "Title" => $title]);
 						}
 					}
 				}
@@ -103,23 +104,23 @@ class NIHExPORTER {
 		}
 
 		foreach ($allPIs as $pi) {
-			fputcsv($fpout, array($pi["PI"], $pi["IC"], $pi["Title"]));
+			fputcsv($fpout, [$pi["PI"], $pi["IC"], $pi["Title"]]);
 		}
 		fclose($fpin);
 		fclose($fpout);
 	}
 
 	private static function filterLDAP($pis) {
-		$outData = array();
+		$outData = [];
 		foreach ($pis as $pi) {
-			$nameFields = array("sn", "givenname");
+			$nameFields = ["sn", "givenname"];
 			$names = preg_split("/\s*,\s*/", $pi);
 			if (count($names) > 2) {
-				$names = array($names[0], $names[1]);
+				$names = [$names[0], $names[1]];
 			}
 			$res = LDAP::getLDAPByMultiple($nameFields, $names);
 			if ($res) {
-				$row = array("name" => $pi, "email" => $res[0]['mail'][0]);
+				$row = ["name" => $pi, "email" => $res[0]['mail'][0]];
 				array_push($outData, $row);
 			}
 			sleep(1);
@@ -129,7 +130,7 @@ class NIHExPORTER {
 
 	public function getPIs() {
 		$col = "PI_NAMEs";
-		$allPIs = array();
+		$allPIs = [];
 		foreach ($this->data as $row) {
 			$pis = preg_split("/; /", $row['PI_NAMEs']);
 			foreach ($pis as $pi) {
@@ -146,17 +147,17 @@ class NIHExPORTER {
 		$html .= "<table style='margin-left: auto; margin-right: auto;'>\n";
 		$html .= "<tr><th>Names</th><th>Project ID</th><th>Institution</th><th>Start Date</th></tr>\n";
 		foreach ($this->data as $row) {
-			$piIds = array();
+			$piIds = [];
 			if ($row['PI_IDS']) {
 				$piIds = self::clearBlanks(preg_split("/;\s*/", $row['PI_IDS']));
 			}
 
-			$piNames = array();
+			$piNames = [];
 			if ($row['PI_NAMEs']) {
 				$piNames = self::clearBlanks(preg_split("/;\s*/", $row['PI_NAMEs']));
 			}
 
-			$namesWithLinks = array();
+			$namesWithLinks = [];
 			if (count($piIds) == count($piNames)) {
 				$i = 0;
 				foreach ($piNames as $pi) {
@@ -187,7 +188,7 @@ class NIHExPORTER {
 
 	public static function filterForR01EquivalentSinceDate($date, $pid) {
 		$files = self::getDataSince2009($pid);
-		$outData = array();
+		$outData = [];
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
 		foreach ($files as $file => $fiscalYear) {
@@ -204,7 +205,7 @@ class NIHExPORTER {
 
 	public static function grabAllGrantsForPIs($date, $pid) {
 		$files = self::getDataSince2009($pid);
-		$pis = array();
+		$pis = [];
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
 		$col = "PI_IDS";
@@ -223,7 +224,7 @@ class NIHExPORTER {
 			}
 		}
 		fclose($fp);
-		
+
 		$fp = fopen(DATA_DIRECTORY.INTERMEDIATE_2, "w");
 		fputcsv($fp, $headers);
 		foreach ($files as $file => $fiscalYear) {
@@ -243,7 +244,7 @@ class NIHExPORTER {
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
 		$fp = fopen(DATA_DIRECTORY.INTERMEDIATE_1, "w");
-		$first = TRUE;
+		$first = true;
 		foreach ($files as $file => $fiscalYear) {
 			if ($fiscalYear >= $tsYear - 1) {
 				$data = self::parseFile($file);
@@ -251,7 +252,7 @@ class NIHExPORTER {
 				if ($first) {
 					$headers = array_keys($data[0]);
 					fputcsv($fp, $headers);
-					$first = FALSE;
+					$first = false;
 				}
 				$filtered1 = self::filter($data, "/VANDERBILT/", "ORG_NAME");
 				unset($data);
@@ -271,7 +272,7 @@ class NIHExPORTER {
 	public static function writeData($data, $keys, $fp) {
 		if (count($data) > 0) {
 			for ($i = 0; $i < count($data); $i++) {
-				$ary = array();
+				$ary = [];
 				foreach ($keys as $key) {
 					$datum = $data[$i][$key];
 					$datum = str_replace("\\", "", $datum);
@@ -284,7 +285,7 @@ class NIHExPORTER {
 
 	public static function filterForActivityCodeSinceDate($regexActivityCode, $date, $pid) {
 		$files = self::getDataSince2009($pid);
-		$outData = array();
+		$outData = [];
 		$ts = strtotime($date);
 		$tsYear = date("Y", $ts);
 		foreach ($files as $file => $fiscalYear) {
@@ -303,7 +304,7 @@ class NIHExPORTER {
 	}
 
 	private static function filterR01Equivalents($data) {
-		$inData = array();
+		$inData = [];
 		$budgetCol = "DIRECT_COST_AMT";
 		$budgetColBackup = "TOTAL_COST";
 		$projectStartCol = "PROJECT_START";
@@ -336,7 +337,7 @@ class NIHExPORTER {
 
 	# on or after $ts
 	private static function filterTime($data, $ts, $col) {
-		$inData = array();
+		$inData = [];
 		foreach ($data as $row) {
 			if ($row[$col]) {
 				$currTs = strtotime($row[$col]);
@@ -349,7 +350,7 @@ class NIHExPORTER {
 	}
 
 	private static function filterForPIs($data, $piIds) {
-		$inData = array();
+		$inData = [];
 		$col = "PI_IDS";
 		foreach ($data as $row) {
 			if ($row[$col]) {
@@ -366,24 +367,24 @@ class NIHExPORTER {
 	}
 
 	private static function filterOutNames($names) {
-		$inData = array();
+		$inData = [];
 		$col = "PI_NAMEs";
 		$fpin = fopen(DATA_DIRECTORY.INTERMEDIATE_3, "r");
 		$fpout = fopen(DATA_DIRECTORY.INTERMEDIATE_4, "w");
 		$headers = fgetcsv($fpin);
 		fputcsv($fpout, $headers);
 		while ($row = fgetcsv($fpin)) {
-			$matched = FALSE;
+			$matched = false;
 			foreach ($names as $nameRow) {
 				if ($nameRow['first_name'] && $nameRow['last_name']) {
 					for ($i = 0; $i < count($row); $i++) {
 						if ($headers[$i] == $col) {
 							if ($row[$i] && preg_match("/".strtoupper($nameRow['first_name'])."/", $row[$i]) && preg_match("/".strtoupper($nameRow['last_name'])."/", $row[$i])) {
 								// Application::log("Matched ".json_encode($nameRow));
-								$matched = TRUE;
+								$matched = true;
 							}
 						}
-					} 
+					}
 				}
 			}
 			if (!$matched) {
@@ -403,13 +404,13 @@ class NIHExPORTER {
 			for ($i = 0; $i < count($row); $i++) {
 				if ($headers[$i] == $col) {
 					if ($row[$i] && !preg_match($regex, $row[$i])) {
-						$assocAry = array();
+						$assocAry = [];
 						$j = 0;
 						foreach ($row as $item) {
 							$assocAry[$headers[$j]] = $item;
 							$j++;
 						}
-			     			self::writeData(array($assocAry), $headers, $fpout);
+						self::writeData([$assocAry], $headers, $fpout);
 					}
 				}
 			}
@@ -419,7 +420,7 @@ class NIHExPORTER {
 	}
 
 	private static function filter($data, $regex, $col) {
-		$inData = array();
+		$inData = [];
 		foreach ($data as $row) {
 			if ($row[$col] && preg_match($regex, $row[$col])) {
 				array_push($inData, $row);
@@ -429,12 +430,12 @@ class NIHExPORTER {
 	}
 
 	private static function parseFile($file) {
-		$data = array();
+		$data = [];
 		$fp = fopen($file, "r");
 		Application::log("Parsing ".$file);
 		$lineCount = 0;
-        $headers = array();
-        while ($str = fgets($fp)) {
+		$headers = [];
+		while ($str = fgets($fp)) {
 			$str = str_replace('\\","', '","', $str);
 			$line = str_getcsv($str);
 			if ($lineCount == 0) {
@@ -443,14 +444,14 @@ class NIHExPORTER {
 					$headers[$i] = $item;
 					$i++;
 				}
-			} else if ($lineCount > 0) {
-				$row = array();
+			} elseif ($lineCount > 0) {
+				$row = [];
 				$i = 0;
 				foreach ($line as $item) {
 					if ($headers[$i]) {
-                        $header = $headers[$i];
-                        $row[$header] = $item;
-                    }
+						$header = $headers[$i];
+						$row[$header] = $item;
+					}
 					$i++;
 				}
 				array_push($data, $row);
@@ -467,9 +468,9 @@ class NIHExPORTER {
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
 
-        $startYear = 2009;
+		$startYear = 2009;
 		$lastYear = $startYear;
-		$files = array();
+		$files = [];
 		for ($fiscalYear = $startYear; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
 			$file = self::downloadURL($url, $pid);
@@ -496,9 +497,9 @@ class NIHExPORTER {
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
 
-        $startYear = 2018;
+		$startYear = 2018;
 		$lastYear = $startYear;
-		$files = array();
+		$files = [];
 		for ($fiscalYear = $startYear; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
 			$file = self::downloadURL($url, $pid);
@@ -525,9 +526,9 @@ class NIHExPORTER {
 		# download relevent zips into APP_PATH_TEMP
 		# unzip zip files
 
-        $startYear = 2014;
+		$startYear = 2014;
 		$lastYear = $startYear;
-		$files = array();
+		$files = [];
 		for ($fiscalYear = $startYear; $fiscalYear <= date("Y"); $fiscalYear++) {
 			$url = "RePORTER_PRJ_C_FY".$fiscalYear.".zip";
 			$file = self::downloadURL($url, $pid);
@@ -558,7 +559,7 @@ class NIHExPORTER {
 		$csvfile = preg_replace("/.zip/", ".csv", $file);
 		if (!file_exists(APP_PATH_TEMP.$csvfile)) {
 			Application::log("Downloading $file...");
-	
+
 			$url = "https://exporter.nih.gov/CSVs/final/".$file;
 			list($resp, $zip) = REDCapManagement::downloadURL($url, $pid);
 
@@ -569,8 +570,8 @@ class NIHExPORTER {
 				fclose($fp);
 				unset($zip);
 
-				$za = new \ZipArchive;
-				if ($za->open(APP_PATH_TEMP.$file) === TRUE) {
+				$za = new \ZipArchive();
+				if ($za->open(APP_PATH_TEMP.$file) === true) {
 					$za->extractTo(APP_PATH_TEMP);
 					$za->close();
 					unset($za);

@@ -26,50 +26,47 @@ use PhpOffice\PhpWord\Writer\AbstractWriter;
  */
 abstract class AbstractStyle
 {
-    /**
-     * Parent writer.
-     *
-     * @var AbstractWriter
-     */
-    protected $parentWriter;
+	/**
+	 * Parent writer.
+	 *
+	 * @var AbstractWriter
+	 */
+	protected $parentWriter;
 
-    /**
-     * XML Writer.
-     *
-     * @var XMLWriter
-     */
-    protected $xmlWriter;
+	/**
+	 * XML Writer.
+	 *
+	 * @var XMLWriter
+	 */
+	protected $xmlWriter;
 
-    /**
-     * Set parent writer.
-     */
-    public function setParentWriter(AbstractWriter $writer): self
-    {
-        $this->parentWriter = $writer;
+	/**
+	 * Set parent writer.
+	 */
+	public function setParentWriter(AbstractWriter $writer): self {
+		$this->parentWriter = $writer;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Set XML Writer.
-     */
-    public function setXmlWriter(XMLWriter $writer): self
-    {
-        $this->xmlWriter = $writer;
+	/**
+	 * Set XML Writer.
+	 */
+	public function setXmlWriter(XMLWriter $writer): self {
+		$this->xmlWriter = $writer;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    /**
-     * Get parent writer.
-     */
-    public function getParentWriter(): AbstractWriter
-    {
-        return $this->parentWriter;
-    }
+	/**
+	 * Get parent writer.
+	 */
+	public function getParentWriter(): AbstractWriter {
+		return $this->parentWriter;
+	}
 
-    /**
-     * Write style content.
-     */
-    abstract public function write(): string;
+	/**
+	 * Write style content.
+	 */
+	abstract public function write(): string;
 }

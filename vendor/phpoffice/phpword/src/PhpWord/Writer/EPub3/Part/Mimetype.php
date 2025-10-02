@@ -23,11 +23,10 @@ namespace PhpOffice\PhpWord\Writer\EPub3\Part;
  */
 class Mimetype extends AbstractPart
 {
-    /**
-     * Write part content.
-     */
-    public function write(): string
-    {
-        return 'application/epub+zip';
-    }
+	/**
+	 * Write part content.
+	 */
+	public function write(): string {
+		return 'application/epub+zip';
+	}
 }

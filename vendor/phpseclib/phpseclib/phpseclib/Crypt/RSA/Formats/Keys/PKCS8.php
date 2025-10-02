@@ -36,87 +36,84 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class PKCS8 extends Progenitor
 {
-    /**
-     * OID Name
-     *
-     * @var string
-     */
-    const OID_NAME = 'rsaEncryption';
+	/**
+	 * OID Name
+	 *
+	 * @var string
+	 */
+	public const OID_NAME = 'rsaEncryption';
 
-    /**
-     * OID Value
-     *
-     * @var string
-     */
-    const OID_VALUE = '1.2.840.113549.1.1.1';
+	/**
+	 * OID Value
+	 *
+	 * @var string
+	 */
+	public const OID_VALUE = '1.2.840.113549.1.1.1';
 
-    /**
-     * Child OIDs loaded
-     *
-     * @var bool
-     */
-    protected static $childOIDsLoaded = false;
+	/**
+	 * Child OIDs loaded
+	 *
+	 * @var bool
+	 */
+	protected static $childOIDsLoaded = false;
 
-    /**
-     * Break a public or private key down into its constituent components
-     *
-     * @param string $key
-     * @param string $password optional
-     * @return array
-     */
-    public static function load($key, $password = '')
-    {
-        $key = parent::load($key, $password);
+	/**
+	 * Break a public or private key down into its constituent components
+	 *
+	 * @param string $key
+	 * @param string $password optional
+	 * @return array
+	 */
+	public static function load($key, $password = '') {
+		$key = parent::load($key, $password);
 
-        if (isset($key['privateKey'])) {
-            $components['isPublicKey'] = false;
-            $type = 'private';
-        } else {
-            $components['isPublicKey'] = true;
-            $type = 'public';
-        }
+		if (isset($key['privateKey'])) {
+			$components['isPublicKey'] = false;
+			$type = 'private';
+		} else {
+			$components['isPublicKey'] = true;
+			$type = 'public';
+		}
 
-        $result = $components + PKCS1::load($key[$type . 'Key']);
+		$result = $components + PKCS1::load($key[$type . 'Key']);
 
-        if (isset($key['meta'])) {
-            $result['meta'] = $key['meta'];
-        }
+		if (isset($key['meta'])) {
+			$result['meta'] = $key['meta'];
+		}
 
-        return $result;
-    }
+		return $result;
+	}
 
-    /**
-     * Convert a private key to the appropriate format.
-     *
-     * @param BigInteger $n
-     * @param BigInteger $e
-     * @param BigInteger $d
-     * @param array $primes
-     * @param array $exponents
-     * @param array $coefficients
-     * @param string $password optional
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePrivateKey(BigInteger $n, BigInteger $e, BigInteger $d, array $primes, array $exponents, array $coefficients, $password = '', array $options = [])
-    {
-        $key = PKCS1::savePrivateKey($n, $e, $d, $primes, $exponents, $coefficients);
-        $key = ASN1::extractBER($key);
-        return self::wrapPrivateKey($key, [], null, $password, null, '', $options);
-    }
+	/**
+	 * Convert a private key to the appropriate format.
+	 *
+	 * @param BigInteger $n
+	 * @param BigInteger $e
+	 * @param BigInteger $d
+	 * @param array $primes
+	 * @param array $exponents
+	 * @param array $coefficients
+	 * @param string $password optional
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePrivateKey(BigInteger $n, BigInteger $e, BigInteger $d, array $primes, array $exponents, array $coefficients, $password = '', array $options = []) {
+		$key = PKCS1::savePrivateKey($n, $e, $d, $primes, $exponents, $coefficients);
+		$key = ASN1::extractBER($key);
+		return self::wrapPrivateKey($key, [], null, $password, null, '', $options);
+	}
 
-    /**
-     * Convert a public key to the appropriate format
-     *
-     * @param BigInteger $n
-     * @param BigInteger $e
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePublicKey(BigInteger $n, BigInteger $e, array $options = [])
-    {
-        $key = PKCS1::savePublicKey($n, $e);
-        $key = ASN1::extractBER($key);
-        return self::wrapPublicKey($key, null, null, $options);
-    }
+	/**
+	 * Convert a public key to the appropriate format
+	 *
+	 * @param BigInteger $n
+	 * @param BigInteger $e
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePublicKey(BigInteger $n, BigInteger $e, array $options = []) {
+		$key = PKCS1::savePublicKey($n, $e);
+		$key = ASN1::extractBER($key);
+		return self::wrapPublicKey($key, null, null, $options);
+	}
 }

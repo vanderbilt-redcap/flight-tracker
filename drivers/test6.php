@@ -6,7 +6,7 @@ require_once(dirname(__FILE__)."/../small_base.php");
 
 echo "In test6 with $token\n";
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -18,7 +18,7 @@ $data = array(
 	'exportSurveyFields' => 'false',
 	'exportDataAccessGroups' => 'false',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -37,8 +37,8 @@ $redcapData = json_decode($output, true);
 
 $fp = fopen(dirname(__FILE__)."/summaries.csv", "r");
 $i = 0;
-$headers = array();
-$values = array();
+$headers = [];
+$values = [];
 while ($line = fgetcsv($fp)) {
 	if ($i === 0) {
 		$j = 0;
@@ -52,7 +52,7 @@ while ($line = fgetcsv($fp)) {
 		}
 	} else {
 		$j = 0;
-		$valueLine = array();
+		$valueLine = [];
 		$hasData = false;
 		foreach ($line as $item) {
 			$valueLine[$headers[$j]] = $item;
@@ -62,16 +62,16 @@ while ($line = fgetcsv($fp)) {
 			$j++;
 		}
 		if ($hasData) {
-				$values[$line[0]] = $valueLine;
+			$values[$line[0]] = $valueLine;
 		}
 	}
 	$i++;
 }
 fclose($fp);
 
-$inequalities = array();
+$inequalities = [];
 $hasError = false;
-$skip = array(
+$skip = [
 		"summary_citations",
 		"summary_citation_id",
 		"summary_pubmed_citations",
@@ -79,17 +79,17 @@ $skip = array(
 		"summary_calculate_order",
 		"summary_calculate_list_of_awards",
 		"summary_calculate_to_import",
-		);
+		];
 foreach ($redcapData as $row) {
 	if (!isset($row['redcap_repeat_instance']) || ($row['redcap_repeat_instance'] == "")) {
 		$recordId = $row['record_id'];
 		$csvRow = $values[$recordId];
-		$inequalities[$recordId] = array();
+		$inequalities[$recordId] = [];
 		foreach ($csvRow as $field => $value) {
 			foreach ($row as $rowField => $rowValue) {
 				if (($rowField == $field) && ($row[$rowField] != $value) && (!in_array($field, $skip))) {
-						$inequalities[$recordId][$field] = array("csv" => $value, "redcap" => $rowValue);
-						$hasError = true;
+					$inequalities[$recordId][$field] = ["csv" => $value, "redcap" => $rowValue];
+					$hasError = true;
 				}
 			}
 		}

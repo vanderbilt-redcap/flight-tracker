@@ -27,83 +27,78 @@ use PhpOffice\PhpWord\Style\Row as RowStyle;
  */
 class Row extends AbstractElement
 {
-    /**
-     * Row height.
-     *
-     * @var ?int
-     */
-    private $height;
+	/**
+	 * Row height.
+	 *
+	 * @var ?int
+	 */
+	private $height;
 
-    /**
-     * Row style.
-     *
-     * @var ?RowStyle
-     */
-    private $style;
+	/**
+	 * Row style.
+	 *
+	 * @var ?RowStyle
+	 */
+	private $style;
 
-    /**
-     * Row cells.
-     *
-     * @var Cell[]
-     */
-    private $cells = [];
+	/**
+	 * Row cells.
+	 *
+	 * @var Cell[]
+	 */
+	private $cells = [];
 
-    /**
-     * Create a new table row.
-     *
-     * @param int $height
-     * @param mixed $style
-     */
-    public function __construct($height = null, $style = null)
-    {
-        $this->height = $height;
-        $this->style = $this->setNewStyle(new RowStyle(), $style, true);
-    }
+	/**
+	 * Create a new table row.
+	 *
+	 * @param int $height
+	 * @param mixed $style
+	 */
+	public function __construct($height = null, $style = null) {
+		$this->height = $height;
+		$this->style = $this->setNewStyle(new RowStyle(), $style, true);
+	}
 
-    /**
-     * Add a cell.
-     *
-     * @param int $width
-     * @param mixed $style
-     *
-     * @return Cell
-     */
-    public function addCell($width = null, $style = null)
-    {
-        $cell = new Cell($width, $style);
-        $cell->setParentContainer($this);
-        $this->cells[] = $cell;
+	/**
+	 * Add a cell.
+	 *
+	 * @param int $width
+	 * @param mixed $style
+	 *
+	 * @return Cell
+	 */
+	public function addCell($width = null, $style = null) {
+		$cell = new Cell($width, $style);
+		$cell->setParentContainer($this);
+		$this->cells[] = $cell;
 
-        return $cell;
-    }
+		return $cell;
+	}
 
-    /**
-     * Get all cells.
-     *
-     * @return Cell[]
-     */
-    public function getCells()
-    {
-        return $this->cells;
-    }
+	/**
+	 * Get all cells.
+	 *
+	 * @return Cell[]
+	 */
+	public function getCells() {
+		return $this->cells;
+	}
 
-    /**
-     * Get row style.
-     *
-     * @return ?RowStyle
-     */
-    public function getStyle()
-    {
-        return $this->style;
-    }
+	/**
+	 * Get row style.
+	 *
+	 * @return ?RowStyle
+	 */
+	public function getStyle() {
+		return $this->style;
+	}
 
-    /**
-     * Get row height.
-     *
-     * @return ?int
-     */
-    public function getHeight()
-    {
-        return $this->height;
-    }
+	/**
+	 * Get row height.
+	 *
+	 * @return ?int
+	 */
+	public function getHeight() {
+		return $this->height;
+	}
 }

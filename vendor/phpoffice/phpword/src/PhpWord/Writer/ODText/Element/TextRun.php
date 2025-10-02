@@ -25,25 +25,24 @@ namespace PhpOffice\PhpWord\Writer\ODText\Element;
  */
 class TextRun extends Text
 {
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $xmlWriter = $this->getXmlWriter();
-        $element = $this->getElement();
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$xmlWriter = $this->getXmlWriter();
+		$element = $this->getElement();
 
-        $xmlWriter->startElement('text:p');
-        /** @scrutinizer ignore-call */
-        $pStyle = $element->getParagraphStyle();
-        if (!is_string($pStyle)) {
-            $pStyle = 'Normal';
-        }
-        $xmlWriter->writeAttribute('text:style-name', $pStyle);
+		$xmlWriter->startElement('text:p');
+		/** @scrutinizer ignore-call */
+		$pStyle = $element->getParagraphStyle();
+		if (!is_string($pStyle)) {
+			$pStyle = 'Normal';
+		}
+		$xmlWriter->writeAttribute('text:style-name', $pStyle);
 
-        $containerWriter = new Container($xmlWriter, $element);
-        $containerWriter->write();
+		$containerWriter = new Container($xmlWriter, $element);
+		$containerWriter->write();
 
-        $xmlWriter->endElement();
-    }
+		$xmlWriter->endElement();
+	}
 }

@@ -30,48 +30,46 @@ use PhpOffice\PhpWord\Writer\WriterInterface;
  */
 class DomPDF extends AbstractRenderer implements WriterInterface
 {
-    /**
-     * Name of renderer include file.
-     *
-     * @var string
-     */
-    protected $includeFile;
+	/**
+	 * Name of renderer include file.
+	 *
+	 * @var string
+	 */
+	protected $includeFile;
 
-    /**
-     * Gets the implementation of external PDF library that should be used.
-     *
-     * @return Dompdf implementation
-     */
-    protected function createExternalWriterInstance()
-    {
-        $options = new Options();
-        if ($this->getFont()) {
-            $options->set('defaultFont', $this->getFont());
-        }
+	/**
+	 * Gets the implementation of external PDF library that should be used.
+	 *
+	 * @return Dompdf implementation
+	 */
+	protected function createExternalWriterInstance() {
+		$options = new Options();
+		if ($this->getFont()) {
+			$options->set('defaultFont', $this->getFont());
+		}
 
-        return new DompdfLib($options);
-    }
+		return new DompdfLib($options);
+	}
 
-    /**
-     * Save PhpWord to file.
-     */
-    public function save(string $filename): void
-    {
-        $fileHandle = parent::prepareForSave($filename);
+	/**
+	 * Save PhpWord to file.
+	 */
+	public function save(string $filename): void {
+		$fileHandle = parent::prepareForSave($filename);
 
-        //  PDF settings
-        $paperSize = 'A4';
-        $orientation = 'portrait';
+		//  PDF settings
+		$paperSize = 'A4';
+		$orientation = 'portrait';
 
-        //  Create PDF
-        $pdf = $this->createExternalWriterInstance();
-        $pdf->setPaper(strtolower($paperSize), $orientation);
-        $pdf->loadHtml(str_replace(PHP_EOL, '', $this->getContent()));
-        $pdf->render();
+		//  Create PDF
+		$pdf = $this->createExternalWriterInstance();
+		$pdf->setPaper(strtolower($paperSize), $orientation);
+		$pdf->loadHtml(str_replace(PHP_EOL, '', $this->getContent()));
+		$pdf->render();
 
-        //  Write to file
-        fwrite($fileHandle, $pdf->output());
+		//  Write to file
+		fwrite($fileHandle, $pdf->output());
 
-        parent::restoreStateAfterSave($fileHandle);
-    }
+		parent::restoreStateAfterSave($fileHandle);
+	}
 }

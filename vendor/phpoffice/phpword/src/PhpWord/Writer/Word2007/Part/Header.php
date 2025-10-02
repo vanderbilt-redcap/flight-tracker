@@ -23,10 +23,10 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Part;
  */
 class Header extends Footer
 {
-    /**
-     * Root element name.
-     *
-     * @var string
-     */
-    protected $rootElement = 'w:hdr';
+	/**
+	 * Root element name.
+	 *
+	 * @var string
+	 */
+	protected $rootElement = 'w:hdr';
 }

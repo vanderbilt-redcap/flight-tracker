@@ -13,7 +13,7 @@ class Publications
 	public const DEFAULT_PUBMED_THROTTLE = 0.35;   // rate limit: 3 per minute
 	public const API_KEY_PUBMED_THROTTLE = 0.10;   // rate limit: 10 per minute
 	public const WAIT_SECS_UPON_FAILURE = 60;
-	public const NUM_PMIDS_PER_PULL = 10;
+	public const NUM_PMIDS_PER_PULL = 200;
 	public const LIST_SEPARATOR = ";";
 
 	public function __construct($token, $server, $metadata = "download") {
@@ -363,7 +363,7 @@ class Publications
 
 	public static function queryPubMed($term, $pid) {
 		$apiKey = Application::getSetting("pubmed_api_key", $pid);
-		$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=100000&retmode=json&term=".$term;
+		$url = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmax=9999&retmode=json&term=".$term;
 		if ($apiKey) {
 			$url .= "&api_key=".urlencode($apiKey);
 		}
@@ -814,13 +814,13 @@ class Publications
 		$pubmedMatches = [];
 		foreach ($pmidsInGroups as $pmidGroup) {
 			$output = self::pullFromEFetch($pmidGroup, $pid);
-			$xml = simplexml_load_string(utf8_encode($output));
+			$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
 			$numRetries = 5;
 			$i = 0;
 			while (!$xml && ($numRetries > $i) && !self::isEmptyArticleSet($output)) {
 				sleep(5);
 				$output = self::pullFromEFetch($pmidGroup, $pid);
-				$xml = simplexml_load_string(utf8_encode($output));
+				$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
 				$i++;
 			}
 			if (!$xml) {
@@ -1521,7 +1521,7 @@ class Publications
 				}
 			}
 		}
-		$xml = simplexml_load_string(utf8_encode($output));
+		$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
 		$tries = 0;
 		$maxTries = 10;
 		$oldOutput = "BAD OUTPUT";
@@ -1532,7 +1532,7 @@ class Publications
 			$tries++;
 			self::throttleDown(self::WAIT_SECS_UPON_FAILURE);
 			$output = self::pullFromEFetch($pmids, $pid);
-			$xml = simplexml_load_string(utf8_encode($output));
+			$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
 		}
 		if (!$xml) {
 			if ($tries >= $maxTries) {
@@ -2938,7 +2938,7 @@ $(document).ready(() => {
 			$newIds = [$id];
 		}
 		$idsBatched = [];
-		$pullSize = 20;
+		$pullSize = self::NUM_PMIDS_PER_PULL;
 		for ($i = 0; $i < count($newIds); $i += $pullSize) {
 			$batch = [];
 			for ($j = $i; ($j < count($newIds)) && ($j < $i + $pullSize); $j++) {
@@ -2954,10 +2954,11 @@ $(document).ready(() => {
 		foreach ($idsBatched as $batch) {
 			$id = implode(",", $batch);
 			$query = "ids=".$id."&format=json";
+			$query .= "&tool=flight_tracker&email=flighttracker@vumc.org";
 			if ($apiKey) {
 				$query .= "&api_key=".urlencode($apiKey);
 			}
-			$url = "https://www.ncbi.nlm.nih.gov/pmc/utils/idconv/v1.0/?".$query;
+			$url = "https://pmc.ncbi.nlm.nih.gov/tools/idconv/api/v1/articles/?".$query;
 			list($resp, $output) = REDCapManagement::downloadURL($url, $pid);
 
 			if ($apiKey) {

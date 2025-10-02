@@ -27,19 +27,18 @@ use PhpOffice\PhpWord\Writer\HTML;
  */
 class ListItem extends AbstractElement
 {
-    /**
-     * Write list item.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        if (!$this->element instanceof \PhpOffice\PhpWord\Element\ListItem) {
-            return '';
-        }
+	/**
+	 * Write list item.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		if (!$this->element instanceof \PhpOffice\PhpWord\Element\ListItem) {
+			return '';
+		}
 
-        $content = '<p>' . $this->parentWriter->escapeHTML($this->element->getTextObject()->getText()) . '</p>' . PHP_EOL;
+		$content = '<p>' . $this->parentWriter->escapeHTML($this->element->getTextObject()->getText()) . '</p>' . PHP_EOL;
 
-        return $content;
-    }
+		return $content;
+	}
 }

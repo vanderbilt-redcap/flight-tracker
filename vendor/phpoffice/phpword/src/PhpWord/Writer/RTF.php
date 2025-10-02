@@ -27,97 +27,90 @@ use PhpOffice\PhpWord\PhpWord;
  */
 class RTF extends AbstractWriter implements WriterInterface
 {
-    /**
-     * Last paragraph style.
-     *
-     * @var mixed
-     */
-    private $lastParagraphStyle;
+	/**
+	 * Last paragraph style.
+	 *
+	 * @var mixed
+	 */
+	private $lastParagraphStyle;
 
-    /**
-     * Create new instance.
-     */
-    public function __construct(?PhpWord $phpWord = null)
-    {
-        $this->setPhpWord($phpWord);
+	/**
+	 * Create new instance.
+	 */
+	public function __construct(?PhpWord $phpWord = null) {
+		$this->setPhpWord($phpWord);
 
-        $this->parts = ['Header', 'Document'];
-        foreach ($this->parts as $partName) {
-            $partClass = static::class . '\\Part\\' . $partName;
-            if (class_exists($partClass)) {
-                /** @var RTF\Part\AbstractPart $part Type hint */
-                $part = new $partClass();
-                $part->setParentWriter($this);
-                $this->writerParts[strtolower($partName)] = $part;
-            }
-        }
-    }
+		$this->parts = ['Header', 'Document'];
+		foreach ($this->parts as $partName) {
+			$partClass = static::class . '\\Part\\' . $partName;
+			if (class_exists($partClass)) {
+				/** @var RTF\Part\AbstractPart $part Type hint */
+				$part = new $partClass();
+				$part->setParentWriter($this);
+				$this->writerParts[strtolower($partName)] = $part;
+			}
+		}
+	}
 
-    /**
-     * Save content to file.
-     */
-    public function save(string $filename): void
-    {
-        $this->writeFile($this->openFile($filename), $this->getContent());
-    }
+	/**
+	 * Save content to file.
+	 */
+	public function save(string $filename): void {
+		$this->writeFile($this->openFile($filename), $this->getContent());
+	}
 
-    /**
-     * Get content.
-     *
-     * @return string
-     *
-     * @since 0.11.0
-     */
-    private function getContent()
-    {
-        $content = '';
+	/**
+	 * Get content.
+	 *
+	 * @return string
+	 *
+	 * @since 0.11.0
+	 */
+	private function getContent() {
+		$content = '';
 
-        $content .= '{';
-        $content .= '\rtf1' . PHP_EOL;
-        $content .= $this->getWriterPart('Header')->write();
-        $content .= $this->getWriterPart('Document')->write();
-        $content .= '}';
+		$content .= '{';
+		$content .= '\rtf1' . PHP_EOL;
+		$content .= $this->getWriterPart('Header')->write();
+		$content .= $this->getWriterPart('Document')->write();
+		$content .= '}';
 
-        return $content;
-    }
+		return $content;
+	}
 
-    /**
-     * Get font table.
-     *
-     * @return array
-     */
-    public function getFontTable()
-    {
-        return $this->getWriterPart('Header')->getFontTable();
-    }
+	/**
+	 * Get font table.
+	 *
+	 * @return array
+	 */
+	public function getFontTable() {
+		return $this->getWriterPart('Header')->getFontTable();
+	}
 
-    /**
-     * Get color table.
-     *
-     * @return array
-     */
-    public function getColorTable()
-    {
-        return $this->getWriterPart('Header')->getColorTable();
-    }
+	/**
+	 * Get color table.
+	 *
+	 * @return array
+	 */
+	public function getColorTable() {
+		return $this->getWriterPart('Header')->getColorTable();
+	}
 
-    /**
-     * Get last paragraph style.
-     *
-     * @return mixed
-     */
-    public function getLastParagraphStyle()
-    {
-        return $this->lastParagraphStyle;
-    }
+	/**
+	 * Get last paragraph style.
+	 *
+	 * @return mixed
+	 */
+	public function getLastParagraphStyle() {
+		return $this->lastParagraphStyle;
+	}
 
-    /**
-     * Set last paragraph style.
-     *
-     * @param mixed $value
-     */
-    public function setLastParagraphStyle($value = ''): void
-    {
-        $this->lastParagraphStyle = $value;
-    }
+	/**
+	 * Set last paragraph style.
+	 *
+	 * @param mixed $value
+	 */
+	public function setLastParagraphStyle($value = ''): void {
+		$this->lastParagraphStyle = $value;
+	}
 }

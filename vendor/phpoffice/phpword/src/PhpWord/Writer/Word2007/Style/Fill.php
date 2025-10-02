@@ -25,18 +25,17 @@ namespace PhpOffice\PhpWord\Writer\Word2007\Style;
  */
 class Fill extends AbstractStyle
 {
-    /**
-     * Write style.
-     */
-    public function write(): void
-    {
-        $style = $this->getStyle();
-        if (!$style instanceof \PhpOffice\PhpWord\Style\Fill) {
-            return;
-        }
-        $xmlWriter = $this->getXmlWriter();
+	/**
+	 * Write style.
+	 */
+	public function write(): void {
+		$style = $this->getStyle();
+		if (!$style instanceof \PhpOffice\PhpWord\Style\Fill) {
+			return;
+		}
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->writeAttribute('on', 't');
-        $xmlWriter->writeAttributeIf($style->getColor() !== null, 'fillcolor', $style->getColor());
-    }
+		$xmlWriter->writeAttribute('on', 't');
+		$xmlWriter->writeAttributeIf($style->getColor() !== null, 'fillcolor', $style->getColor());
+	}
 }

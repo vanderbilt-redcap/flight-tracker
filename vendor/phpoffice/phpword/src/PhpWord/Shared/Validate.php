@@ -21,57 +21,55 @@ namespace PhpOffice\PhpWord\Shared;
 
 class Validate
 {
-    public const CSS_WHITESPACE = [
-        'pre-wrap',
-        'normal',
-        'nowrap',
-        'pre',
-        'pre-line',
-        'initial',
-        'inherit',
-    ];
+	public const CSS_WHITESPACE = [
+		'pre-wrap',
+		'normal',
+		'nowrap',
+		'pre',
+		'pre-line',
+		'initial',
+		'inherit',
+	];
 
-    public const CSS_GENERICFONT = [
-        'serif',
-        'sans-serif',
-        'monospace',
-        'cursive',
-        'fantasy',
-        'system-ui',
-        'math',
-        'emoji',
-        'fangsong',
-    ];
+	public const CSS_GENERICFONT = [
+		'serif',
+		'sans-serif',
+		'monospace',
+		'cursive',
+		'fantasy',
+		'system-ui',
+		'math',
+		'emoji',
+		'fangsong',
+	];
 
-    /**
-     * Validate html css white-space value. It is expected that only pre-wrap and normal (default) are useful.
-     *
-     * @param string $value CSS White space
-     *
-     * @return string value if valid, empty string if not
-     */
-    public static function validateCSSWhiteSpace(?string $value): string
-    {
-        if (in_array($value, self::CSS_WHITESPACE)) {
-            return $value;
-        }
+	/**
+	 * Validate html css white-space value. It is expected that only pre-wrap and normal (default) are useful.
+	 *
+	 * @param string $value CSS White space
+	 *
+	 * @return string value if valid, empty string if not
+	 */
+	public static function validateCSSWhiteSpace(?string $value): string {
+		if (in_array($value, self::CSS_WHITESPACE)) {
+			return $value;
+		}
 
-        return '';
-    }
+		return '';
+	}
 
-    /**
-     * Validate generic font for fallback for html.
-     *
-     * @param string $value Generic font name
-     *
-     * @return string Value if legitimate, empty string if not
-     */
-    public static function validateCSSGenericFont(?string $value): string
-    {
-        if (in_array($value, self::CSS_GENERICFONT)) {
-            return $value;
-        }
+	/**
+	 * Validate generic font for fallback for html.
+	 *
+	 * @param string $value Generic font name
+	 *
+	 * @return string Value if legitimate, empty string if not
+	 */
+	public static function validateCSSGenericFont(?string $value): string {
+		if (in_array($value, self::CSS_GENERICFONT)) {
+			return $value;
+		}
 
-        return '';
-    }
+		return '';
+	}
 }

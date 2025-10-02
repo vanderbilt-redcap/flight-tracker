@@ -23,8 +23,8 @@ namespace PhpOffice\PhpWord\Writer;
  */
 interface WriterInterface
 {
-    /**
-     * Save PhpWord to file.
-     */
-    public function save(string $filename): void;
+	/**
+	 * Save PhpWord to file.
+	 */
+	public function save(string $filename): void;
 }

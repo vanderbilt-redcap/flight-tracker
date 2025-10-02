@@ -27,68 +27,63 @@ use PhpOffice\PhpWord\Element\Field as ElementField;
  */
 class Field extends Text
 {
-    /**
-     * Write field element.
-     */
-    public function write()
-    {
-        $element = $this->element;
-        if (!$element instanceof ElementField) {
-            return;
-        }
+	/**
+	 * Write field element.
+	 */
+	public function write() {
+		$element = $this->element;
+		if (!$element instanceof ElementField) {
+			return;
+		}
 
-        $this->getStyles();
+		$this->getStyles();
 
-        $content = '';
-        $content .= $this->writeOpening();
-        $content .= '{';
-        $content .= $this->writeFontStyle();
+		$content = '';
+		$content .= $this->writeOpening();
+		$content .= '{';
+		$content .= $this->writeFontStyle();
 
-        $methodName = 'write' . ucfirst(strtolower($element->getType()));
-        if (!method_exists($this, $methodName)) {
-            // Unsupported field
-            $content .= '';
-        } else {
-            $content .= '\\field{\\*\\fldinst ';
-            $content .= $this->$methodName($element);
-            $content .= '}{\\fldrslt}';
-        }
-        $content .= '}';
-        $content .= $this->writeClosing();
+		$methodName = 'write' . ucfirst(strtolower($element->getType()));
+		if (!method_exists($this, $methodName)) {
+			// Unsupported field
+			$content .= '';
+		} else {
+			$content .= '\\field{\\*\\fldinst ';
+			$content .= $this->$methodName($element);
+			$content .= '}{\\fldrslt}';
+		}
+		$content .= '}';
+		$content .= $this->writeClosing();
 
-        return $content;
-    }
+		return $content;
+	}
 
-    protected function writePage()
-    {
-        return 'PAGE';
-    }
+	protected function writePage() {
+		return 'PAGE';
+	}
 
-    protected function writeNumpages()
-    {
-        return 'NUMPAGES';
-    }
+	protected function writeNumpages() {
+		return 'NUMPAGES';
+	}
 
-    protected function writeFilename(ElementField $element): string
-    {
-        $content = 'FILENAME';
-        $options = $element->getOptions();
-        if ($options != null && in_array('Path', $options)) {
-            $content .= ' \\\\p';
-        }
+	protected function writeFilename(ElementField $element): string {
+		$content = 'FILENAME';
+		$options = $element->getOptions();
+		if ($options != null && in_array('Path', $options)) {
+			$content .= ' \\\\p';
+		}
 
-        return $content;
-    }
+		return $content;
+	}
 
-    protected function writeDate(ElementField $element)
-    {
-        $content = '';
-        $content .= 'DATE';
-        $properties = $element->getProperties();
-        if (isset($properties['dateformat'])) {
-            $content .= ' \\\\@ "' . $properties['dateformat'] . '"';
-        }
+	protected function writeDate(ElementField $element) {
+		$content = '';
+		$content .= 'DATE';
+		$properties = $element->getProperties();
+		if (isset($properties['dateformat'])) {
+			$content .= ' \\\\@ "' . $properties['dateformat'] . '"';
+		}
 
-        return $content;
-    }
+		return $content;
+	}
 }

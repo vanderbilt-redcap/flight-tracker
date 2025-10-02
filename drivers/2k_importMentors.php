@@ -2,17 +2,17 @@
 
 require_once(dirname(__FILE__)."/../small_base.php");
 
-$upload = array();
+$upload = [];
 $i = 0;
-$records = array();
+$records = [];
 $fp = fopen(dirname(__FILE__)."/../missingmentors.csv", "r");
 while ($line = fgetcsv($fp)) {
 	if (($i > 0) && ($line[3])) {
-		$scholarName = array($line[0], $line[1]);
+		$scholarName = [$line[0], $line[1]];
 		$mentorNames = preg_split("/\s*[\s,]\s*/", $line[3]);
 		if (count($scholarName) > 2) {
 			echo "$i: ".json_encode($scholarName)."\n";
-			$temp = fopen("php://stdin","r");
+			$temp = fopen("php://stdin", "r");
 			$scholarJSON = "[".fgets($temp)."]";
 			fclose($temp);
 			$scholarName = json_decode(trim($scholarJSON));
@@ -20,9 +20,9 @@ while ($line = fgetcsv($fp)) {
 		if (count($scholarName) == 2) {
 			$recordId = matchName($scholarName[0], $scholarName[1]);
 			if ($recordId && !in_array($recordId, $records)) {
-				$upload[] = array("record_id" => $recordId, "spreadsheet_mentors" => implode(" ", $mentorNames));
+				$upload[] = ["record_id" => $recordId, "spreadsheet_mentors" => implode(" ", $mentorNames)];
 				$records[] = $recordId;
-			} else if ($recordId) {
+			} elseif ($recordId) {
 				echo "Duplicate with $recordId and ".json_encode($scholarName)."\n";
 			} else {
 				echo "No match with ".json_encode($scholarName)."\n";
@@ -35,7 +35,7 @@ fclose($fp);
 // echo json_encode($upload)."\n";
 echo count($upload)."\n";
 
-$data = array(
+$data = [
 	'token' => $token,
 	'content' => 'record',
 	'format' => 'json',
@@ -45,7 +45,7 @@ $data = array(
 	'data' => json_encode($upload),
 	'returnContent' => 'count',
 	'returnFormat' => 'json'
-);
+];
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $server);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -60,4 +60,3 @@ curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data, '', '&'));
 $output = curl_exec($ch);
 echo $output."\n";
 curl_close($ch);
-

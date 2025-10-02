@@ -26,184 +26,179 @@ use PhpOffice\PhpWord\Exception\Exception;
  */
 class Media
 {
-    /**
-     * Media elements.
-     *
-     * @var array
-     */
-    private static $elements = [];
+	/**
+	 * Media elements.
+	 *
+	 * @var array
+	 */
+	private static $elements = [];
 
-    /**
-     * Add new media element.
-     *
-     * @since 0.10.0
-     * @since 0.9.2
-     *
-     * @param string $container section|headerx|footerx|footnote|endnote
-     * @param string $mediaType image|object|link
-     * @param string $source
-     *
-     * @return int
-     */
-    public static function addElement($container, $mediaType, $source, ?Image $image = null)
-    {
-        // Assign unique media Id and initiate media container if none exists
-        $mediaId = md5($container . $source);
-        if (!isset(self::$elements[$container])) {
-            self::$elements[$container] = [];
-        }
+	/**
+	 * Add new media element.
+	 *
+	 * @since 0.10.0
+	 * @since 0.9.2
+	 *
+	 * @param string $container section|headerx|footerx|footnote|endnote
+	 * @param string $mediaType image|object|link
+	 * @param string $source
+	 *
+	 * @return int
+	 */
+	public static function addElement($container, $mediaType, $source, ?Image $image = null) {
+		// Assign unique media Id and initiate media container if none exists
+		$mediaId = md5($container . $source);
+		if (!isset(self::$elements[$container])) {
+			self::$elements[$container] = [];
+		}
 
-        // Add media if not exists or point to existing media
-        if (!isset(self::$elements[$container][$mediaId])) {
-            $mediaCount = self::countElements($container);
-            $mediaTypeCount = self::countElements($container, $mediaType);
-            ++$mediaTypeCount;
-            $rId = ++$mediaCount;
-            $target = null;
-            $mediaData = ['mediaIndex' => $mediaTypeCount];
+		// Add media if not exists or point to existing media
+		if (!isset(self::$elements[$container][$mediaId])) {
+			$mediaCount = self::countElements($container);
+			$mediaTypeCount = self::countElements($container, $mediaType);
+			++$mediaTypeCount;
+			$rId = ++$mediaCount;
+			$target = null;
+			$mediaData = ['mediaIndex' => $mediaTypeCount];
 
-            switch ($mediaType) {
-                // Images
-                case 'image':
-                    if (null === $image) {
-                        throw new Exception('Image object not assigned.');
-                    }
-                    $isMemImage = $image->isMemImage();
-                    $extension = $image->getImageExtension();
-                    $mediaData['imageExtension'] = $extension;
-                    $mediaData['imageType'] = $image->getImageType();
-                    if ($isMemImage) {
-                        $mediaData['isMemImage'] = true;
-                        $mediaData['imageString'] = $image->getImageString();
-                    }
-                    $target = "{$container}_image{$mediaTypeCount}.{$extension}";
-                    $image->setTarget($target);
-                    $image->setMediaIndex($mediaTypeCount);
+			switch ($mediaType) {
+				// Images
+				case 'image':
+					if (null === $image) {
+						throw new Exception('Image object not assigned.');
+					}
+					$isMemImage = $image->isMemImage();
+					$extension = $image->getImageExtension();
+					$mediaData['imageExtension'] = $extension;
+					$mediaData['imageType'] = $image->getImageType();
+					if ($isMemImage) {
+						$mediaData['isMemImage'] = true;
+						$mediaData['imageString'] = $image->getImageString();
+					}
+					$target = "{$container}_image{$mediaTypeCount}.{$extension}";
+					$image->setTarget($target);
+					$image->setMediaIndex($mediaTypeCount);
 
-                    break;
-                    // Objects
-                case 'object':
-                    $target = "{$container}_oleObject{$mediaTypeCount}.bin";
+					break;
+					// Objects
+				case 'object':
+					$target = "{$container}_oleObject{$mediaTypeCount}.bin";
 
-                    break;
-                    // Links
-                case 'link':
-                    $target = $source;
+					break;
+					// Links
+				case 'link':
+					$target = $source;
 
-                    break;
-            }
+					break;
+			}
 
-            $mediaData['source'] = $source;
-            $mediaData['target'] = $target;
-            $mediaData['type'] = $mediaType;
-            $mediaData['rID'] = $rId;
-            self::$elements[$container][$mediaId] = $mediaData;
+			$mediaData['source'] = $source;
+			$mediaData['target'] = $target;
+			$mediaData['type'] = $mediaType;
+			$mediaData['rID'] = $rId;
+			self::$elements[$container][$mediaId] = $mediaData;
 
-            return $rId;
-        }
+			return $rId;
+		}
 
-        $mediaData = self::$elements[$container][$mediaId];
-        if (null !== $image) {
-            $image->setTarget($mediaData['target']);
-            $image->setMediaIndex($mediaData['mediaIndex']);
-        }
+		$mediaData = self::$elements[$container][$mediaId];
+		if (null !== $image) {
+			$image->setTarget($mediaData['target']);
+			$image->setMediaIndex($mediaData['mediaIndex']);
+		}
 
-        return $mediaData['rID'];
-    }
+		return $mediaData['rID'];
+	}
 
-    /**
-     * Get media elements count.
-     *
-     * @param string $container section|headerx|footerx|footnote|endnote
-     * @param string $mediaType image|object|link
-     *
-     * @return int
-     *
-     * @since 0.10.0
-     */
-    public static function countElements($container, $mediaType = null)
-    {
-        $mediaCount = 0;
+	/**
+	 * Get media elements count.
+	 *
+	 * @param string $container section|headerx|footerx|footnote|endnote
+	 * @param string $mediaType image|object|link
+	 *
+	 * @return int
+	 *
+	 * @since 0.10.0
+	 */
+	public static function countElements($container, $mediaType = null) {
+		$mediaCount = 0;
 
-        if (isset(self::$elements[$container])) {
-            foreach (self::$elements[$container] as $mediaData) {
-                if (null !== $mediaType) {
-                    if ($mediaType == $mediaData['type']) {
-                        ++$mediaCount;
-                    }
-                } else {
-                    ++$mediaCount;
-                }
-            }
-        }
+		if (isset(self::$elements[$container])) {
+			foreach (self::$elements[$container] as $mediaData) {
+				if (null !== $mediaType) {
+					if ($mediaType == $mediaData['type']) {
+						++$mediaCount;
+					}
+				} else {
+					++$mediaCount;
+				}
+			}
+		}
 
-        return $mediaCount;
-    }
+		return $mediaCount;
+	}
 
-    /**
-     * Get media elements.
-     *
-     * @param string $container section|headerx|footerx|footnote|endnote
-     * @param string $type image|object|link
-     *
-     * @return array
-     *
-     * @since 0.10.0
-     */
-    public static function getElements($container, $type = null)
-    {
-        $elements = [];
+	/**
+	 * Get media elements.
+	 *
+	 * @param string $container section|headerx|footerx|footnote|endnote
+	 * @param string $type image|object|link
+	 *
+	 * @return array
+	 *
+	 * @since 0.10.0
+	 */
+	public static function getElements($container, $type = null) {
+		$elements = [];
 
-        // If header/footer, search for headerx and footerx where x is number
-        if ($container == 'header' || $container == 'footer') {
-            foreach (self::$elements as $key => $val) {
-                if (substr($key, 0, 6) == $container) {
-                    $elements[$key] = $val;
-                }
-            }
+		// If header/footer, search for headerx and footerx where x is number
+		if ($container == 'header' || $container == 'footer') {
+			foreach (self::$elements as $key => $val) {
+				if (substr($key, 0, 6) == $container) {
+					$elements[$key] = $val;
+				}
+			}
 
-            return $elements;
-        }
+			return $elements;
+		}
 
-        if (!isset(self::$elements[$container])) {
-            return $elements;
-        }
+		if (!isset(self::$elements[$container])) {
+			return $elements;
+		}
 
-        return self::getElementsByType($container, $type);
-    }
+		return self::getElementsByType($container, $type);
+	}
 
-    /**
-     * Get elements by media type.
-     *
-     * @param string $container section|footnote|endnote
-     * @param string $type image|object|link
-     *
-     * @return array
-     *
-     * @since 0.11.0 Splitted from `getElements` to reduce complexity
-     */
-    private static function getElementsByType($container, $type = null)
-    {
-        $elements = [];
+	/**
+	 * Get elements by media type.
+	 *
+	 * @param string $container section|footnote|endnote
+	 * @param string $type image|object|link
+	 *
+	 * @return array
+	 *
+	 * @since 0.11.0 Splitted from `getElements` to reduce complexity
+	 */
+	private static function getElementsByType($container, $type = null) {
+		$elements = [];
 
-        foreach (self::$elements[$container] as $key => $data) {
-            if ($type !== null) {
-                if ($type == $data['type']) {
-                    $elements[$key] = $data;
-                }
-            } else {
-                $elements[$key] = $data;
-            }
-        }
+		foreach (self::$elements[$container] as $key => $data) {
+			if ($type !== null) {
+				if ($type == $data['type']) {
+					$elements[$key] = $data;
+				}
+			} else {
+				$elements[$key] = $data;
+			}
+		}
 
-        return $elements;
-    }
+		return $elements;
+	}
 
-    /**
-     * Reset media elements.
-     */
-    public static function resetElements(): void
-    {
-        self::$elements = [];
-    }
+	/**
+	 * Reset media elements.
+	 */
+	public static function resetElements(): void {
+		self::$elements = [];
+	}
 }

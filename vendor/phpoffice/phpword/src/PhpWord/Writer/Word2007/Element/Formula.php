@@ -26,26 +26,25 @@ use PhpOffice\PhpWord\Element\Formula as FormulaElement;
  */
 class Formula extends AbstractElement
 {
-    /**
-     * Write element.
-     */
-    public function write(): void
-    {
-        $element = $this->getElement();
-        if (!$element instanceof FormulaElement) {
-            return;
-        }
+	/**
+	 * Write element.
+	 */
+	public function write(): void {
+		$element = $this->getElement();
+		if (!$element instanceof FormulaElement) {
+			return;
+		}
 
-        $this->startElementP();
+		$this->startElementP();
 
-        $xmlWriter = $this->getXmlWriter();
+		$xmlWriter = $this->getXmlWriter();
 
-        $xmlWriter->startElement('w:r');
-        $xmlWriter->writeElement('w:rPr');
-        $xmlWriter->endElement();
+		$xmlWriter->startElement('w:r');
+		$xmlWriter->writeElement('w:rPr');
+		$xmlWriter->endElement();
 
-        $xmlWriter->writeRaw((new OfficeMathML())->write($element->getMath()));
+		$xmlWriter->writeRaw((new OfficeMathML())->write($element->getMath()));
 
-        $this->endElementP();
-    }
+		$this->endElementP();
+	}
 }

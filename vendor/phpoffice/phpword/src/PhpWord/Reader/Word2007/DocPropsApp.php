@@ -25,17 +25,17 @@ namespace PhpOffice\PhpWord\Reader\Word2007;
  */
 class DocPropsApp extends DocPropsCore
 {
-    /**
-     * Property mapping.
-     *
-     * @var array
-     */
-    protected $mapping = ['Company' => 'setCompany', 'Manager' => 'setManager'];
+	/**
+	 * Property mapping.
+	 *
+	 * @var array
+	 */
+	protected $mapping = ['Company' => 'setCompany', 'Manager' => 'setManager'];
 
-    /**
-     * Callback functions.
-     *
-     * @var array
-     */
-    protected $callbacks = [];
+	/**
+	 * Callback functions.
+	 *
+	 * @var array
+	 */
+	protected $callbacks = [];
 }

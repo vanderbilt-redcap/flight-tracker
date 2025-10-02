@@ -25,20 +25,19 @@ namespace PhpOffice\PhpWord\Writer\HTML\Element;
  */
 class ListItemRun extends TextRun
 {
-    /**
-     * Write list item.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        if (!$this->element instanceof \PhpOffice\PhpWord\Element\ListItemRun) {
-            return '';
-        }
+	/**
+	 * Write list item.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		if (!$this->element instanceof \PhpOffice\PhpWord\Element\ListItemRun) {
+			return '';
+		}
 
-        $writer = new Container($this->parentWriter, $this->element);
-        $content = $writer->write() . PHP_EOL;
+		$writer = new Container($this->parentWriter, $this->element);
+		$content = $writer->write() . PHP_EOL;
 
-        return $content;
-    }
+		return $content;
+	}
 }

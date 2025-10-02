@@ -23,58 +23,54 @@ use ReflectionClass;
 
 abstract class AbstractEnum
 {
-    private static $constCacheArray;
+	private static $constCacheArray;
 
-    private static function getConstants()
-    {
-        if (self::$constCacheArray == null) {
-            self::$constCacheArray = [];
-        }
-        $calledClass = static::class;
-        if (!array_key_exists($calledClass, self::$constCacheArray)) {
-            $reflect = new ReflectionClass($calledClass);
-            self::$constCacheArray[$calledClass] = $reflect->getConstants();
-        }
+	private static function getConstants() {
+		if (self::$constCacheArray == null) {
+			self::$constCacheArray = [];
+		}
+		$calledClass = static::class;
+		if (!array_key_exists($calledClass, self::$constCacheArray)) {
+			$reflect = new ReflectionClass($calledClass);
+			self::$constCacheArray[$calledClass] = $reflect->getConstants();
+		}
 
-        return self::$constCacheArray[$calledClass];
-    }
+		return self::$constCacheArray[$calledClass];
+	}
 
-    /**
-     * Returns all values for this enum.
-     *
-     * @return array
-     */
-    public static function values()
-    {
-        return array_values(self::getConstants());
-    }
+	/**
+	 * Returns all values for this enum.
+	 *
+	 * @return array
+	 */
+	public static function values() {
+		return array_values(self::getConstants());
+	}
 
-    /**
-     * Returns true the value is valid for this enum.
-     *
-     * @param string $value
-     *
-     * @return bool true if value is valid
-     */
-    public static function isValid($value)
-    {
-        $values = array_values(self::getConstants());
+	/**
+	 * Returns true the value is valid for this enum.
+	 *
+	 * @param string $value
+	 *
+	 * @return bool true if value is valid
+	 */
+	public static function isValid($value) {
+		$values = array_values(self::getConstants());
 
-        return in_array($value, $values, true);
-    }
+		return in_array($value, $values, true);
+	}
 
-    /**
-     * Validates that the value passed is a valid value.
-     *
-     * @param string $value
-     */
-    public static function validate($value): void
-    {
-        if (!self::isValid($value)) {
-            $calledClass = static::class;
-            $values = array_values(self::getConstants());
+	/**
+	 * Validates that the value passed is a valid value.
+	 *
+	 * @param string $value
+	 */
+	public static function validate($value): void {
+		if (!self::isValid($value)) {
+			$calledClass = static::class;
+			$values = array_values(self::getConstants());
 
-            throw new InvalidArgumentException("$value is not a valid value for $calledClass, possible values are " . implode(', ', $values));
-        }
-    }
+			throw new InvalidArgumentException("$value is not a valid value for $calledClass, possible values are " . implode(', ', $values));
+		}
+	}
 }

@@ -25,20 +25,19 @@ namespace PhpOffice\PhpWord\Writer\HTML\Style;
  */
 class Generic extends AbstractStyle
 {
-    /**
-     * Write style.
-     *
-     * @return string
-     */
-    public function write()
-    {
-        $style = $this->getStyle();
-        $css = [];
+	/**
+	 * Write style.
+	 *
+	 * @return string
+	 */
+	public function write() {
+		$style = $this->getStyle();
+		$css = [];
 
-        if (is_array($style) && !empty($style)) {
-            $css = $style;
-        }
+		if (is_array($style) && !empty($style)) {
+			$css = $style;
+		}
 
-        return $this->assembleCss($css);
-    }
+		return $this->assembleCss($css);
+	}
 }

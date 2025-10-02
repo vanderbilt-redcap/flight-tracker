@@ -23,17 +23,16 @@ namespace PhpOffice\PhpWord\Writer\EPub3\Style;
  */
 class Paragraph extends AbstractStyle
 {
-    /**
-     * Write style content.
-     */
-    public function write(): string
-    {
-        $content = 'p {';
-        $content .= 'margin-top: 0;';
-        $content .= 'margin-bottom: 1em;';
-        $content .= 'text-align: left;';
-        $content .= '}';
+	/**
+	 * Write style content.
+	 */
+	public function write(): string {
+		$content = 'p {';
+		$content .= 'margin-top: 0;';
+		$content .= 'margin-bottom: 1em;';
+		$content .= 'text-align: left;';
+		$content .= '}';
 
-        return $content;
-    }
+		return $content;
+	}
 }

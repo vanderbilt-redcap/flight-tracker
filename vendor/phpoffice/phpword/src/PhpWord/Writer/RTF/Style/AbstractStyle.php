@@ -28,81 +28,76 @@ use PhpOffice\PhpWord\Writer\RTF;
  */
 abstract class AbstractStyle
 {
-    /**
-     * Parent writer.
-     *
-     * @var RTF
-     */
-    private $parentWriter;
+	/**
+	 * Parent writer.
+	 *
+	 * @var RTF
+	 */
+	private $parentWriter;
 
-    /**
-     * Style.
-     *
-     * @var null|array|StyleAbstract
-     */
-    private $style;
+	/**
+	 * Style.
+	 *
+	 * @var null|array|StyleAbstract
+	 */
+	private $style;
 
-    /**
-     * Write style.
-     *
-     * @return mixed
-     */
-    abstract public function write();
+	/**
+	 * Write style.
+	 *
+	 * @return mixed
+	 */
+	abstract public function write();
 
-    /**
-     * Create new instance.
-     *
-     * @param array|StyleAbstract $style
-     */
-    public function __construct($style = null)
-    {
-        $this->style = $style;
-    }
+	/**
+	 * Create new instance.
+	 *
+	 * @param array|StyleAbstract $style
+	 */
+	public function __construct($style = null) {
+		$this->style = $style;
+	}
 
-    /**
-     * Set parent writer.
-     *
-     * @param RTF $writer
-     */
-    public function setParentWriter($writer): void
-    {
-        $this->parentWriter = $writer;
-    }
+	/**
+	 * Set parent writer.
+	 *
+	 * @param RTF $writer
+	 */
+	public function setParentWriter($writer): void {
+		$this->parentWriter = $writer;
+	}
 
-    /**
-     * Get parent writer.
-     *
-     * @return RTF
-     */
-    public function getParentWriter()
-    {
-        return $this->parentWriter;
-    }
+	/**
+	 * Get parent writer.
+	 *
+	 * @return RTF
+	 */
+	public function getParentWriter() {
+		return $this->parentWriter;
+	}
 
-    /**
-     * Get style.
-     *
-     * @return null|array|string|StyleAbstract
-     */
-    public function getStyle()
-    {
-        if (!$this->style instanceof StyleAbstract && !is_array($this->style)) {
-            return '';
-        }
+	/**
+	 * Get style.
+	 *
+	 * @return null|array|string|StyleAbstract
+	 */
+	public function getStyle() {
+		if (!$this->style instanceof StyleAbstract && !is_array($this->style)) {
+			return '';
+		}
 
-        return $this->style;
-    }
+		return $this->style;
+	}
 
-    /**
-     * Get value if ...
-     *
-     * @param null|bool $condition
-     * @param string $value
-     *
-     * @return string
-     */
-    protected function getValueIf($condition, $value)
-    {
-        return $condition == true ? $value : '';
-    }
+	/**
+	 * Get value if ...
+	 *
+	 * @param null|bool $condition
+	 * @param string $value
+	 *
+	 * @return string
+	 */
+	protected function getValueIf($condition, $value) {
+		return $condition == true ? $value : '';
+	}
 }

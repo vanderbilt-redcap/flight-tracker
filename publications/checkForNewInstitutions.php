@@ -1,15 +1,15 @@
 <?php
 
-use \Vanderbilt\CareerDevLibrary\Download;
-use \Vanderbilt\CareerDevLibrary\Upload;
-use \Vanderbilt\CareerDevLibrary\Application;
-use \Vanderbilt\CareerDevLibrary\DateManagement;
-use \Vanderbilt\CareerDevLibrary\Publications;
-use \Vanderbilt\CareerDevLibrary\NameMatcher;
-use \Vanderbilt\CareerDevLibrary\Sanitizer;
-use \Vanderbilt\CareerDevLibrary\REDCapManagement;
-use \Vanderbilt\CareerDevLibrary\URLManagement;
-use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use Vanderbilt\CareerDevLibrary\Download;
+use Vanderbilt\CareerDevLibrary\Upload;
+use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\DateManagement;
+use Vanderbilt\CareerDevLibrary\Publications;
+use Vanderbilt\CareerDevLibrary\NameMatcher;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
+use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use Vanderbilt\CareerDevLibrary\URLManagement;
+use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(__DIR__."/../small_base.php");
 require_once(__DIR__."/../classes/Autoload.php");
@@ -19,153 +19,153 @@ $thresholdTs = strtotime("-$thresholdMonths months");
 $thresholdDate = date("Y-m-d", $thresholdTs);
 $allRecords = Download::recordIds($token, $server);
 if (isset($_POST['records']) && is_array($_POST['records'])) {
-    $records = [];
-    foreach ($_POST['records'] as $candidateRecord) {
-        $recordId = Sanitizer::getSanitizedRecord($candidateRecord, $allRecords);
-        if ($recordId) {
-            $records[] = $recordId;
-        }
-    }
+	$records = [];
+	foreach ($_POST['records'] as $candidateRecord) {
+		$recordId = Sanitizer::getSanitizedRecord($candidateRecord, $allRecords);
+		if ($recordId) {
+			$records[] = $recordId;
+		}
+	}
 
-    $firstNames = Download::firstnames($token, $server);
-    $middleNames = Download::middlenames($token, $server);
-    $lastNames = Download::lastnames($token, $server);
-    $emails = Download::emails($token, $server);
-    $metadataFields = Download::metadataFields($token, $server);
-    $institutionData = Download::institutions($token, $server);
-    $everybodysInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
-    $citationDates = Download::oneFieldWithInstances($token, $server, "citation_ts");
-    $citationIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
-    $citationPMIDs = Download::oneFieldWithInstances($token, $server, "citation_pmid");
+	$firstNames = Download::firstnames($token, $server);
+	$middleNames = Download::middlenames($token, $server);
+	$lastNames = Download::lastnames($token, $server);
+	$emails = Download::emails($token, $server);
+	$metadataFields = Download::metadataFields($token, $server);
+	$institutionData = Download::institutions($token, $server);
+	$everybodysInstitutions = array_unique(array_merge(Application::getInstitutions($pid), Application::getHelperInstitutions($pid)));
+	$citationDates = Download::oneFieldWithInstances($token, $server, "citation_ts");
+	$citationIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
+	$citationPMIDs = Download::oneFieldWithInstances($token, $server, "citation_pmid");
 
-    $excludeLists = Download::excludeList($token, $server, "exclude_publications", $metadataFields);
-    $nameMismatches = [];
-    $lastConfirmedPubDates = [];
-    foreach ($records as $recordId) {
-        $latestTs = FALSE;
-        foreach ($citationDates[$recordId] ?? [] as $instance => $date) {
-            $include = $citationIncludes[$recordId][$instance] ?? "";
-            if ($date && DateManagement::isDate($date) && ($include == '1')) {
-                $ts = strtotime($date);
-                if ($ts > $latestTs) {
-                    $latestTs = $ts;
-                }
-            }
-        }
-        if ($latestTs < $thresholdTs) {
-            if ($latestTs > 0) {
-                $lastConfirmedPubDates[$recordId] = date("Y-m-d", $latestTs);
-            }
-            $firstName = $firstNames[$recordId] ?? "";
-            $lastName = $lastNames[$recordId] ?? "";
-            $middleName = $middleNames[$recordId] ?? "";
-            if ($firstName && $lastName) {
-                $recordPMIDs = $citationPMIDs[$recordId] ?? [];
-                $recordInstitutions = $institutionData[$recordId] ? preg_split("/\s*,\s*/", $institutionData[$recordId]) : [];
-                $relevantInstitutions = array_unique(array_merge($everybodysInstitutions, $recordInstitutions));
-                $pulledPMIDs = Publications::searchPubMedForNameAndDate($firstName, $middleName, $lastName, $pid, [], $thresholdDate);
-                $includedRecordPMIDs = [];
-                foreach ($recordPMIDs as $instance => $pmid) {
-                    $include = $citationIncludes[$recordId][$instance] ?? "";
-                    if (($include == "1") && !in_array($pmid, $includedRecordPMIDs)) {
-                        $includedRecordPMIDs[] = $pmid;
-                    }
-                }
-                $missingPMIDs = [];
-                foreach ($pulledPMIDs as $pmid) {
-                    if (!in_array($pmid, $includedRecordPMIDs)) {
-                        $missingPMIDs[] = $pmid;
-                    }
-                }
-                if (!empty($missingPMIDs)) {
-                    $affiliationsAndDates = Publications::getAffiliationsAndDatesForPMIDs($missingPMIDs, $metadataFields, $pid);
-                    foreach ($affiliationsAndDates as $pmid => $ary) {
-                        $affiliationsByAuthor = $ary['affiliations'];
-                        $publicationDate = $ary['date'];
-                        $fullCitation = $ary['citation'];
-                        $authors = array_keys($affiliationsByAuthor);
-                        $matchedAuthorAffiliations = [];
-                        $matchedAuthors = [];
-                        foreach ($authors as $author) {
-                            if (!in_array($author, $excludeLists[$recordId] ?? [])) {
-                                list($authorInitials, $authorLast) = NameMatcher::splitName($author, 2, FALSE, FALSE);
-                                if (NameMatcher::matchByInitials($lastName, $firstName, $authorLast, $authorInitials)) {
-                                    $matchedAuthorAffiliations = array_unique(array_merge($matchedAuthorAffiliations, $affiliationsByAuthor[$author]));
-                                    $matchedAuthors[] = $author;
-                                }
-                            }
-                        }
-                        if (!empty($matchedAuthorAffiliations)) {
-                            REDCapManagement::compressArray($matchedAuthorAffiliations);
-                            $matched = FALSE;
-                            foreach ($relevantInstitutions as $institution) {
-                                if (NameMatcher::matchInstitution($institution, $matchedAuthorAffiliations)) {
-                                    $matched = TRUE;
-                                    break;
-                                }
-                            }
-                            if (!$matched) {
-                                if (!isset($nameMismatches[$recordId])) {
-                                    $nameMismatches[$recordId] = [];
-                                }
-                                $nameMismatches[$recordId][$pmid] = [
-                                    "authors" => REDCapManagement::clearUnicodeInArray($matchedAuthors),
-                                    "affiliations" => REDCapManagement::clearUnicodeInArray($matchedAuthorAffiliations),
-                                    "date" => DateManagement::YMD2MDY($publicationDate),
-                                    "name" => NameMatcher::formatName($firstName, $middleName, $lastName),
-                                    "email" => $emails[$recordId],
-                                    "citation" => REDCapManagement::clearUnicode($fullCitation),
-                                    "institutions" => $recordInstitutions,
-                                ];
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    echo json_encode(["pubMatchData" => $nameMismatches, "lastPubData" => $lastConfirmedPubDates]);
-    exit;
-} else if (isset($_POST['institution']) && isset($_POST['record'])) {
-    $recordId = Sanitizer::getSanitizedRecord($_POST['record'], $allRecords);
-    $institution = Sanitizer::sanitizeWithoutChangingQuotes($_POST['institution']);
-    if ($recordId && $institution) {
-        $metadataFields = Download::metadataFields($token, $server);
-        $positionChangeFields = array_unique(array_merge(["record_id", "identifier_institution"], DataDictionaryManagement::filterFieldsForPrefix($metadataFields, "promotion_")));
-        $redcapData = Download::fieldsForRecords($token, $server, $positionChangeFields, [$recordId]);
-        $maxInstance = REDCapManagement::getMaxInstance($redcapData, "position_change", $recordId);
-        $previousInstitutionList = REDCapManagement::findField($redcapData, $recordId, "identifier_institution");
-        $newInstitutionList = $previousInstitutionList ? $previousInstitutionList.", $institution" : $institution;
-        $upload = [];
-        $upload[] = [
-            "record_id" => $recordId,
-            "redcap_repeat_instrument" => "position_change",
-            "redcap_repeat_instance" => $maxInstance + 1,
-            "promotion_institution" => $institution,
-            "promotion_date" => date("Y-m-d"),
-            "position_change_complete" => "2",
-        ];
-        $upload[] = [
-            "record_id" => $recordId,
-            "redcap_repeat_instrument" => "",
-            "redcap_repeat_instance" => "",
-            "identifier_institution" => $newInstitutionList,
-            "identifiers_complete" => "2",
-        ];
-        try {
-            Upload::rows($upload, $token, $server);
-            echo "Successfully uploaded.";
-        } catch (\Exception $e) {
-            echo "Error: ".Sanitizer::sanitizeWithoutChangingQuotes($e->getMessage());
-        }
-    } else if (!$institution && !$recordId) {
-        echo "Error: Invalid institution and record";
-    } else if (!$institution) {
-        echo "Error: Invalid institution";
-    } else {
-        echo "Error: Invalid record";
-    }
-    exit;
+	$excludeLists = Download::excludeList($token, $server, "exclude_publications", $metadataFields);
+	$nameMismatches = [];
+	$lastConfirmedPubDates = [];
+	foreach ($records as $recordId) {
+		$latestTs = false;
+		foreach ($citationDates[$recordId] ?? [] as $instance => $date) {
+			$include = $citationIncludes[$recordId][$instance] ?? "";
+			if ($date && DateManagement::isDate($date) && ($include == '1')) {
+				$ts = strtotime($date);
+				if ($ts > $latestTs) {
+					$latestTs = $ts;
+				}
+			}
+		}
+		if ($latestTs < $thresholdTs) {
+			if ($latestTs > 0) {
+				$lastConfirmedPubDates[$recordId] = date("Y-m-d", $latestTs);
+			}
+			$firstName = $firstNames[$recordId] ?? "";
+			$lastName = $lastNames[$recordId] ?? "";
+			$middleName = $middleNames[$recordId] ?? "";
+			if ($firstName && $lastName) {
+				$recordPMIDs = $citationPMIDs[$recordId] ?? [];
+				$recordInstitutions = $institutionData[$recordId] ? preg_split("/\s*,\s*/", $institutionData[$recordId]) : [];
+				$relevantInstitutions = array_unique(array_merge($everybodysInstitutions, $recordInstitutions));
+				$pulledPMIDs = Publications::searchPubMedForNameAndDate($firstName, $middleName, $lastName, $pid, [], $thresholdDate);
+				$includedRecordPMIDs = [];
+				foreach ($recordPMIDs as $instance => $pmid) {
+					$include = $citationIncludes[$recordId][$instance] ?? "";
+					if (($include == "1") && !in_array($pmid, $includedRecordPMIDs)) {
+						$includedRecordPMIDs[] = $pmid;
+					}
+				}
+				$missingPMIDs = [];
+				foreach ($pulledPMIDs as $pmid) {
+					if (!in_array($pmid, $includedRecordPMIDs)) {
+						$missingPMIDs[] = $pmid;
+					}
+				}
+				if (!empty($missingPMIDs)) {
+					$affiliationsAndDates = Publications::getAffiliationsAndDatesForPMIDs($missingPMIDs, $metadataFields, $pid);
+					foreach ($affiliationsAndDates as $pmid => $ary) {
+						$affiliationsByAuthor = $ary['affiliations'];
+						$publicationDate = $ary['date'];
+						$fullCitation = $ary['citation'];
+						$authors = array_keys($affiliationsByAuthor);
+						$matchedAuthorAffiliations = [];
+						$matchedAuthors = [];
+						foreach ($authors as $author) {
+							if (!in_array($author, $excludeLists[$recordId] ?? [])) {
+								list($authorInitials, $authorLast) = NameMatcher::splitName($author, 2, false, false);
+								if (NameMatcher::matchByInitials($lastName, $firstName, $authorLast, $authorInitials)) {
+									$matchedAuthorAffiliations = array_unique(array_merge($matchedAuthorAffiliations, $affiliationsByAuthor[$author]));
+									$matchedAuthors[] = $author;
+								}
+							}
+						}
+						if (!empty($matchedAuthorAffiliations)) {
+							REDCapManagement::compressArray($matchedAuthorAffiliations);
+							$matched = false;
+							foreach ($relevantInstitutions as $institution) {
+								if (NameMatcher::matchInstitution($institution, $matchedAuthorAffiliations)) {
+									$matched = true;
+									break;
+								}
+							}
+							if (!$matched) {
+								if (!isset($nameMismatches[$recordId])) {
+									$nameMismatches[$recordId] = [];
+								}
+								$nameMismatches[$recordId][$pmid] = [
+									"authors" => REDCapManagement::clearUnicodeInArray($matchedAuthors),
+									"affiliations" => REDCapManagement::clearUnicodeInArray($matchedAuthorAffiliations),
+									"date" => DateManagement::YMD2MDY($publicationDate),
+									"name" => NameMatcher::formatName($firstName, $middleName, $lastName),
+									"email" => $emails[$recordId],
+									"citation" => REDCapManagement::clearUnicode($fullCitation),
+									"institutions" => $recordInstitutions,
+								];
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+	echo json_encode(["pubMatchData" => $nameMismatches, "lastPubData" => $lastConfirmedPubDates]);
+	exit;
+} elseif (isset($_POST['institution']) && isset($_POST['record'])) {
+	$recordId = Sanitizer::getSanitizedRecord($_POST['record'], $allRecords);
+	$institution = Sanitizer::sanitizeWithoutChangingQuotes($_POST['institution']);
+	if ($recordId && $institution) {
+		$metadataFields = Download::metadataFields($token, $server);
+		$positionChangeFields = array_unique(array_merge(["record_id", "identifier_institution"], DataDictionaryManagement::filterFieldsForPrefix($metadataFields, "promotion_")));
+		$redcapData = Download::fieldsForRecords($token, $server, $positionChangeFields, [$recordId]);
+		$maxInstance = REDCapManagement::getMaxInstance($redcapData, "position_change", $recordId);
+		$previousInstitutionList = REDCapManagement::findField($redcapData, $recordId, "identifier_institution");
+		$newInstitutionList = $previousInstitutionList ? $previousInstitutionList.", $institution" : $institution;
+		$upload = [];
+		$upload[] = [
+			"record_id" => $recordId,
+			"redcap_repeat_instrument" => "position_change",
+			"redcap_repeat_instance" => $maxInstance + 1,
+			"promotion_institution" => $institution,
+			"promotion_date" => date("Y-m-d"),
+			"position_change_complete" => "2",
+		];
+		$upload[] = [
+			"record_id" => $recordId,
+			"redcap_repeat_instrument" => "",
+			"redcap_repeat_instance" => "",
+			"identifier_institution" => $newInstitutionList,
+			"identifiers_complete" => "2",
+		];
+		try {
+			Upload::rows($upload, $token, $server);
+			echo "Successfully uploaded.";
+		} catch (\Exception $e) {
+			echo "Error: ".Sanitizer::sanitizeWithoutChangingQuotes($e->getMessage());
+		}
+	} elseif (!$institution && !$recordId) {
+		echo "Error: Invalid institution and record";
+	} elseif (!$institution) {
+		echo "Error: Invalid institution";
+	} else {
+		echo "Error: Invalid record";
+	}
+	exit;
 }
 
 require_once(__DIR__."/../charts/baseWeb.php");
@@ -182,9 +182,9 @@ echo "<p class='centered max-width'>Flight Tracker matches data by name and inst
 echo "<h2>Looking for New Institutions<br/>on Publications After $longThresholdDate</h2>";
 $metadataFields = Download::metadataFields($token, $server);
 if (!in_array("citation_ts", $metadataFields)) {
-    $indexLink = Application::link("index.php", $pid);
-    echo "<p class='centered max-width red'>You must update your Data Dictionary in order to proceed with this analysis. Please update <a href='$indexLink'>here</a>.</p>";
-    exit;
+	$indexLink = Application::link("index.php", $pid);
+	echo "<p class='centered max-width red'>You must update your Data Dictionary in order to proceed with this analysis. Please update <a href='$indexLink'>here</a>.</p>";
+	exit;
 }
 
 $recordsJSON = json_encode($allRecords);

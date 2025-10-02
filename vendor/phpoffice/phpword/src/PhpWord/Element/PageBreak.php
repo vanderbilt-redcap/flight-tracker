@@ -23,10 +23,9 @@ namespace PhpOffice\PhpWord\Element;
  */
 class PageBreak extends AbstractElement
 {
-    /**
-     * Create new page break.
-     */
-    public function __construct()
-    {
-    }
+	/**
+	 * Create new page break.
+	 */
+	public function __construct() {
+	}
 }
