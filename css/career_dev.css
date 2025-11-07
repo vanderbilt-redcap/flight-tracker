@@ -230,3 +230,12 @@ textarea.pickDate { width: 180px; height: 44px; }
 .mb-4 { margin-bottom: 2em; }
 .mb-6 { margin-bottom: 3em; }
 .ft-blue-background { background-color: #48489d; color: white }
+.pubs_report_warning {
+    display:none;
+}
+.pubs_report_warning ol li {
+    margin-top: 0;
+    margin-bottom: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}

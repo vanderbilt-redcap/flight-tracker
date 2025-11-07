@@ -1,6 +1,6 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(__DIR__."/classes/Autoload.php");
 

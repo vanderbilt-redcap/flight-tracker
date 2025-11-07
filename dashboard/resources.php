@@ -1,11 +1,11 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Measurement;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\Dashboard;
-use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Measurement;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -16,16 +16,16 @@ require_once(dirname(__FILE__)."/".$dashboard->getTarget().".php");
 $headers = [];
 $headers[] = "Resources";
 if (isset($_GET['cohort'])) {
-	$cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
-	$headers[] = "For Cohort " . $cohort;
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $headers[] = "For Cohort " . $cohort;
 } else {
-	$cohort = "";
+    $cohort = "";
 }
 
 if ($cohort) {
 	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
-	$records = Download::recordIds($token, $server);
+    $records = Download::recordIds($token, $server);
 }
 
 $resourceField = "resources_resource";

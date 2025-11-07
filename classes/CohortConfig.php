@@ -4,9 +4,8 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class CohortConfig
-{
-	public function __construct($name, $configAry = [], $pid = null) {
+class CohortConfig {
+	public function __construct($name, $configAry = [], $pid = NULL) {
 		$this->name = $name;
 		if (self::isValidConfigArray($configAry)) {
 			$this->config = $configAry;
@@ -15,33 +14,33 @@ class CohortConfig
 						"rows" => [],
 						];
 		}
-		$this->pid = $pid;
-		$this->token = Application::getSetting("token", $this->pid);
-		$this->server = Application::getSetting("server", $this->pid);
+        $this->pid = $pid;
+        $this->token = Application::getSetting("token", $this->pid);
+        $this->server = Application::getSetting("server", $this->pid);
 	}
 
 	public static function getComparisons() {
-		return [
+		return array(
 				"gt" => "&gt;",
 				"gteq" => "&gt;=",
 				"eq" => "=",
 				"neq" => "!=",
 				"lteq" => "&lt;=",
 				"lt" => "&lt;",
-				];
+				);
 	}
 
 	# returns boolean
 	public static function evaluateRow($configRow, $redcapRecordRows, $filter) {
 		if (!self::isValidRow($configRow)) {
-			return false;
+			return FALSE;
 		}
 		if ($configRow['type'] == "resources") {
 			$variable = "resources_resource";
 			$choice = $configRow['variable'];
 			foreach ($redcapRecordRows as $row) {
 				if ($row[$variable] == $choice) {
-					return true;
+					return TRUE;
 				}
 			}
 		} else {
@@ -53,7 +52,7 @@ class CohortConfig
 					$choice = $configRow['choice'];
 					$funcChoices = $filter->$variable(Filter::GET_VALUE, $redcapRecordRows);
 					if (!is_array($funcChoices)) {
-						$funcChoices = [$funcChoices];
+						$funcChoices = array($funcChoices);
 					}
 					# check in/not-in relationship
 					return self::compare($funcChoices, $comparison, $choice);
@@ -61,19 +60,19 @@ class CohortConfig
 					$value = $configRow['value'];
 					$funcValues = $filter->$variable(Filter::GET_VALUE, $redcapRecordRows);
 					if (!is_array($funcValues)) {
-						$funcValues = [$funcValues];
+						$funcValues = array($funcValues);
 					}
 					if ($valueTime = strtotime($value)) {
 						foreach ($funcValues as $funcValue) {
 							$funcTime = strtotime($funcValue);
 							if (self::compare($funcTime, $comparison, $valueTime)) {
-								return true;
+								return TRUE;
 							}
 						}
 					} else {
 						foreach ($funcValues as $funcValue) {
 							if (self::compare($funcValue, $comparison, $value)) {
-								return true;
+								return TRUE;
 							}
 						}
 					}
@@ -85,9 +84,9 @@ class CohortConfig
 					foreach ($redcapRecordRows as $row) {
 						if ($row[$variable]) {
 							return self::compare($row[$variable], $comparison, $choice);
-						} elseif (isset($row[$variable."___".$choice])) {
-							return self::compare($row[$variable."___".$choice], $comparison, "1");
-						}
+						} else if (isset($row[$variable."___".$choice])) {
+                            return self::compare($row[$variable."___".$choice], $comparison, "1");
+                        }
 					}
 				} else {
 					$value = $configRow['value'];
@@ -108,34 +107,34 @@ class CohortConfig
 				}
 			}
 		}
-		return false;
+		return FALSE;
 	}
 
 	private static function compare($value1, $comparison, $value2) {
-		switch ($comparison) {
-			case "contains":
-				if (is_array($value1)) {
-					# in
-					return in_array($value2, $value1);
-				} elseif (is_array($value2)) {
-					# in
-					return in_array($value1, $value2);
-				} else {
-					return (strpos($value1, $value2) !== false);
-				}
-				break;
-			case "not_contains":
-				if (is_array($value1)) {
-					# not in
-					return !in_array($value2, $value1);
-				} elseif (is_array($value2)) {
-					# not in
-					return !in_array($value1, $value2);
-				} else {
-					return (strpos($value1, $value2) === false);
-				}
-				break;
-			case "gt":
+		switch($comparison) {
+            case "contains":
+                if (is_array($value1)) {
+                    # in
+                    return in_array($value2, $value1);
+                } else if (is_array($value2)) {
+                    # in
+                    return in_array($value1, $value2);
+                } else {
+                    return (strpos($value1, $value2) !== FALSE);
+                }
+                break;
+            case "not_contains":
+                if (is_array($value1)) {
+                    # not in
+                    return !in_array($value2, $value1);
+                } else if (is_array($value2)) {
+                    # not in
+                    return !in_array($value1, $value2);
+                } else {
+                    return (strpos($value1, $value2) === FALSE);
+                }
+                break;
+		    case "gt":
 				return ($value1 > $value2);
 				break;
 			case "gteq":
@@ -145,7 +144,7 @@ class CohortConfig
 				if (is_array($value1)) {
 					# in
 					return in_array($value2, $value1);
-				} elseif (is_array($value2)) {
+				} else if (is_array($value2)) {
 					# in
 					return in_array($value1, $value2);
 				} else {
@@ -156,7 +155,7 @@ class CohortConfig
 				if (is_array($value1)) {
 					# not in
 					return !in_array($value2, $value1);
-				} elseif (is_array($value2)) {
+				} else if (is_array($value2)) {
 					# not in
 					return !in_array($value1, $value2);
 				} else {
@@ -170,7 +169,7 @@ class CohortConfig
 				return ($value1 < $value2);
 				break;
 		}
-		return false;
+		return FALSE;
 	}
 
 	public function isIn($rows, $filter) {
@@ -182,9 +181,9 @@ class CohortConfig
 				return self::evaluateRow($row, $rows, $filter);
 			} else {
 				# 1. evaluate rows
-				$postStep1 = [];
+				$postStep1 = array();
 				foreach ($this->getRows() as $row) {
-					$evaluatedRow = [];
+					$evaluatedRow = array();
 					$evaluatedRow['value'] = self::evaluateRow($row, $rows, $filter);
 					if ($row['combiner']) {
 						$evaluatedRow['combiner'] = $row['combiner'];
@@ -193,12 +192,12 @@ class CohortConfig
 				}
 
 				# 2. evaluate XORs
-				$postStep2 = [];
-				$previous = null;
+				$postStep2 = array();
+				$previous = NULL;
 				foreach ($postStep1 as $evalRow) {
 					if (!$previous) {
 						$previous = $evalRow;
-					} elseif (isset($evalRow['combiner']) && ($evalRow['combiner'] == "XOR")) {
+					} else if (isset($evalRow['combiner']) && ($evalRow['combiner'] == "XOR")) {
 						$newEvalRow = [];
 						$newEvalRow['combiner'] = $previous['combiner'] ?? "";
 						$cnt = 0;
@@ -206,12 +205,11 @@ class CohortConfig
 							$cnt++;
 						}
 						if ($evalRow['value']) {
-							$cnt++;
-						}
+							$cnt++; }
 						if ($cnt == 1) {
-							$newEvalRow['value'] = true;
+							$newEvalRow['value'] = TRUE;
 						} else {
-							$newEvalRow['value'] = false;
+							$newEvalRow['value'] = FALSE;
 						}
 						$previous = $newEvalRow;
 					} else {
@@ -224,13 +222,13 @@ class CohortConfig
 				}
 
 				# 3. evaluate ANDs
-				$postStep3 = [];
-				$previous = null;
+				$postStep3 = array();
+				$previous = NULL;
 				foreach ($postStep2 as $evalRow) {
 					if (!$previous) {
 						$previous = $evalRow;
-					} elseif (isset($evalRow['combiner']) && ($evalRow['combiner'] == "AND")) {
-						$newEvalRow = [];
+					} else if (isset($evalRow['combiner']) && ($evalRow['combiner'] == "AND")) {
+						$newEvalRow = array();
 						$newEvalRow['combiner'] = $previous['combiner'] ?? "";
 						$newEvalRow['value'] = ($previous['value'] && $evalRow['value']);
 						$previous = $newEvalRow;
@@ -246,28 +244,28 @@ class CohortConfig
 				# 4. evaluate ORs
 				foreach ($postStep3 as $evalRow) {
 					if ($evalRow['value']) {
-						return true;
+						return TRUE;
 					}
 				}
-				return false;
+				return FALSE;
 			}
-		} elseif ($combiner == "AND") {
+		} else if ($combiner == "AND") {
 			# old system - combiner is universal
 			foreach ($this->getRows() as $row) {
 				if (!self::evaluateRow($row, $rows, $filter)) {
-					return false;
+					return FALSE;
 				}
 			}
-			return true;
-		} elseif ($combiner == "OR") {
+			return TRUE;
+		} else if ($combiner == "OR") {
 			# old system - combiner is universal
 			foreach ($this->getRows() as $row) {
 				if (self::evaluateRow($row, $rows, $filter)) {
-					return true;
+					return TRUE;
 				}
 			}
-			return false;
-		} elseif ($combiner == "XOR") {
+			return FALSE;
+		} else if ($combiner == "XOR") {
 			# old system - combiner is universal
 			$count = 0;
 			foreach ($this->getRows() as $row) {
@@ -276,55 +274,55 @@ class CohortConfig
 				}
 			}
 			if ($count == 1) {
-				return true;
+				return TRUE;
 			}
-			return false;
+			return FALSE;
 		}
 		throw new \Exception("Improper combiner: '$combiner'");
 	}
 
 	public function getManualRecords() {
-		if (isset($this->config['records'])) {
-			return $this->config['records'];
-		}
-		return [];
-	}
+	    if (isset($this->config['records'])) {
+	        return $this->config['records'];
+        }
+	    return [];
+    }
 
-	public function addRecords($records) {
-		$this->config['records'] = $records;
-	}
+    public function addRecords($records) {
+	    $this->config['records'] = $records;
+    }
 
 	public function getFields(): array {
-		$fields = [];
-		$citationCalcFunctions = [
-			"calc_rcr",
-			"calc_pub_type",
-			"calc_mesh_term",
-			"calc_num_pubs",
-			"calc_from_time",
-		];
+		$fields = array();
+        $citationCalcFunctions = [
+            "calc_rcr",
+            "calc_pub_type",
+            "calc_mesh_term",
+            "calc_num_pubs",
+            "calc_from_time",
+        ];
 		foreach ($this->getRows() as $row) {
 			if ($row['type'] == "resources") {
-				$newFields = ["resources_resource"];
-			} elseif ($row['variable'] == "calc_employment") {
-				$newFields = Application::$institutionFields;
-			} elseif (in_array($row['variable'], $citationCalcFunctions)) {
-				$newFields = [
-					"record_id",
-					"citation_include",
-					"citation_pmid",
-					"citation_day",
-					"citation_month",
-					"citation_year",
-					"citation_mesh_terms",
-					"citation_pub_types",
-				];
-			} elseif (preg_match("/^calc_/", $row['variable'])) {
-				$newFields = Application::$summaryFields;
-			} else {
-				$newFields = [$row['variable']];
-			}
-			$fields = array_unique(array_merge($fields, $newFields));
+                $newFields = ["resources_resource"];
+            } else if ($row['variable'] == "calc_employment") {
+                $newFields = Application::$institutionFields;
+            } else if (in_array($row['variable'], $citationCalcFunctions)) {
+                $newFields = [
+                    "record_id",
+                    "citation_include",
+                    "citation_pmid",
+                    "citation_day",
+                    "citation_month",
+                    "citation_year",
+                    "citation_mesh_terms",
+                    "citation_pub_types",
+                ];
+            } else if (preg_match("/^calc_/", $row['variable'])) {
+                $newFields = Application::$summaryFields;
+            } else {
+                $newFields = [$row['variable']];
+            }
+            $fields = array_unique(array_merge($fields, $newFields));
 		}
 		return $fields;
 	}
@@ -334,53 +332,53 @@ class CohortConfig
 			if (isset($ary['rows'])) {
 				foreach ($ary['rows'] as $row) {
 					if (!self::isValidRow($row)) {
-						return false;
+						return FALSE;
 					}
 				}
-				return true;
+				return TRUE;
 			}
-		} elseif (isset($ary['rows'])) {
-			$first = true;
+		} else if (isset($ary['rows'])) {
+			$first = TRUE;
 			foreach ($ary['rows'] as $row) {
 				if (!self::isValidRow($row)) {
-					return false;
+					return FALSE;
 				}
 				if ($first) {
-					$first = false;
-				} elseif (!isset($row['combiner']) || !in_array($row['combiner'], self::getAllowedCombiners())) {
-					return false;
+					$first = FALSE;
+				} else if (!isset($row['combiner']) || !in_array($row['combiner'], self::getAllowedCombiners())) {
+					return FALSE;
 				}
 			}
-			return true;
-		} elseif (isset($ary['records'])) {
-			return true;
-		}
-		return false;
+			return TRUE;
+		} else if (isset($ary['records'])) {
+		    return TRUE;
+        }
+		return FALSE;
 	}
 
 	public static function getAllowedCombiners() {
-		return ["AND", "OR", "XOR"];
+		return array("AND", "OR", "XOR");
 	}
 
 	public static function isValidRow($row) {
-		// $filter needs metadata!!!
+        // $filter needs metadata!!!
 		// $allowedVariables = array_unique(array_keys(array_merge($filter->getDemographicChoices(), $filter->getGrantChoices(), $filter->getPublicationChoices())));
-
+		
 		if (gettype($row) != "array") {
 			throw new \Exception("Improper type; should be array! ".gettype($row));
 		}
 		if ($row['type'] == "resources") {
-			return true;
-		} elseif (is_array($row['variable'])) {
-			return true;
+			return TRUE;
+		} else if (is_array($row['variable'])) {
+			return TRUE;
 		} else {
-			// if (in_array($row['variable'], $allowedVariables)) {
-			if (isset($row['choice']) || (isset($row['comparison']) && isset($row['value']))) {
-				return true;
-			} else {
-				throw new \Exception("Cannot find choice or comparison or value in " . json_encode($row));
-			}
-		}
+            // if (in_array($row['variable'], $allowedVariables)) {
+            if (isset($row['choice']) || (isset($row['comparison']) && isset($row['value']))) {
+                return TRUE;
+            } else {
+                throw new \Exception("Cannot find choice or comparison or value in " . json_encode($row));
+            }
+        }
 	}
 
 	public function addRow($row) {
@@ -395,7 +393,7 @@ class CohortConfig
 		$allowed = self::getAllowedCombiners();
 		if (in_array($cbx, $allowed)) {
 			$this->config['combiner'] = $cbx;
-		} elseif ($cbx != "") {
+		} else if ($cbx != "") {
 			throw new \Exception("Illegal combiner '$cbx'. Try one from ".json_encode($allowed));
 		}
 		# blank combiners allowed
@@ -420,7 +418,7 @@ class CohortConfig
 		if (isset($this->config['rows'])) {
 			return $this->config['rows'];
 		}
-		return [];
+		return array();
 	}
 
 	public function getName() {
@@ -428,22 +426,22 @@ class CohortConfig
 	}
 
 	public function getHTML($metadata) {
-		if (isset($this->config['records'])) {
-			if (empty($this->config['records'])) {
-				return "<p class='centered'>No Records Specified</p>";
-			} else {
-				return "<p class='centered'>Records: ".implode(", ", $this->config['records'])."</p>";
-			}
-		}
+	    if (isset($this->config['records'])) {
+	        if (empty($this->config['records'])) {
+	            return "<p class='centered'>No Records Specified</p>";
+            } else {
+                return "<p class='centered'>Records: ".implode(", ", $this->config['records'])."</p>";
+            }
+        }
 		$html = "<table style='margin-left: auto; margin-right: auto;'>\n";
 
-		$filter = new Filter($this->token, $this->server, $metadata);
+        $filter = new Filter($this->token, $this->server, $metadata);
 
 		$choices = Scholar::getChoices($metadata);
 		$labels = $filter->getAllChoices();
 		$reverseAwardTypes = Grant::getReverseAwardTypes();
 
-		$fieldsInOrder = ["type", "variable", "choice", "comparison", "value"];
+		$fieldsInOrder = array("type", "variable", "choice", "comparison", "value");
 		$html .= "<tr>\n";
 		$html .= "<th>Combiner</th>\n";
 		foreach ($fieldsInOrder as $field) {
@@ -454,46 +452,46 @@ class CohortConfig
 		$comparisons = self::getComparisons();
 		$contains = Filter::getContainsSettings();
 		$stringComparisons = Filter::getStringComparisons();
-		$firstRow = true;
+		$firstRow = TRUE;
 		foreach ($this->getRows() as $row) {
 			$html .= "<tr class='borderedRow centeredRow'>\n";
 			if ($firstRow) {
 				$html .= "<td></td>\n";
-				$firstRow = false;
+				$firstRow = FALSE;
 			} else {
 				if ($row['combiner'] && ($this->getCombiner() == "")) {
 					$html .= "<td>".$row['combiner']."</td>";
-				} elseif ($this->getCombiner()) {
+				} else if ($this->getCombiner()) {
 					$html .= "<td>".$this->getCombiner()."</td>";
 				} else {
 					throw new \Exception("Could not find combiner for row ".json_encode($row));
 				}
 			}
-			$usesContains = false;
+			$usesContains = FALSE;
 			foreach ($fieldsInOrder as $field) {
 				if (isset($row[$field])) {
 					if (($row["type"] == "resources") && ($field == "variable")) {
 						$value = $choices["resources_resource"][$row[$field]];
-					} elseif (($field == "choice") && isset($choices[$row['variable']]) && $choices[$row['variable']][$row[$field]]) {
+					} else if (($field == "choice") && isset($choices[$row['variable']]) && $choices[$row['variable']][$row[$field]]) {
 						$value = $choices[$row['variable']][$row[$field]];
-						$usesContains = true;
-					} elseif (($field == "variable") && isset($labels[$row[$field]])) {
+						$usesContains = TRUE;
+					} else if (($field == "variable") && isset($labels[$row[$field]])) {
 						$value = $labels[$row[$field]];
-					} elseif (($field == "choice") && in_array($row["variable"], ["calc_award_type", "calc_active_award_type"]) && (isset($reverseAwardTypes[$row[$field]]))) {
+					} else if (($field == "choice") && in_array($row["variable"], ["calc_award_type", "calc_active_award_type"]) && (isset($reverseAwardTypes[$row[$field]]))) {
 						$value = $reverseAwardTypes[$row[$field]];
-						$usesContains = true;
-					} elseif ($field == "type") {
+						$usesContains = TRUE;
+					} else if ($field == "type") {
 						$value = ucfirst($row[$field]);
-					} elseif ($field == "comparison") {
+					} else if ($field == "comparison") {
 						if ($usesContains) {
 							$value = $contains[$row[$field]];
-						} elseif ($comparisons[$row[$field]]) {
+						} else if ($comparisons[$row[$field]]) {
 							$value = $comparisons[$row[$field]];
-						} elseif ($stringComparisons[$row[$field]]) {
-							$value = $stringComparisons[$row[$field]];
-						} else {
-							throw new \Exception("This should never happen. Comparison of type {$row[$field]}.");
-						}
+						} else if ($stringComparisons[$row[$field]]) {
+						    $value = $stringComparisons[$row[$field]];
+                        } else {
+						    throw new \Exception("This should never happen. Comparison of type {$row[$field]}.");
+                        }
 					} else {
 						$value = $row[$field];
 					}
@@ -511,7 +509,7 @@ class CohortConfig
 
 	private $config;
 	private $name;
-	private $pid;
-	private $token = "";
-	private $server = "";
+    private $pid;
+    private $token = "";
+    private $server = "";
 }

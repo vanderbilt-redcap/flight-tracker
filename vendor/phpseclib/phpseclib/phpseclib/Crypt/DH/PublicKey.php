@@ -21,29 +21,27 @@ use phpseclib3\Crypt\DH;
  */
 final class PublicKey extends DH
 {
-    use Common\Traits\Fingerprint;
+	use Common\Traits\Fingerprint;
 
-    /**
-     * Returns the public key
-     *
-     * @param string $type
-     * @param array $options optional
-     * @return string
-     */
-    public function toString($type, array $options = [])
-    {
-        $type = self::validatePlugin('Keys', $type, 'savePublicKey');
+	/**
+	 * Returns the public key
+	 *
+	 * @param string $type
+	 * @param array $options optional
+	 * @return string
+	 */
+	public function toString($type, array $options = []) {
+		$type = self::validatePlugin('Keys', $type, 'savePublicKey');
 
-        return $type::savePublicKey($this->prime, $this->base, $this->publicKey, $options);
-    }
+		return $type::savePublicKey($this->prime, $this->base, $this->publicKey, $options);
+	}
 
-    /**
-     * Returns the public key as a BigInteger
-     *
-     * @return \phpseclib3\Math\BigInteger
-     */
-    public function toBigInteger()
-    {
-        return $this->publicKey;
-    }
+	/**
+	 * Returns the public key as a BigInteger
+	 *
+	 * @return \phpseclib3\Math\BigInteger
+	 */
+	public function toBigInteger() {
+		return $this->publicKey;
+	}
 }

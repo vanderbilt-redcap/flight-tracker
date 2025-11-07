@@ -2,12 +2,12 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Scholar;
-use Vanderbilt\CareerDevLibrary\Result;
-use Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Scholar;
+use \Vanderbilt\CareerDevLibrary\Result;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
@@ -24,18 +24,18 @@ th { text-align: left; padding: 4px; }
 </style>
 
 <?php
-$skip = ["identifier_institution", "summary_left_vanderbilt", "summary_survey", "summary_mentor"];
+$skip = array("identifier_institution", "summary_left_vanderbilt", "summary_survey", "summary_mentor");
 $GLOBALS['skip'] = $skip;
 
 $metadata = Download::metadata($token, $server);
 $choices = Scholar::getChoices($metadata);
 
 if ($_GET['record']) {
-	$records = [$_GET['record']];
-} elseif ($_GET['cohort']) {
+	$records = array($_GET['record']);
+} else if ($_GET['cohort']) {
 	$names = Download::names($token, $server);
 	$cohortRecords = Download::cohortRecordIds($token, $server, Application::getModule(), $_GET['cohort']);
-	$records = [];
+	$records = array();
 	foreach ($names as $record => $name) {
 		if (in_array($record, $cohortRecords)) {
 			array_push($records, $record);
@@ -46,7 +46,7 @@ if ($_GET['record']) {
 	$records = array_keys($names);
 }
 
-$fields = [
+$fields = array(
 		"identifier_email",
 		"summary_degrees",
 		"summary_gender",
@@ -60,8 +60,8 @@ $fields = [
 		"summary_current_start",
 		"summary_current_tenure",
 		"summary_mentor",
-		];
-$addlFields = [];
+		);
+$addlFields = array();
 foreach ($fields as $field) {
 	array_push($addlFields, $field);
 	if ($field == "summary_race_ethnicity") {
@@ -76,7 +76,7 @@ foreach ($fields as $field) {
 		$addlFields[] = $field."_source";
 	}
 }
-$nameFields = ["record_id", "identifier_last_name", "identifier_first_name", "identifier_left_job_category"];
+$nameFields = array("record_id", "identifier_last_name", "identifier_first_name", "identifier_left_job_category");
 $shortSummaryFields = array_unique(array_merge($nameFields, $addlFields));
 
 $orders = Scholar::getDefaultOrder("all");
@@ -93,7 +93,7 @@ foreach ($orders as $field => $defaultOrder) {
 $filteredSummaryFields = \Vanderbilt\FlightTrackerExternalModule\filterFields($shortSummaryFields, $metadata);
 
 foreach ($records as $record) {
-	$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, [$record]);
+	$recordData = Download::fieldsForRecords($token, $server, $filteredSummaryFields, array($record));
 	$html = "";
 	$html .= "<h1>Missingness Worksheet</h1>\n";
 
@@ -117,12 +117,12 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 	global $skip;
 
 	$maxSpaces = 100;
-	$sourceTypes = [
+	$sourceTypes = array(
 				"" => "",
 				"0" => "Computer Generated",
 				"1" => "Self-Reported",
 				"2" => "Manually Entered",
-				];
+				);
 
 	$html = "";
 	$html .= "<tr><th>Record ID</th><td style='min-width: 400px;'>".findValue("record_id", $data)."</td></tr>\n";
@@ -159,7 +159,7 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 				$html .= "</td></tr>\n";
 				$html .= generateSourcePromptRow($fieldLabel, $sourceTypes);
 			}
-		} elseif ($field == "summary_race_ethnicity") {
+		} else if ($field == "summary_race_ethnicity") {
 			if (!findValue($field, $data)) {
 				$numRows++;
 				$html .= "<tr><td colspan='2'><b>$fieldLabel</b><br>";
@@ -195,18 +195,18 @@ function generateWorksheetColumns($data, $orders, $metadata) {
 			}
 
 			// if ($field == "summary_current_rank") {
-			// $html .= "<tr><th>Position at start?</th><td class='underline'></td></tr>\n";
-			// $html .= "<tr><td colspan='2'><b>Any Promotions? If yes, position at:<br>";
-			// $html .= "<ul>";
-			// for ($i = 1; $i <= 3; $i++) {
-			// $html .= "<li>Promotion $i: ";
-			// for ($j = 0; $j < $maxSpaces; $j++) {
-			// $html .= "&nbsp;";
-			// }
-			// $html .= "</li>\n";
-			// }
-			// $html .= "</ul>";
-			// $html .= "</td></tr>\n";
+				// $html .= "<tr><th>Position at start?</th><td class='underline'></td></tr>\n";
+				// $html .= "<tr><td colspan='2'><b>Any Promotions? If yes, position at:<br>";
+				// $html .= "<ul>";
+				// for ($i = 1; $i <= 3; $i++) {
+					// $html .= "<li>Promotion $i: ";
+					// for ($j = 0; $j < $maxSpaces; $j++) {
+						// $html .= "&nbsp;";
+					// }
+					// $html .= "</li>\n";
+				// }
+				// $html .= "</ul>";
+				// $html .= "</td></tr>\n";
 			// }
 		}
 	}

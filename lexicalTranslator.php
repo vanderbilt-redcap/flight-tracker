@@ -1,8 +1,8 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\GrantLexicalTranslator;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");

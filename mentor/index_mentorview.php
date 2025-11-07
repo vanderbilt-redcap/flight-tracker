@@ -271,11 +271,11 @@ foreach ($metadata as $row) {
 					} else {
 						$value = $menteeValue;
 					}
-					if ($isCustomQuestion) {
-						$class = "custom-question-textarea";
-					} else {
-						$class = "";
-					}
+                    if ($isCustomQuestion) {
+                        $class = "custom-question-textarea";
+                    } else {
+                        $class = "";
+                    }
 
 					$htmlRows[] = "<td class='{$spec['colClass']}' colspan='3'>";
 					$htmlRows[] = '<div class="form-check" style="height: 100px;"><textarea class="' . $class .' form-check-input" name="'.$name.'" id="'.$id.'">'.$value.'</textarea></div>';

@@ -1,16 +1,16 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Publications;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\Dashboard;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\CareerDevLibrary\Measurement;
-use Vanderbilt\CareerDevLibrary\ObservedMeasurement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Measurement;
+use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -23,17 +23,17 @@ $measurements = [];
 
 $headers[] = "Miscellaneous Metrics for Publications";
 if (isset($_GET['cohort'])) {
-	$cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
-	$headers[] = "For Cohort " . $cohort;
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $headers[] = "For Cohort " . $cohort;
 } else {
-	$cohort = "";
+    $cohort = "";
 }
 $headers[] = Publications::makeLimitButton();
 
 $thresholdTs = -100000;
 if (isset($_GET['limitPubs'])) {
-	$thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-	$thresholdTs = strtotime("$thresholdYear-01-01");
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
 }
 
 $indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["record_id", "citation_rcr", "citation_authors", "citation_ts", "citation_num_citations", "summary_training_start", "summary_training_end"]))), $cohort, Application::getModule());
@@ -50,9 +50,9 @@ $metrics = [
 		];
 
 $authorPos = [
-	"first" => ["training" => [], "total" => []],
-	"last" => ["training" => [], "total" => []],
-	"papers" => ["training" => [], "total" => []],
+    "first" => ["training" => [], "total" => []],
+    "last" => ["training" => [], "total" => []],
+    "papers" => ["training" => [], "total" => []],
 ];
 $type = "Included";
 $numForMetric = [];
@@ -62,53 +62,53 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$pubs = new Publications($token, $server, []);
 	$pubs->setRows($rows);
 	$goodCitations = $pubs->getCitationCollection($type);
-	$trainingStartDate = REDCapManagement::findField($rows, $recordId, "summary_training_start");
-	$trainingEndDate = REDCapManagement::findField($rows, $recordId, "summary_training_end");
-	$authorPos["first"]["total"][] = $pubs->getNumberFirstAuthors(null, null, false);
-	$authorPos["last"]["total"][] = $pubs->getNumberLastAuthors(null, null, false);
-	$authorPos["papers"]["total"][] = $pubs->getCitationCount($type);
-	if ($trainingStartDate) {
-		$startTs = strtotime($trainingStartDate);
-		if ($startTs < $thresholdTs) {
-			$startTs = $thresholdTs;
-		}
-		if ($trainingEndDate) {
-			$endTs = strtotime($trainingEndDate);
-			$authorPos["first"]["training"][] = $pubs->getNumberFirstAuthors($startTs, $endTs, false);
-			$authorPos["last"]["training"][] = $pubs->getNumberLastAuthors($startTs, $endTs, false);
-			$authorPos["papers"]["training"][] = count($pubs->getSortedCitationsInTimespan($startTs, $endTs, $type));
-		} else {
-			$authorPos["first"]["training"][] = $pubs->getNumberFirstAuthors($startTs, null, false);
-			$authorPos["last"]["training"][] = $pubs->getNumberLastAuthors($startTs, null, false);
-			$authorPos["papers"]["training"][] = count($pubs->getSortedCitationsInTimespan($startTs, false, $type));
-		}
-	}
+    $trainingStartDate = REDCapManagement::findField($rows, $recordId, "summary_training_start");
+    $trainingEndDate = REDCapManagement::findField($rows, $recordId, "summary_training_end");
+    $authorPos["first"]["total"][] = $pubs->getNumberFirstAuthors(NULL, NULL, FALSE);
+    $authorPos["last"]["total"][] = $pubs->getNumberLastAuthors(NULL, NULL, FALSE);
+    $authorPos["papers"]["total"][] = $pubs->getCitationCount($type);
+    if ($trainingStartDate) {
+        $startTs = strtotime($trainingStartDate);
+        if ($startTs < $thresholdTs) {
+            $startTs = $thresholdTs;
+        }
+        if ($trainingEndDate) {
+            $endTs = strtotime($trainingEndDate);
+            $authorPos["first"]["training"][] = $pubs->getNumberFirstAuthors($startTs, $endTs, FALSE);
+            $authorPos["last"]["training"][] = $pubs->getNumberLastAuthors($startTs, $endTs, FALSE);
+            $authorPos["papers"]["training"][] = count($pubs->getSortedCitationsInTimespan($startTs, $endTs, $type));
+        } else {
+            $authorPos["first"]["training"][] = $pubs->getNumberFirstAuthors($startTs, NULL, FALSE);
+            $authorPos["last"]["training"][] = $pubs->getNumberLastAuthors($startTs, NULL, FALSE);
+            $authorPos["papers"]["training"][] = count($pubs->getSortedCitationsInTimespan($startTs, FALSE, $type));
+        }
+    }
 	if ($goodCitations) {
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->getTimestamp() >= $thresholdTs) {
-				if ($citation->isResearchArticle()) {
-					foreach ($metrics as $metric => $variable) {
-						if (!isset($numForMetric[$metric])) {
-							$numForMetric[$metric] = [];
-						}
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                if ($citation->isResearchArticle()) {
+                    foreach ($metrics as $metric => $variable) {
+                        if (!isset($numForMetric[$metric])) {
+                            $numForMetric[$metric] = [];
+                        }
 
-						$val = $citation->getVariable($variable);
-						if ($val) {
-							$numForMetric[$metric][] = $val;
-						}
-					}
-				}
+                        $val = $citation->getVariable($variable);
+                        if ($val) {
+                            $numForMetric[$metric][] = $val;
+                        }
+                    }
+                }
 			}
 		}
 	}
 
 	$notDoneCitations = $pubs->getCitationCollection("Not done");
 	if ($notDoneCitations) {
-		foreach ($notDoneCitations as $citation) {
-			if ($citation->getTimestamp() >= $thresholdTs) {
-				$numUnconfirmedPubs++;
-			}
-		}
+        foreach ($notDoneCitations as $citation) {
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numUnconfirmedPubs++;
+            }
+        }
 	}
 }
 
@@ -120,10 +120,10 @@ foreach ($numForMetric as $origMetric => $ary) {
 		foreach ($tooltip as $text => $definition) {
 			$metric = str_replace($text, "<span class='tooltip'>$text<span class='tooltiptext'>$definition</span></span>", $metric);
 		}
-
+		
 		if (preg_match("/\bSum\b/i", $metric) || preg_match("/\bTotal\b/i", $metric)) {
 			$measurements[$metric] = new ObservedMeasurement(array_sum($ary), count($ary));
-		} elseif (preg_match("/\bMedian\b/i", $metric)) {
+		} else if (preg_match("/\bMedian\b/i", $metric)) {
 			$cnt = count($ary);
 			sort($ary);
 			if ($cnt % 2 == 0) {
@@ -136,7 +136,7 @@ foreach ($numForMetric as $origMetric => $ary) {
 				$median = $ary[(int) floor($cnt / 2) + 1];
 			}
 			$measurements[$metric] = new ObservedMeasurement($median, $cnt);
-		} elseif (preg_match("/\bAvg\b/i", $metric) || preg_match("/\bAverage\b/i", $metric)) {
+		} else if (preg_match("/\bAvg\b/i", $metric) || preg_match("/\bAverage\b/i", $metric)) {
 			$avg = array_sum($ary) / count($ary);
 			$measurements[$metric] = new ObservedMeasurement($avg, count($ary));
 		}

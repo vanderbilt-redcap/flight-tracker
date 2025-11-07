@@ -53,7 +53,7 @@ if (isset($_POST['title'])) {
 	echo \Vanderbilt\FlightTrackerExternalModule\makeHelpLink();
 	$filter = new Filter($token, $server, $metadata);
 	if (isset($_GET['edit']) && in_array($_GET['edit'], $cohortTitles)) {
-		$editableCohort = $_GET['edit'];
+		$editableCohort = Sanitizer::sanitize($_GET['edit']);
 		echo $filter->getHTML($editableCohort);
 	} else {
 		echo $filter->getHTML();

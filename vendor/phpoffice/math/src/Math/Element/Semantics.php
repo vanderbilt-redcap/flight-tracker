@@ -6,28 +6,25 @@ namespace PhpOffice\Math\Element;
 
 class Semantics extends AbstractGroupElement
 {
-    /**
-     * @var array<string, string>
-     */
-    protected $annotations = [];
+	/**
+	 * @var array<string, string>
+	 */
+	protected $annotations = [];
 
-    public function addAnnotation(string $encoding, string $annotation): self
-    {
-        $this->annotations[$encoding] = $annotation;
+	public function addAnnotation(string $encoding, string $annotation): self {
+		$this->annotations[$encoding] = $annotation;
 
-        return $this;
-    }
+		return $this;
+	}
 
-    public function getAnnotation(string $encoding): ?string
-    {
-        return $this->annotations[$encoding] ?? null;
-    }
+	public function getAnnotation(string $encoding): ?string {
+		return $this->annotations[$encoding] ?? null;
+	}
 
-    /**
-     * @return array<string, string>
-     */
-    public function getAnnotations(): array
-    {
-        return $this->annotations;
-    }
+	/**
+	 * @return array<string, string>
+	 */
+	public function getAnnotations(): array {
+		return $this->annotations;
+	}
 }

@@ -2,13 +2,13 @@
 
 # lists the names in the summary information
 
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::fields($token, $server, ["record_id", "identifier_first_name", "identifier_last_name", "identifier_email"]));
+$redcapData = \Vanderbilt\FlightTrackerExternalModule\alphabetizeREDCapData(Download::fields($token, $server, array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email")));
 
 echo "<style>";
 echo "a { text-decoration: none; color: black; }";
@@ -22,11 +22,11 @@ $i = 0;
 foreach ($redcapData as $row) {
 	if ($i % 2 == 0) {
 		$myclass = "even";
-	} elseif ($i % 2 == 1) {
+	} else if ($i % 2 == 1) {
 		$myclass = "odd";
 	} else {
-		throw new \Exception("This should never happen for $i!");
-	}
+	    throw new \Exception("This should never happen for $i!");
+    }
 	$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=$pid&id={$row['record_id']}&event_id=$event_id&page=summary";
 	$email = "";
 	if ($row['identifier_email']) {
@@ -42,3 +42,4 @@ foreach ($redcapData as $row) {
 	$i++;
 }
 echo "</table>";
+

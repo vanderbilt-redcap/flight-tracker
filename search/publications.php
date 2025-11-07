@@ -2,13 +2,13 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Publications;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -27,7 +27,7 @@ input[type=submit] { font-size: 18px; }
 
 function splitTerms($regex, $str) {
 	$ary = preg_split($regex, $str);
-	$ary2 = [];
+	$ary2 = array();
 	$i = 0;
 	while ($i < count($ary)) {
 		$item = $ary[$i];
@@ -48,16 +48,16 @@ echo "<h4>Specify initial(s) <u>after</u> a name</h4>";
 
 $postQuery = "";
 if (isset($_POST['q']) && $_POST['q']) {
-	$postQuery = Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']);
+    $postQuery = Sanitizer::sanitizeWithoutChangingQuotes($_POST['q']);
 	$metadata = Download::metadata($token, $server);
 
 	$terms = splitTerms("/\s+/", $postQuery);
-	$scores = [];    // record_id:citation_num as key
-	$matchedCitations = [];    // record_idi, citation_num as keys
+	$scores = array();    // record_id:citation_num as key
+	$matchedCitations = array();    // record_idi, citation_num as keys
 	$names = \Vanderbilt\FlightTrackerExternalModule\getAlphabetizedNames($token, $server);
 	$citationCount = 0;
 	foreach ($names as $recordId => $name) {
-		$citationData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), [$recordId]);
+		$citationData = Download::fieldsForRecords($token, $server, Application::getCitationFields($metadata), array($recordId));
 		$pubs = new Publications($token, $server, $metadata);
 		$pubs->setRows($citationData);
 		$citations = $pubs->getCitations("Included");
@@ -90,21 +90,21 @@ if (isset($_POST['q']) && $_POST['q']) {
 		}
 	}
 	arsort($scores);
-	$scoreOrder = [];
+	$scoreOrder = array();
 	foreach ($scores as $id => $score) {
 		if (!isset($scoreOrder[$score])) {
-			$scoreOrder[$score] = [];
+			$scoreOrder[$score] = array();
 		}
 		$scoreOrder[$score][] = $id;
 	}
-	?>
+?>
 
 <form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
     <?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='text' value='<?= Sanitizer::sanitizeOutput($postQuery) ?>' name='q' id='q'> <input type='submit' value='Search'</p>
 </form>
 <?php
-		echo "<p class='centered header'>".\Vanderbilt\FlightTrackerExternalModule\pretty(count($scores))." citations in ".\Vanderbilt\FlightTrackerExternalModule\pretty(count($matchedCitations))." profiles matched.</p>";
+	echo "<p class='centered header'>".\Vanderbilt\FlightTrackerExternalModule\pretty(count($scores))." citations in ".\Vanderbilt\FlightTrackerExternalModule\pretty(count($matchedCitations))." profiles matched.</p>";
 	echo "<p class='centered'>The database has ".\Vanderbilt\FlightTrackerExternalModule\pretty($citationCount)." citations in ".\Vanderbilt\FlightTrackerExternalModule\pretty(count($names))." profiles.</p>";
 	echo "<div class='centered' style='text-align: left; max-width: 800px;'>\n";
 	foreach ($scoreOrder as $score => $idAry) {
@@ -113,7 +113,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 				list($record_id, $instance) = preg_split("/:/", $id);
 				$record_id = (int) $record_id;
 				if (($record_id == $recordId) && isset($matchedCitations[$record_id])) {
-					$citation = $matchedCitations[$record_id][$instance] ?? false;
+					$citation = $matchedCitations[$record_id][$instance] ?? FALSE;
 					if ($citation) {
 						$pmid = $citation->getPMID();
 						$citationText = $citation->getCitationWithLink();
@@ -130,7 +130,7 @@ if (isset($_POST['q']) && $_POST['q']) {
 	}
 	echo "</div>\n";
 } else {
-	?>
+?>
 <form action='<?= CareerDev::link("search/publications.php") ?>' method='POST'>
     <?= Application::generateCSRFTokenHTML() ?>
 <p class='centered'><input type='text' value='' name='q' id='q'> <input type='submit' value='Search'></p>

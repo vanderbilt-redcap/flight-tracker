@@ -351,6 +351,11 @@ class Publications
 		return self::queryPubMed($term, $pid);
 	}
 
+	public static function searchPubMedForCorporateAuthor($corporateAuthorName, $pid) {
+		$term = $corporateAuthorName . "%5BAuthor%20-%20Corporate%5D";
+		return self::queryPubMed($term, $pid);
+	}
+
 	public static function searchPubMedForTitleAndJournal($title, $journal, $pid) {
 		$term = "%28".urlencode($title)."%5Btitle%5D%29+AND+%28\"".urlencode($journal)."\"%5Bjournal%5D%29";
 		return self::queryPubMed($term, $pid);
@@ -814,13 +819,13 @@ class Publications
 		$pubmedMatches = [];
 		foreach ($pmidsInGroups as $pmidGroup) {
 			$output = self::pullFromEFetch($pmidGroup, $pid);
-			$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
+			$xml = simplexml_load_string(utf8_encode($output));
 			$numRetries = 5;
 			$i = 0;
 			while (!$xml && ($numRetries > $i) && !self::isEmptyArticleSet($output)) {
 				sleep(5);
 				$output = self::pullFromEFetch($pmidGroup, $pid);
-				$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
+				$xml = simplexml_load_string(utf8_encode($output));
 				$i++;
 			}
 			if (!$xml) {
@@ -1521,7 +1526,7 @@ class Publications
 				}
 			}
 		}
-		$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
+		$xml = simplexml_load_string(utf8_encode($output));
 		$tries = 0;
 		$maxTries = 10;
 		$oldOutput = "BAD OUTPUT";
@@ -1532,7 +1537,7 @@ class Publications
 			$tries++;
 			self::throttleDown(self::WAIT_SECS_UPON_FAILURE);
 			$output = self::pullFromEFetch($pmids, $pid);
-			$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
+			$xml = simplexml_load_string(utf8_encode($output));
 		}
 		if (!$xml) {
 			if ($tries >= $maxTries) {

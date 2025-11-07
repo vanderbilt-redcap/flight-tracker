@@ -36,10 +36,10 @@ class Cohorts
 			return "";
 		}
 		$cohort = urldecode($cohort);
-		$module = Application::getModule();
+
 		$possibleCohorts = array_keys(Application::getSetting("configs", $pid) ?: []);
 		if (in_array($cohort, $possibleCohorts)) {
-			return $module->escape($cohort);
+			return html_entity_decode(htmlentities($cohort));
 		} else {
 			return "";
 		}

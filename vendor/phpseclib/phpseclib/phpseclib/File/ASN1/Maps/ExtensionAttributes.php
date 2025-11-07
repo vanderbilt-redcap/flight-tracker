@@ -22,10 +22,10 @@ use phpseclib3\File\ASN1;
  */
 abstract class ExtensionAttributes
 {
-    const MAP = [
-        'type' => ASN1::TYPE_SET,
-        'min' => 1,
-        'max' => 256, // ub-extension-attributes
-        'children' => ExtensionAttribute::MAP
-    ];
+	public const MAP = [
+		'type' => ASN1::TYPE_SET,
+		'min' => 1,
+		'max' => 256, // ub-extension-attributes
+		'children' => ExtensionAttribute::MAP
+	];
 }

@@ -33,69 +33,66 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class MontgomeryPrivate
 {
-    /**
-     * Is invisible flag
-     *
-     */
-    const IS_INVISIBLE = true;
+	/**
+	 * Is invisible flag
+	 *
+	 */
+	public const IS_INVISIBLE = true;
 
-    /**
-     * Break a public or private key down into its constituent components
-     *
-     * @param string $key
-     * @param string $password optional
-     * @return array
-     */
-    public static function load($key, $password = '')
-    {
-        switch (strlen($key)) {
-            case 32:
-                $curve = new Curve25519();
-                break;
-            case 56:
-                $curve = new Curve448();
-                break;
-            default:
-                throw new \LengthException('The only supported lengths are 32 and 56');
-        }
+	/**
+	 * Break a public or private key down into its constituent components
+	 *
+	 * @param string $key
+	 * @param string $password optional
+	 * @return array
+	 */
+	public static function load($key, $password = '') {
+		switch (strlen($key)) {
+			case 32:
+				$curve = new Curve25519();
+				break;
+			case 56:
+				$curve = new Curve448();
+				break;
+			default:
+				throw new \LengthException('The only supported lengths are 32 and 56');
+		}
 
-        $components = ['curve' => $curve];
-        $components['dA'] = new BigInteger($key, 256);
-        $curve->rangeCheck($components['dA']);
-        // note that EC::getEncodedCoordinates does some additional "magic" (it does strrev on the result)
-        $components['QA'] = $components['curve']->multiplyPoint($components['curve']->getBasePoint(), $components['dA']);
+		$components = ['curve' => $curve];
+		$components['dA'] = new BigInteger($key, 256);
+		$curve->rangeCheck($components['dA']);
+		// note that EC::getEncodedCoordinates does some additional "magic" (it does strrev on the result)
+		$components['QA'] = $components['curve']->multiplyPoint($components['curve']->getBasePoint(), $components['dA']);
 
-        return $components;
-    }
+		return $components;
+	}
 
-    /**
-     * Convert an EC public key to the appropriate format
-     *
-     * @param MontgomeryCurve $curve
-     * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
-     * @return string
-     */
-    public static function savePublicKey(MontgomeryCurve $curve, array $publicKey)
-    {
-        return strrev($publicKey[0]->toBytes());
-    }
+	/**
+	 * Convert an EC public key to the appropriate format
+	 *
+	 * @param MontgomeryCurve $curve
+	 * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
+	 * @return string
+	 */
+	public static function savePublicKey(MontgomeryCurve $curve, array $publicKey) {
+		return strrev($publicKey[0]->toBytes());
+	}
 
-    /**
-     * Convert a private key to the appropriate format.
-     *
-     * @param BigInteger $privateKey
-     * @param MontgomeryCurve $curve
-     * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
-     * @param string $secret optional
-     * @param string $password optional
-     * @return string
-     */
-    public static function savePrivateKey(BigInteger $privateKey, MontgomeryCurve $curve, array $publicKey, $secret = null, $password = '')
-    {
-        if (!empty($password) && is_string($password)) {
-            throw new UnsupportedFormatException('MontgomeryPrivate private keys do not support encryption');
-        }
+	/**
+	 * Convert a private key to the appropriate format.
+	 *
+	 * @param BigInteger $privateKey
+	 * @param MontgomeryCurve $curve
+	 * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
+	 * @param string $secret optional
+	 * @param string $password optional
+	 * @return string
+	 */
+	public static function savePrivateKey(BigInteger $privateKey, MontgomeryCurve $curve, array $publicKey, $secret = null, $password = '') {
+		if (!empty($password) && is_string($password)) {
+			throw new UnsupportedFormatException('MontgomeryPrivate private keys do not support encryption');
+		}
 
-        return $privateKey->toBytes();
-    }
+		return $privateKey->toBytes();
+	}
 }

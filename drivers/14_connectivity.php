@@ -5,11 +5,11 @@ namespace Vanderbilt\CareerDevLibrary;
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 function testConnectivity($token, $server, $pid, $howToReturn = "Email") {
-	$sites = Application::getSites(false);
-	Application::log("Testing connection for ".count($sites)." servers");
-	$html = "";
-	if ($howToReturn == "HTML") {
-		$html .= "
+    $sites = Application::getSites(FALSE);
+    Application::log("Testing connection for ".count($sites)." servers");
+    $html = "";
+    if ($howToReturn == "HTML") {
+        $html .= "
 <script>
 // coordinated with ConnectionStatus::encodeName()
 function encodeName(str) {
@@ -63,37 +63,37 @@ $(document).ready(function() {
     }
 })
 </script>";
-		foreach ($sites as $name => $outboundServer) {
-			$encodedName = ConnectionStatus::encodeName($name);
-			$html .= "<div class='yellow centered' id='$encodedName'>Checking <b>$name</b> at $outboundServer...</div>\n";
-		}
-		return $html;
-	} else {
-		$numFailures = 0;
-		$numTests = 0;
-		foreach ($sites as $name => $outboundServer) {
-			$connStatus = new ConnectionStatus($outboundServer, $pid);
-			$results = $connStatus->test();
-			foreach ($results as $key => $result) {
-				if (preg_match("/error/i", $result)) {
-					Application::log("$server: $key - ".$result);
-					$numFailures++;
-				}
-				$numTests++;
-			}
-			$title = $name." (<a href='".$connStatus->getURL()."'>$server</a>)";
-			$html .= ConnectionStatus::formatResultsInHTML($title, $results);
-		}
-		if ($numFailures == 0) {
-			Application::log($numTests." tests passed over ".count($sites)." servers without failure");
-		}
+        foreach ($sites as $name => $outboundServer) {
+            $encodedName = ConnectionStatus::encodeName($name);
+            $html .= "<div class='yellow centered' id='$encodedName'>Checking <b>$name</b> at $outboundServer...</div>\n";
+        }
+        return $html;
+    } else {
+        $numFailures = 0;
+        $numTests = 0;
+        foreach ($sites as $name => $outboundServer) {
+            $connStatus = new ConnectionStatus($outboundServer, $pid);
+            $results = $connStatus->test();
+            foreach ($results as $key => $result) {
+                if (preg_match("/error/i", $result)) {
+                    Application::log("$server: $key - ".$result);
+                    $numFailures++;
+                }
+                $numTests++;
+            }
+            $title = $name." (<a href='".$connStatus->getURL()."'>$server</a>)";
+            $html .= ConnectionStatus::formatResultsInHTML($title, $results);
+        }
+        if ($numFailures == 0) {
+            Application::log($numTests." tests passed over ".count($sites)." servers without failure");
+        }
 
-		$adminEmail = Application::getSetting("admin_email", $pid);
-		$html = "
+        $adminEmail = Application::getSetting("admin_email", $pid);
+        $html = "
 <style>
 .green { background-color: #8dc63f; }
 .red { background-color: #ffc3c4; }
 </style>".$html;
-		\REDCap::email($adminEmail, Application::getSetting("default_from", $pid), "Flight Tracker Connectivity Checker", $html);
-	}
+        \REDCap::email($adminEmail, Application::getSetting("default_from", $pid), "Flight Tracker Connectivity Checker", $html);
+    }
 }

@@ -29,181 +29,177 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class OpenSSH extends Progenitor
 {
-    use Common;
+	use Common;
 
-    /**
-     * Supported Key Types
-     *
-     * @var array
-     */
-    protected static $types = [
-        'ecdsa-sha2-nistp256',
-        'ecdsa-sha2-nistp384',
-        'ecdsa-sha2-nistp521',
-        'ssh-ed25519'
-    ];
+	/**
+	 * Supported Key Types
+	 *
+	 * @var array
+	 */
+	protected static $types = [
+		'ecdsa-sha2-nistp256',
+		'ecdsa-sha2-nistp384',
+		'ecdsa-sha2-nistp521',
+		'ssh-ed25519'
+	];
 
-    /**
-     * Break a public or private key down into its constituent components
-     *
-     * @param string $key
-     * @param string $password optional
-     * @return array
-     */
-    public static function load($key, $password = '')
-    {
-        $parsed = parent::load($key, $password);
+	/**
+	 * Break a public or private key down into its constituent components
+	 *
+	 * @param string $key
+	 * @param string $password optional
+	 * @return array
+	 */
+	public static function load($key, $password = '') {
+		$parsed = parent::load($key, $password);
 
-        if (isset($parsed['paddedKey'])) {
-            $paddedKey = $parsed['paddedKey'];
-            list($type) = Strings::unpackSSH2('s', $paddedKey);
-            if ($type != $parsed['type']) {
-                throw new \RuntimeException("The public and private keys are not of the same type ($type vs $parsed[type])");
-            }
-            if ($type == 'ssh-ed25519') {
-                list(, $key, $comment) = Strings::unpackSSH2('sss', $paddedKey);
-                $key = libsodium::load($key);
-                $key['comment'] = $comment;
-                return $key;
-            }
-            list($curveName, $publicKey, $privateKey, $comment) = Strings::unpackSSH2('ssis', $paddedKey);
-            $curve = self::loadCurveByParam(['namedCurve' => $curveName]);
-            $curve->rangeCheck($privateKey);
-            return [
-                'curve' => $curve,
-                'dA' => $privateKey,
-                'QA' => self::extractPoint("\0$publicKey", $curve),
-                'comment' => $comment
-            ];
-        }
+		if (isset($parsed['paddedKey'])) {
+			$paddedKey = $parsed['paddedKey'];
+			list($type) = Strings::unpackSSH2('s', $paddedKey);
+			if ($type != $parsed['type']) {
+				throw new \RuntimeException("The public and private keys are not of the same type ($type vs $parsed[type])");
+			}
+			if ($type == 'ssh-ed25519') {
+				list(, $key, $comment) = Strings::unpackSSH2('sss', $paddedKey);
+				$key = libsodium::load($key);
+				$key['comment'] = $comment;
+				return $key;
+			}
+			list($curveName, $publicKey, $privateKey, $comment) = Strings::unpackSSH2('ssis', $paddedKey);
+			$curve = self::loadCurveByParam(['namedCurve' => $curveName]);
+			$curve->rangeCheck($privateKey);
+			return [
+				'curve' => $curve,
+				'dA' => $privateKey,
+				'QA' => self::extractPoint("\0$publicKey", $curve),
+				'comment' => $comment
+			];
+		}
 
-        if ($parsed['type'] == 'ssh-ed25519') {
-            if (Strings::shift($parsed['publicKey'], 4) != "\0\0\0\x20") {
-                throw new \RuntimeException('Length of ssh-ed25519 key should be 32');
-            }
+		if ($parsed['type'] == 'ssh-ed25519') {
+			if (Strings::shift($parsed['publicKey'], 4) != "\0\0\0\x20") {
+				throw new \RuntimeException('Length of ssh-ed25519 key should be 32');
+			}
 
-            $curve = new Ed25519();
-            $qa = self::extractPoint($parsed['publicKey'], $curve);
-        } else {
-            list($curveName, $publicKey) = Strings::unpackSSH2('ss', $parsed['publicKey']);
-            $curveName = '\phpseclib3\Crypt\EC\Curves\\' . $curveName;
-            $curve = new $curveName();
+			$curve = new Ed25519();
+			$qa = self::extractPoint($parsed['publicKey'], $curve);
+		} else {
+			list($curveName, $publicKey) = Strings::unpackSSH2('ss', $parsed['publicKey']);
+			$curveName = '\phpseclib3\Crypt\EC\Curves\\' . $curveName;
+			$curve = new $curveName();
 
-            $qa = self::extractPoint("\0" . $publicKey, $curve);
-        }
+			$qa = self::extractPoint("\0" . $publicKey, $curve);
+		}
 
-        return [
-            'curve' => $curve,
-            'QA' => $qa,
-            'comment' => $parsed['comment']
-        ];
-    }
+		return [
+			'curve' => $curve,
+			'QA' => $qa,
+			'comment' => $parsed['comment']
+		];
+	}
 
-    /**
-     * Returns the alias that corresponds to a curve
-     *
-     * @return string
-     */
-    private static function getAlias(BaseCurve $curve)
-    {
-        self::initialize_static_variables();
+	/**
+	 * Returns the alias that corresponds to a curve
+	 *
+	 * @return string
+	 */
+	private static function getAlias(BaseCurve $curve) {
+		self::initialize_static_variables();
 
-        $reflect = new \ReflectionClass($curve);
-        $name = $reflect->getShortName();
+		$reflect = new \ReflectionClass($curve);
+		$name = $reflect->getShortName();
 
-        $oid = self::$curveOIDs[$name];
-        $aliases = array_filter(self::$curveOIDs, function ($v) use ($oid) {
-            return $v == $oid;
-        });
-        $aliases = array_keys($aliases);
+		$oid = self::$curveOIDs[$name];
+		$aliases = array_filter(self::$curveOIDs, function ($v) use ($oid) {
+			return $v == $oid;
+		});
+		$aliases = array_keys($aliases);
 
-        for ($i = 0; $i < count($aliases); $i++) {
-            if (in_array('ecdsa-sha2-' . $aliases[$i], self::$types)) {
-                $alias = $aliases[$i];
-                break;
-            }
-        }
+		for ($i = 0; $i < count($aliases); $i++) {
+			if (in_array('ecdsa-sha2-' . $aliases[$i], self::$types)) {
+				$alias = $aliases[$i];
+				break;
+			}
+		}
 
-        if (!isset($alias)) {
-            throw new UnsupportedCurveException($name . ' is not a curve that the OpenSSH plugin supports');
-        }
+		if (!isset($alias)) {
+			throw new UnsupportedCurveException($name . ' is not a curve that the OpenSSH plugin supports');
+		}
 
-        return $alias;
-    }
+		return $alias;
+	}
 
-    /**
-     * Convert an EC public key to the appropriate format
-     *
-     * @param BaseCurve $curve
-     * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePublicKey(BaseCurve $curve, array $publicKey, array $options = [])
-    {
-        $comment = isset($options['comment']) ? $options['comment'] : self::$comment;
+	/**
+	 * Convert an EC public key to the appropriate format
+	 *
+	 * @param BaseCurve $curve
+	 * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePublicKey(BaseCurve $curve, array $publicKey, array $options = []) {
+		$comment = isset($options['comment']) ? $options['comment'] : self::$comment;
 
-        if ($curve instanceof Ed25519) {
-            $key = Strings::packSSH2('ss', 'ssh-ed25519', $curve->encodePoint($publicKey));
+		if ($curve instanceof Ed25519) {
+			$key = Strings::packSSH2('ss', 'ssh-ed25519', $curve->encodePoint($publicKey));
 
-            if (isset($options['binary']) ? $options['binary'] : self::$binary) {
-                return $key;
-            }
+			if (isset($options['binary']) ? $options['binary'] : self::$binary) {
+				return $key;
+			}
 
-            $key = 'ssh-ed25519 ' . base64_encode($key) . ' ' . $comment;
-            return $key;
-        }
+			$key = 'ssh-ed25519 ' . base64_encode($key) . ' ' . $comment;
+			return $key;
+		}
 
-        $alias = self::getAlias($curve);
+		$alias = self::getAlias($curve);
 
-        $points = "\4" . $publicKey[0]->toBytes() . $publicKey[1]->toBytes();
-        $key = Strings::packSSH2('sss', 'ecdsa-sha2-' . $alias, $alias, $points);
+		$points = "\4" . $publicKey[0]->toBytes() . $publicKey[1]->toBytes();
+		$key = Strings::packSSH2('sss', 'ecdsa-sha2-' . $alias, $alias, $points);
 
-        if (isset($options['binary']) ? $options['binary'] : self::$binary) {
-            return $key;
-        }
+		if (isset($options['binary']) ? $options['binary'] : self::$binary) {
+			return $key;
+		}
 
-        $key = 'ecdsa-sha2-' . $alias . ' ' . base64_encode($key) . ' ' . $comment;
+		$key = 'ecdsa-sha2-' . $alias . ' ' . base64_encode($key) . ' ' . $comment;
 
-        return $key;
-    }
+		return $key;
+	}
 
-    /**
-     * Convert a private key to the appropriate format.
-     *
-     * @param BigInteger $privateKey
-     * @param Ed25519 $curve
-     * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
-     * @param string $secret optional
-     * @param string $password optional
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePrivateKey(BigInteger $privateKey, BaseCurve $curve, array $publicKey, $secret = null, $password = '', array $options = [])
-    {
-        if ($curve instanceof Ed25519) {
-            if (!isset($secret)) {
-                throw new \RuntimeException('Private Key does not have a secret set');
-            }
-            if (strlen($secret) != 32) {
-                throw new \RuntimeException('Private Key secret is not of the correct length');
-            }
+	/**
+	 * Convert a private key to the appropriate format.
+	 *
+	 * @param BigInteger $privateKey
+	 * @param Ed25519 $curve
+	 * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
+	 * @param string $secret optional
+	 * @param string $password optional
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePrivateKey(BigInteger $privateKey, BaseCurve $curve, array $publicKey, $secret = null, $password = '', array $options = []) {
+		if ($curve instanceof Ed25519) {
+			if (!isset($secret)) {
+				throw new \RuntimeException('Private Key does not have a secret set');
+			}
+			if (strlen($secret) != 32) {
+				throw new \RuntimeException('Private Key secret is not of the correct length');
+			}
 
-            $pubKey = $curve->encodePoint($publicKey);
+			$pubKey = $curve->encodePoint($publicKey);
 
-            $publicKey = Strings::packSSH2('ss', 'ssh-ed25519', $pubKey);
-            $privateKey = Strings::packSSH2('sss', 'ssh-ed25519', $pubKey, $secret . $pubKey);
+			$publicKey = Strings::packSSH2('ss', 'ssh-ed25519', $pubKey);
+			$privateKey = Strings::packSSH2('sss', 'ssh-ed25519', $pubKey, $secret . $pubKey);
 
-            return self::wrapPrivateKey($publicKey, $privateKey, $password, $options);
-        }
+			return self::wrapPrivateKey($publicKey, $privateKey, $password, $options);
+		}
 
-        $alias = self::getAlias($curve);
+		$alias = self::getAlias($curve);
 
-        $points = "\4" . $publicKey[0]->toBytes() . $publicKey[1]->toBytes();
-        $publicKey = self::savePublicKey($curve, $publicKey, ['binary' => true]);
+		$points = "\4" . $publicKey[0]->toBytes() . $publicKey[1]->toBytes();
+		$publicKey = self::savePublicKey($curve, $publicKey, ['binary' => true]);
 
-        $privateKey = Strings::packSSH2('sssi', 'ecdsa-sha2-' . $alias, $alias, $points, $privateKey);
+		$privateKey = Strings::packSSH2('sssi', 'ecdsa-sha2-' . $alias, $alias, $points, $privateKey);
 
-        return self::wrapPrivateKey($publicKey, $privateKey, $password, $options);
-    }
+		return self::wrapPrivateKey($publicKey, $privateKey, $password, $options);
+	}
 }

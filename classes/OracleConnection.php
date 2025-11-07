@@ -4,8 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-abstract class OracleConnection
-{
+abstract class OracleConnection {
 	public function connect() {
 		$this->connection = oci_connect($this->getUserId(), $this->getPassword(), $this->getServer());
 		if (!$this->connection) {
@@ -29,14 +28,14 @@ abstract class OracleConnection
 			throw new \Exception("Unable to parse ".$sql.": ".json_encode(oci_error()));
 		}
 
-		Application::log($sql);
+        Application::log($sql);
 		oci_execute($stmt);
 		// Application::log("Statement returned ".oci_num_rows($stmt)." rows");
 		if ($error = oci_error($stmt)) {
 			throw new \Exception("Unable to execute statement. ".json_encode($error));
 		}
 
-		$data = [];
+		$data = array();
 		while ($row = oci_fetch_assoc($stmt)) {
 			$data[] = $row;
 		}
@@ -58,5 +57,6 @@ abstract class OracleConnection
 	abstract public function getPassword();
 	abstract public function getServer();
 
-	private $connection = null;
+	private $connection = NULL;
 }
+

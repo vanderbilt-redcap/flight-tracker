@@ -7,14 +7,14 @@ require_once dirname(__FILE__)."/../classes/Autoload.php";
 
 $uidString = "";
 if (isset($_GET['uid'])) {
-	$uidString = "&uid=".REDCapManagement::sanitize($_GET['uid']);
+    $uidString = "&uid=".REDCapManagement::sanitize($_GET['uid']);
 }
 
 
 if (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") {
-	$restartMssg = "Restart";
+    $restartMssg = "Restart";
 } else {
-	$restartMssg = "Front Page";
+    $restartMssg = "Front Page";
 }
 
 ?>

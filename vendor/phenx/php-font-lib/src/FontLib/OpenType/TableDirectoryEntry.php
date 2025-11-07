@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @package php-font-lib
  * @link    https://github.com/dompdf/php-font-lib
@@ -13,6 +14,6 @@ namespace FontLib\OpenType;
  *
  * @package php-font-lib
  */
-class TableDirectoryEntry extends \FontLib\TrueType\TableDirectoryEntry {
-
+class TableDirectoryEntry extends \FontLib\TrueType\TableDirectoryEntry
+{
 }

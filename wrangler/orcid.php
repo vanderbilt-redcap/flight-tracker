@@ -15,136 +15,136 @@ $relevantORCIDEndpoints = ['employments', 'person', 'memberships', 'address'];
 $allRecords = Download::recordIdsByPid($pid);
 $records = $allRecords;
 if (isset($_GET['record']) && ($_GET['record'] !== "all")) {
-	$recordId = Sanitizer::getSanitizedRecord($_GET['record'], $allRecords);
-	if ($recordId) {
-		$records = [$recordId];
-	}
+    $recordId = Sanitizer::getSanitizedRecord($_GET['record'], $allRecords);
+    if ($recordId) {
+        $records = [$recordId];
+    }
 }
 $action = $_POST['action'] ?? "";
 if ($action == "downloadORCIDs") {
-	$recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
-	$data = [];
-	if ($recordId) {
-		$firstName = Sanitizer::sanitize($_POST['firstName'] ?? "");
-		$middleName = Sanitizer::sanitize($_POST['middleName'] ?? "");
-		$lastName = Sanitizer::sanitize($_POST['lastName'] ?? "");
-		$institutionList = Sanitizer::sanitize($_POST['institutionList'] ?? "");
-		list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstName, $middleName, $lastName, $institutionList, $pid);
-		if ($orcid) {
-			if (is_array($orcid)) {
-				$orcids = $orcid;
-				$data['orcids'] = [];
-				foreach ($orcids as $orcid) {
-					$addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
-					$data['orcids'][$orcid] = $addtlOrcidDetails;
-				}
-			} else {
-				$addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
-				$data['orcids'] = [$orcid => $addtlOrcidDetails];
-			}
-			$data['message'] = "";
-		} else {
-			$data['orcids'] = [];
-			$data['message'] = $mssg;
-		}
-	} else {
-		$data['error'] = "Invalid record.";
-	}
-	echo json_encode($data);
-	exit;
-} elseif ($action == "changeBlocking") {
-	$recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
-	$newValue = "UNSET";
-	if ($_POST['value'] == "on") {
-		$newValue = "1";
-	} elseif ($_POST['value'] == "off") {
-		$newValue = "0";
-	}
-	$data = [];
-	if ($recordId && ($newValue !== "UNSET")) {
-		$uploadRow = [
-			"record_id" => $recordId,
-			"redcap_repeat_instrument" => "",
-			"redcap_repeat_instance" => "",
-			"identifier_block_orcid" => $newValue,
-		];
-		$data['feedback'] = Upload::oneRow($uploadRow, $token, $server);
-	} else {
-		$data['error'] = "No action.";
-	}
-	echo json_encode($data);
-	exit;
-} elseif (in_array($action, ["addORCID", "removeORCID", "excludeORCID"])) {
-	$data = [];
-	$recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
-	$orcid = Sanitizer::sanitize($_POST['orcid'] ?? "");
-	if ($recordId && $orcid) {
-		$priorORCIDList = Download::oneFieldForRecordByPid($pid, "identifier_orcid", $recordId);
-		$orcids = $priorORCIDList ? preg_split("/\s*[,;]\s*/", $priorORCIDList) : [];
-		$priorExcludeList = Download::oneFieldForRecordByPid($pid, "exclude_orcid", $recordId);
-		$excludeORCIDs = $priorExcludeList ? preg_split("/\s*[,;]\s*/", $priorExcludeList) : [];
-		if ($action == "addORCID") {
-			if (!in_array($orcid, $orcids)) {
-				$orcids[] = $orcid;
-			}
-			if (in_array($orcid, $excludeORCIDs)) {
-				$pos = array_search($orcid, $excludeORCIDs);
-				array_splice($excludeORCIDs, $pos, 1);
-			}
-		} elseif (($action == "excludeORCID") && !in_array($orcid, $excludeORCIDs)) {
-			$excludeORCIDs[] = $orcid;
-		} elseif (($action == "removeORCID") && in_array($orcid, $orcids)) {
-			$pos = array_search($orcid, $orcids);
-			array_splice($orcids, $pos, 1);
-			$excludeORCIDs[] = $orcid;
-		}
-		$newORCIDList = implode(", ", $orcids);
-		$newExcludeList = implode(", ", $excludeORCIDs);
-		$uploadRow = [
-			"record_id" => $recordId,
-			"redcap_repeat_instrument" => "",
-			"redcap_repeat_instance" => "",
-		];
-		if ($priorORCIDList != $newORCIDList) {
-			$uploadRow["identifier_orcid"] = $newORCIDList;
-		}
-		if ($priorExcludeList != $newExcludeList) {
-			$uploadRow["exclude_orcid"] = $newExcludeList;
-		}
-		if (count($uploadRow) > 3) {
-			$data['feedback'] = Upload::oneRow($uploadRow, $token, $server);
-		} else {
-			$data['feedback'] = "No changes made";
-		}
-		$data['recordExcludes'] = $newExcludeList;
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
+    $data = [];
+    if ($recordId) {
+        $firstName = Sanitizer::sanitize($_POST['firstName'] ?? "");
+        $middleName = Sanitizer::sanitize($_POST['middleName'] ?? "");
+        $lastName = Sanitizer::sanitize($_POST['lastName'] ?? "");
+        $institutionList = Sanitizer::sanitize($_POST['institutionList'] ?? "");
+        list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstName, $middleName, $lastName, $institutionList, $pid);
+        if ($orcid) {
+            if (is_array($orcid)) {
+                $orcids = $orcid;
+                $data['orcids'] = [];
+                foreach ($orcids as $orcid) {
+                    $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+                    $data['orcids'][$orcid] = $addtlOrcidDetails;
+                }
+            } else {
+                $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+                $data['orcids'] = [$orcid => $addtlOrcidDetails];
+            }
+            $data['message'] = "";
+        } else {
+            $data['orcids'] = [];
+            $data['message'] = $mssg;
+        }
+    } else {
+        $data['error'] = "Invalid record.";
+    }
+    echo json_encode($data);
+    exit;
+} else if ($action == "changeBlocking") {
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
+    $newValue = "UNSET";
+    if ($_POST['value'] == "on") {
+        $newValue = "1";
+    } else if ($_POST['value'] == "off") {
+        $newValue = "0";
+    }
+    $data = [];
+    if ($recordId && ($newValue !== "UNSET")) {
+        $uploadRow = [
+            "record_id" => $recordId,
+            "redcap_repeat_instrument" => "",
+            "redcap_repeat_instance" => "",
+            "identifier_block_orcid" => $newValue,
+        ];
+        $data['feedback'] = Upload::oneRow($uploadRow, $token, $server);
+    } else {
+        $data['error'] = "No action.";
+    }
+    echo json_encode($data);
+    exit;
+} else if (in_array($action, ["addORCID", "removeORCID", "excludeORCID"])) {
+    $data = [];
+    $recordId = Sanitizer::getSanitizedRecord($_POST['record'] ?? "", $allRecords);
+    $orcid = Sanitizer::sanitize($_POST['orcid'] ?? "");
+    if ($recordId && $orcid) {
+        $priorORCIDList = Download::oneFieldForRecordByPid($pid, "identifier_orcid", $recordId);
+        $orcids = $priorORCIDList ? preg_split("/\s*[,;]\s*/", $priorORCIDList) : [];
+        $priorExcludeList = Download::oneFieldForRecordByPid($pid, "exclude_orcid", $recordId);
+        $excludeORCIDs = $priorExcludeList ? preg_split("/\s*[,;]\s*/", $priorExcludeList) : [];
+        if ($action == "addORCID") {
+            if (!in_array($orcid, $orcids)) {
+                $orcids[] = $orcid;
+            }
+            if (in_array($orcid, $excludeORCIDs)) {
+                $pos = array_search($orcid, $excludeORCIDs);
+                array_splice($excludeORCIDs, $pos, 1);
+            }
+        } else if (($action == "excludeORCID") && !in_array($orcid, $excludeORCIDs)) {
+            $excludeORCIDs[] = $orcid;
+        } else if (($action == "removeORCID") && in_array($orcid, $orcids)) {
+            $pos = array_search($orcid, $orcids);
+            array_splice($orcids, $pos, 1);
+            $excludeORCIDs[] = $orcid;
+        }
+        $newORCIDList = implode(", ", $orcids);
+        $newExcludeList = implode(", ", $excludeORCIDs);
+        $uploadRow = [
+            "record_id" => $recordId,
+            "redcap_repeat_instrument" => "",
+            "redcap_repeat_instance" => "",
+        ];
+        if ($priorORCIDList != $newORCIDList) {
+            $uploadRow["identifier_orcid"] = $newORCIDList;
+        }
+        if ($priorExcludeList != $newExcludeList) {
+            $uploadRow["exclude_orcid"] = $newExcludeList;
+        }
+        if (count($uploadRow) > 3) {
+            $data['feedback'] = Upload::oneRow($uploadRow, $token, $server);
+        } else {
+            $data['feedback'] = "No changes made";
+        }
+        $data['recordExcludes'] = $newExcludeList;
 
-		$firstName = Download::oneFieldForRecordByPid($pid, "identifier_first_name", $recordId);
-		$middleName = Download::oneFieldForRecordByPid($pid, "identifier_middle", $recordId);
-		$lastName = Download::oneFieldForRecordByPid($pid, "identifier_last_name", $recordId);
-		$institutionList = Download::oneFieldForRecordByPid($pid, "identifier_institution", $recordId);
-		list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstName, $middleName, $lastName, $institutionList, $pid);
-		if (is_array($orcid) && !empty($orcid)) {
-			$orcids = $orcid;
-			$data['orcids'] = [];
-			foreach ($orcids as $orcid) {
-				$addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
-				$data['orcids'][$orcid] = $addtlOrcidDetails;
-			}
-			$data['message'] = '';
-		} elseif ($orcid) {
-			$addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
-			$data['orcids'][$orcid] = $addtlOrcidDetails;
-			$data['message'] = "";
-		} else {
-			$data['orcids'] = [];
-			$data['message'] = $mssg;
-		}
-		$data['redcapORCIDs'] = $newORCIDList;
-	} else {
-		$data['error'] = "Invalid record.";
-	}
-	echo json_encode($data);
-	exit;
+        $firstName = Download::oneFieldForRecordByPid($pid, "identifier_first_name", $recordId);
+        $middleName = Download::oneFieldForRecordByPid($pid, "identifier_middle", $recordId);
+        $lastName = Download::oneFieldForRecordByPid($pid, "identifier_last_name", $recordId);
+        $institutionList = Download::oneFieldForRecordByPid($pid, "identifier_institution", $recordId);
+        list($orcid, $mssg) = ORCID::downloadORCID($recordId, $firstName, $middleName, $lastName, $institutionList, $pid);
+        if (is_array($orcid) && !empty($orcid)) {
+            $orcids = $orcid;
+            $data['orcids'] = [];
+            foreach ($orcids as $orcid) {
+                $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+                $data['orcids'][$orcid] = $addtlOrcidDetails;
+            }
+            $data['message'] = '';
+        } else if ($orcid) {
+            $addtlOrcidDetails = ORCID::downloadORCIDProfile($orcid, $pid, $relevantORCIDEndpoints);
+            $data['orcids'][$orcid] = $addtlOrcidDetails;
+            $data['message'] = "";
+        } else {
+            $data['orcids'] = [];
+            $data['message'] = $mssg;
+        }
+        $data['redcapORCIDs'] = $newORCIDList;
+    } else {
+        $data['error'] = "Invalid record.";
+    }
+    echo json_encode($data);
+    exit;
 }
 
 require_once(__DIR__."/../charts/baseWeb.php");
@@ -159,18 +159,18 @@ $blockORCIDs = Download::oneField($token, $server, "identifier_block_orcid");
 $excludeORCIDs = Download::oneField($token, $server, "exclude_orcid");
 $redcapORCIDs = [];
 foreach ($orcidTexts as $recordId => $orcidText) {
-	$redcapORCIDs[$recordId] = $orcidText ? preg_split("/\s*[,;]\s*/", $orcidText) : [];
+    $redcapORCIDs[$recordId] = $orcidText ? preg_split("/\s*[,;]\s*/", $orcidText) : [];
 }
 
 $namesWithLinks = [];
 foreach ($allRecords as $recordId) {
-	$fn = $firstNames[$recordId] ?? "";
-	$mn = $middleNames[$recordId] ?? "";
-	$ln = $lastNames[$recordId] ?? "";
+    $fn = $firstNames[$recordId] ?? "";
+    $mn = $middleNames[$recordId] ?? "";
+    $ln = $lastNames[$recordId] ?? "";
 
-	$name = NameMatcher::formatName($fn, $mn, $ln);
-	$nameWithLink = Links::makeFormLink($pid, $recordId, $eventId, $name, "identifiers");
-	$namesWithLinks[$recordId] = $nameWithLink;
+    $name = NameMatcher::formatName($fn, $mn, $ln);
+    $nameWithLink = Links::makeFormLink($pid, $recordId, $eventId, $name, "identifiers");
+    $namesWithLinks[$recordId] = $nameWithLink;
 }
 
 echo "
@@ -604,11 +604,11 @@ $selected = (($_GET['record'] == "all") || !isset($_GET['record'])) ? "selected"
 echo "<option value='all' $selected>---ALL---</option>";
 natcasesort($lastNames);
 foreach ($lastNames as $recordId => $lastName) {
-	$firstName = $firstNames[$recordId] ?? "";
-	$middleName = $middleNames[$recordId] ?? "";
-	$name = NameMatcher::formatName($firstName, $middleName, $lastName);
-	$selected = ($_GET['record'] == $recordId) ? "selected" : "";
-	echo "<option value='$recordId' $selected>$recordId: $name</option>";
+    $firstName = $firstNames[$recordId] ?? "";
+    $middleName = $middleNames[$recordId] ?? "";
+    $name = NameMatcher::formatName($firstName, $middleName, $lastName);
+    $selected = ($_GET['record'] == $recordId) ? "selected" : "";
+    echo "<option value='$recordId' $selected>$recordId: $name</option>";
 }
 echo "</select></p>";
 echo "<div class='loading centered'></div>";

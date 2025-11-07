@@ -4,10 +4,10 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Definitions
-{
+class Definitions {
+
 	public function __construct($subtext = "") {
-		$this->definitions = [];
+		$this->definitions = array();
 		$this->addDefaultDefinitions();
 
 		$this->subtext = $subtext;

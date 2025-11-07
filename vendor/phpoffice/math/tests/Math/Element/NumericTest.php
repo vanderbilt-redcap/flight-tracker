@@ -9,10 +9,9 @@ use PHPUnit\Framework\TestCase;
 
 class NumericTest extends TestCase
 {
-    public function testConstruct(): void
-    {
-        $numeric = new Numeric(2);
+	public function testConstruct(): void {
+		$numeric = new Numeric(2);
 
-        $this->assertEquals(2, $numeric->getValue());
-    }
+		$this->assertEquals(2, $numeric->getValue());
+	}
 }

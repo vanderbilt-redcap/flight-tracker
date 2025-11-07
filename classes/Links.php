@@ -2,9 +2,9 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use const http\Client\Curl\SSL_VERSION_ANY;
+
 
 # This class handles links within the code. It puts in the appropriate prefix to relative links as well.
 # All methods are static. No need to instatiate this class.
@@ -12,8 +12,7 @@ use const http\Client\Curl\SSL_VERSION_ANY;
 // require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 require_once(__DIR__ . '/ClassLoader.php');
 
-class Links
-{
+class Links {
 	private static $server;
 
 	# returns WITHOUT trailing "/"
@@ -26,47 +25,47 @@ class Links
 		return self::$server;
 	}
 
-	public static function makeUploadPictureLink($pid, $text, $recordId) {
-		$link = Application::link("uploadPicture.php", $pid)."&record=".urlencode($recordId);
-		return self::makeLink($link, $text, true);
-	}
+    public static function makeUploadPictureLink($pid, $text, $recordId) {
+        $link = Application::link("uploadPicture.php", $pid)."&record=".urlencode($recordId);
+        return self::makeLink($link, $text, TRUE);
+    }
 
-	public static function changeTextColorOfLink($str, $color) {
-		if (preg_match("/<a /", $str)) {
-			if (preg_match("/style\s*=\s*['\"]/", $str, $matches)) {
-				$match = $matches[0];
-				$str = str_replace($match, $match."color: $color; ", $str);
-			} else {
-				$str = preg_replace("/<a /", "<a style='color: $color;' ", $str);
-			}
-		}
-		return $str;
-	}
+    public static function changeTextColorOfLink($str, $color) {
+        if (preg_match("/<a /", $str)) {
+            if (preg_match("/style\s*=\s*['\"]/", $str, $matches)) {
+                $match = $matches[0];
+                $str = str_replace($match, $match."color: $color; ", $str);
+            } else {
+                $str = preg_replace("/<a /", "<a style='color: $color;' ", $str);
+            }
+        }
+        return $str;
+    }
 
-	public static function makeMailtoLink($email, $text = "", $subject = "") {
-		if (!$email) {
-			return "";
-		}
-		$classInfo = "";
-		if ($text === "") {
-			$text = $email;
-			$classInfo = " class='smallEmail'";
-		}
-		if (REDCapManagement::isEmail($email)) {
-			if ($subject !== "") {
-				$email .= "?subject=$subject";
-			}
-			return "<a href='mailto:$email'$classInfo>$text</a>";
-		}
-		return $email;
-	}
+    public static function makeMailtoLink($email, $text = "", $subject = "") {
+	    if (!$email) {
+	        return "";
+        }
+        $classInfo = "";
+        if ($text === "") {
+            $text = $email;
+            $classInfo = " class='smallEmail'";
+        }
+	    if (REDCapManagement::isEmail($email)) {
+            if ($subject !== "") {
+                $email .= "?subject=$subject";
+            }
+            return "<a href='mailto:$email'$classInfo>$text</a>";
+        }
+	    return $email;
+    }
 
 	public function getServer_test($tester) {
 		$server = self::getServer();
 		$tester->assertEqual($server, substr(APP_PATH_WEBROOT_FULL, 0, strlen($server)));
 	}
 
-	public static function makeLink($url, $text, $launchNewWindow = false, $linkClass = "") {
+	public static function makeLink($url, $text, $launchNewWindow = FALSE, $linkClass = "") {
 		if (!preg_match("/^https?:/i", $url)) {
 			$server = self::getServer();
 			if (preg_match("/^\//", $url)) {
@@ -103,93 +102,93 @@ class Links
 		$tester->assertEqual($url, $linkUrl);
 	}
 
-	public static function makeMenteeAgreementLink($pid, $recordId, $event_id, $text, $instance = 1, $linkClass = "", $newTarget = false) {
-		$url = self::makeMenteeAgreementUrl($pid, $recordId, $event_id, $instance);
-		return self::makeLink($url, $text, $newTarget, $linkClass);
-	}
+	public static function makeMenteeAgreementLink($pid, $recordId, $event_id, $text, $instance = 1, $linkClass = "", $newTarget = FALSE) {
+        $url = self::makeMenteeAgreementUrl($pid, $recordId, $event_id, $instance);
+        return self::makeLink($url, $text, $newTarget, $linkClass);
+    }
 
 	public static function makeMenteeAgreementUrl($pid, $recordId, $event_id, $instance = 1) {
-		return self::makeFormUrl($pid, $recordId, $event_id, "mentoring_agreement", $instance);
-	}
+        return self::makeFormUrl($pid, $recordId, $event_id, "mentoring_agreement", $instance);
+    }
 
 	private static function link($relativeUrl) {
-		return Application::link($relativeUrl);
+	    return Application::link($relativeUrl);
 	}
 
-	public static function makeProfileLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
+	public static function makeProfileLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
 		$url = self::link("profile.php");
 		if ($recordId) {
 			$url .= "&record=".$recordId;
 		}
-		return self::makeLink($url, $text, false, $linkClass);
+		return self::makeLink($url, $text, FALSE, $linkClass);
 	}
 
 	# synonym to makeDataWranglingLink
-	public static function makeSelectLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
-		return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
-	}
+    public static function makeSelectLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
+    }
 
-	public static function makeGrantWranglingLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
-		return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
-	}
+    public static function makeGrantWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        return self::makeDataWranglingLink($pid, $text, $recordId, $markAsNew, $linkClass);
+    }
 
-	# synonym to makeSelectLink
-	public static function makeDataWranglingLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
-		$url = self::link("wrangler/index_new.php");
-		if ($recordId) {
-			$url = $url."&record=".$recordId;
-		}
-		if ($markAsNew) {
-			$url = $url."&new";
-		}
-		return self::makeLink($url, $text, false, $linkClass);
-	}
+    # synonym to makeSelectLink
+    public static function makeDataWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        $url = self::link("wrangler/index_new.php");
+        if ($recordId) {
+            $url = $url."&record=".$recordId;
+        }
+        if ($markAsNew) {
+            $url = $url."&new";
+        }
+        return self::makeLink($url, $text, FALSE, $linkClass);
+    }
 
-	public static function makePatentWranglingLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
-		$url = self::link("wrangler/include.php")."&wranglerType=Patents";
-		if ($recordId) {
-			$url = $url."&record=".$recordId;
-		}
-		if ($markAsNew) {
-			$url = $url."&new";
-		}
-		return self::makeLink($url, $text, false, $linkClass);
-	}
+    public static function makePatentWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        $url = self::link("wrangler/include.php")."&wranglerType=Patents";
+        if ($recordId) {
+            $url = $url."&record=".$recordId;
+        }
+        if ($markAsNew) {
+            $url = $url."&new";
+        }
+        return self::makeLink($url, $text, FALSE, $linkClass);
+    }
 
-	public static function makePositionChangeWranglingLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
-		$url = self::link("wrangler/positions.php");
-		if ($recordId) {
-			$url = $url."&record=".$recordId;
-		}
-		return self::makeLink($url, $text, false, $linkClass);
-	}
+    public static function makePositionChangeWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
+        $url = self::link("wrangler/positions.php");
+        if ($recordId) {
+            $url = $url."&record=".$recordId;
+        }
+        return self::makeLink($url, $text, FALSE, $linkClass);
+    }
 
-	public static function makeOnlineDesignerLink($pid, $text, $markAsNew = false, $linkClass = "") {
-		$url = APP_PATH_WEBROOT."Design/online_designer.php?pid=".$pid;
-		return self::makeLink($url, $text, $markAsNew, $linkClass);
-	}
+    public static function makeOnlineDesignerLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
+        $url = APP_PATH_WEBROOT."Design/online_designer.php?pid=".$pid;
+        return self::makeLink($url, $text, $markAsNew, $linkClass);
+    }
 
-	public static function makeProjectHomeURL($pid) {
-		return APP_PATH_WEBROOT."ProjectSetup/index.php?pid=".$pid;
-	}
+    public static function makeProjectHomeURL($pid) {
+        return APP_PATH_WEBROOT."ProjectSetup/index.php?pid=".$pid;
+    }
 
-	public static function makeProjectHomeLink($pid, $text, $markAsNew = false, $linkClass = "") {
-		return self::makeLink(self::makeProjectHomeURL($pid), $text, $markAsNew, $linkClass);
-	}
+    public static function makeProjectHomeLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
+        return self::makeLink(self::makeProjectHomeURL($pid), $text, $markAsNew, $linkClass);
+    }
 
-	public static function makeEmailManagementLink($pid, $text, $markAsNew = false, $linkClass = "") {
+    public static function makeEmailManagementLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
 		return self::makeEmailMgmtLink($pid, $text, $markAsNew, $linkClass);
 	}
 
-	public static function makeEmailMgmtLink($pid, $text, $markAsNew = false, $linkClass = "") {
+	public static function makeEmailMgmtLink($pid, $text, $markAsNew = FALSE, $linkClass = "") {
 		$url = self::link("emailMgmt/configure.php");
 		if ($markAsNew) {
 			$url = $url."&new";
 		}
-		return self::makeLink($url, $text, false, $linkClass);
+		return self::makeLink($url, $text, FALSE, $linkClass);
 	}
 
-	public static function makePubWranglingLink($pid, $text, $recordId = "", $markAsNew = false, $linkClass = "") {
+	public static function makePubWranglingLink($pid, $text, $recordId = "", $markAsNew = FALSE, $linkClass = "") {
 		$url = self::link("wrangler/include.php")."&wranglerType=Publications";
 		if ($recordId) {
 			$url = $url."&record=".$recordId;
@@ -197,7 +196,7 @@ class Links
 		if ($markAsNew) {
 			$url = $url."&new";
 		}
-		return self::makeLink($url, $text, false, $linkClass);
+		return self::makeLink($url, $text, FALSE, $linkClass);
 	}
 
 	public static function makeReportLink($pid, $reportId, $text) {
@@ -238,32 +237,32 @@ class Links
 		return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "exporter", $instance);
 	}
 
-	public static function makeCOEUSLink($pid, $recordId, $event_id, $text, $instance = 1) {
-		return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus", $instance);
-	}
+    public static function makeCOEUSLink($pid, $recordId, $event_id, $text, $instance = 1) {
+        return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus", $instance);
+    }
 
-	public static function makeCOEUS2Link($pid, $recordId, $event_id, $text, $instance = 1) {
-		return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus2", $instance);
-	}
+    public static function makeCOEUS2Link($pid, $recordId, $event_id, $text, $instance = 1) {
+        return self::makeRepeatingFormLink($pid, $recordId, $event_id, $text, "coeus2", $instance);
+    }
 
-	public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = false) {
-		return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance, "", $newTarget);
-	}
+    public static function makePublicationsLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
+        return self::makeFormLink($pid, $recordId, $event_id, $text, "citation", $instance, "", $newTarget);
+    }
 
-	public static function makeERICLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = false) {
-		return self::makeFormLink($pid, $recordId, $event_id, $text, "eric", $instance, "", $newTarget);
-	}
+    public static function makeERICLink($pid, $recordId, $event_id, $text, $instance = 1, $newTarget = FALSE) {
+        return self::makeFormLink($pid, $recordId, $event_id, $text, "eric", $instance, "", $newTarget);
+    }
 
-	public static function makeRepeatingFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "") {
+    public static function makeRepeatingFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "") {
 		$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=".$pid."&id=".$recordId."&event_id=".$event_id."&page=".$form."&instance=".$instance;
-		return self::makeLink($url, $text, false, $linkClass);
+		return self::makeLink($url, $text, FALSE, $linkClass);
 	}
 
 	public static function makeFormUrl($pid, $recordId, $event_id, $form, $instance = 1) {
-		$recordId = Sanitizer::sanitizeInteger($recordId);
-		$event_id = Sanitizer::sanitizeInteger($event_id);
-		$instance = Sanitizer::sanitizeInteger($instance);
-		$pid = Sanitizer::sanitizeInteger($pid);
+        $recordId = Sanitizer::sanitizeInteger($recordId);
+        $event_id = Sanitizer::sanitizeInteger($event_id);
+        $instance = Sanitizer::sanitizeInteger($instance);
+        $pid = Sanitizer::sanitizeInteger($pid);
 		$url = APP_PATH_WEBROOT."DataEntry/index.php?pid=".$pid."&id=".$recordId."&event_id=".$event_id."&page=".$form;
 		if ($instance != 1) {
 			$url .= "&instance=".$instance;
@@ -271,7 +270,7 @@ class Links
 		return $url;
 	}
 
-	public static function makeFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "", $newTarget = false) {
+	public static function makeFormLink($pid, $recordId, $event_id, $text, $form, $instance = 1, $linkClass = "", $newTarget = FALSE) {
 		$url = self::makeFormUrl($pid, $recordId, $event_id, $form, $instance);
 		return self::makeLink($url, $text, $newTarget, $linkClass);
 	}

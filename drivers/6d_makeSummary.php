@@ -1,10 +1,9 @@
 <?php
 
 namespace Vanderbilt\CareerDevLibrary;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-
-# used every time that the summaries are recalculated
+# used every time that the summaries are recalculated 
 # 30 minute runtimes
 
 require_once(__DIR__."/../classes/Autoload.php");
@@ -30,126 +29,126 @@ function lock($pid) {
 function unlock($pid) {
 	$lockFile = getLockFile($pid);
 	# close the lockFile
-	if (file_exists($lockFile)) {
-		unlink($lockFile);
-	}
+    if (file_exists($lockFile)) {
+        unlink($lockFile);
+    }
 }
 
-function makeSummary($token, $server, $pid, $records, $runAllRecords = false) {
-	updateInstitution($token, $server, $pid, $records);
-	if (!is_array($records)) {
-		$records = [$records];
-		$runAllRecords = true;
-	}
-	if ($runAllRecords) {
-		$changedRecords = $records;
-	} else {
-		$changedRecords = (count($records) == 1) ? $records : CronManager::getChangedRecords($records, 96, $pid);
-	}
-	if (!empty($changedRecords)) {
-		lock($pid);
+function makeSummary($token, $server, $pid, $records, $runAllRecords = FALSE) {
+    updateInstitution($token, $server, $pid, $records);
+    if (!is_array($records)) {
+        $records = [$records];
+        $runAllRecords = TRUE;
+    }
+    if ($runAllRecords) {
+        $changedRecords = $records;
+    } else {
+        $changedRecords = (count($records) == 1) ? $records : CronManager::getChangedRecords($records, 96, $pid);
+    }
+    if (!empty($changedRecords)) {
+        lock($pid);
 
-		if (!$token || !$server) {
-			throw new \Exception("6d makeSummary could not find token '$token' or server '$server'");
-		}
+        if (!$token || !$server) {
+            throw new \Exception("6d makeSummary could not find token '$token' or server '$server'");
+        }
 
-		$GLOBALS['selectRecord'] = "";
+        $GLOBALS['selectRecord'] = "";
 
-		$metadata = Download::metadata($token, $server);
+        $metadata = Download::metadata($token, $server);
 
-		# done in batches of 1 records
-		foreach ($changedRecords as $recordId) {
-			summarizeRecord($token, $server, $pid, $recordId, $metadata);
-			gc_collect_cycles();
-		}
+        # done in batches of 1 records
+        foreach ($changedRecords as $recordId) {
+            summarizeRecord($token, $server, $pid, $recordId, $metadata);
+            gc_collect_cycles();
+        }
 
-		REDCapManagement::cleanUpOldLogs($pid);
+        REDCapManagement::cleanUpOldLogs($pid);
 
-		unlock($pid);
-	}
+        unlock($pid);
+    }
 
 	CareerDev::saveCurrentDate("Last Summary of Data", $pid);
 }
 
 function summarizeRecord($token, $server, $pid, $recordId, $metadata) {
-	$errors = [];
-	$returnREDCapData = [];
-	$forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
+    $errors = [];
+    $returnREDCapData = [];
+    $forms = DataDictionaryManagement::getFormsFromMetadata($metadata);
 
-	$time1 = microtime(true);
-	$rows = Download::records($token, $server, [$recordId]);
-	$time2 = microtime(true);
-	if (Application::isVanderbilt()) {
-		Application::log("6d CareerDev downloading $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
-	}
+    $time1 = microtime(TRUE);
+    $rows = Download::records($token, $server, [$recordId]);
+    $time2 = microtime(TRUE);
+    if (Application::isVanderbilt()) {
+        Application::log("6d CareerDev downloading $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
+    }
 
-	$time1 = microtime(true);
-	$grants = new Grants($token, $server, $metadata);
-	$grants->setRows($rows);
-	$grants->compileGrants();
-	$result = $grants->uploadGrants();
-	$myErrors = Upload::isolateErrors($result);
-	$errors = array_merge($errors, $myErrors);
-	$time2 = microtime(true);
-	if (Application::isVanderbilt()) {
-		Application::log("6d CareerDev processing grants $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
-	}
+    $time1 = microtime(TRUE);
+    $grants = new Grants($token, $server, $metadata);
+    $grants->setRows($rows);
+    $grants->compileGrants();
+    $result = $grants->uploadGrants();
+    $myErrors = Upload::isolateErrors($result);
+    $errors = array_merge($errors, $myErrors);
+    $time2 = microtime(TRUE);
+    if (Application::isVanderbilt()) {
+        Application::log("6d CareerDev processing grants $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
+    }
 
-	# update rows with new data
-	$time1 = microtime(true);
-	$scholar = new Scholar($token, $server, $metadata, $pid);
-	$scholar->setGrants($grants);   // save compute time
-	$scholar->downloadAndSetup($recordId);
-	$scholar->process();
-	$result = $scholar->upload();
-	$scholar->updatePositionChangeForms();
-	$time2 = microtime(true);
-	if (Application::isVanderbilt()) {
-		Application::log("6d CareerDev processing scholar $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
-	}
+    # update rows with new data
+    $time1 = microtime(TRUE);
+    $scholar = new Scholar($token, $server, $metadata, $pid);
+    $scholar->setGrants($grants);   // save compute time
+    $scholar->downloadAndSetup($recordId);
+    $scholar->process();
+    $result = $scholar->upload();
+    $scholar->updatePositionChangeForms();
+    $time2 = microtime(TRUE);
+    if (Application::isVanderbilt()) {
+        Application::log("6d CareerDev processing scholar $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
+    }
 
-	$myErrors = Upload::isolateErrors($result);
-	$errors = array_merge($errors, $myErrors);
+    $myErrors = Upload::isolateErrors($result);
+    $errors = array_merge($errors, $myErrors);
 
-	if (in_array("citation", $forms)) {
-		$time1 = microtime(true);
-		$pubs = new Publications($token, $server, $metadata);
-		$pubs->setRows($rows);
-		$result = $pubs->uploadSummary();
-		$time2 = microtime(true);
-		if (Application::isVanderbilt()) {
-			Application::log("6d CareerDev processing publications $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
-		}
-		$myErrors = Upload::isolateErrors($result);
-		$errors = array_merge($errors, $myErrors);
-	}
+    if (in_array("citation", $forms)) {
+        $time1 = microtime(TRUE);
+        $pubs = new Publications($token, $server, $metadata);
+        $pubs->setRows($rows);
+        $result = $pubs->uploadSummary();
+        $time2 = microtime(TRUE);
+        if (Application::isVanderbilt()) {
+            Application::log("6d CareerDev processing publications $recordId took ".REDCapManagement::pretty($time2 - $time1, 3), $pid);
+        }
+        $myErrors = Upload::isolateErrors($result);
+        $errors = array_merge($errors, $myErrors);
+    }
 
-	if (!empty($errors)) {
-		throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
-	}
-	return $returnREDCapData;
+    if (!empty($errors)) {
+        throw new \Exception("Errors in record $recordId!\n".implode("\n", $errors));
+    }
+    return $returnREDCapData;
 }
 
 function mergeNormativeRows($unmerged) {
-	$newData = [];
-	$normativeRows = [];
+	$newData = array();
+	$normativeRows = array();
 	$pk = "record_id";
-	$repeatFields = ["redcap_repeat_instrument", "redcap_repeat_instance"];
+	$repeatFields = array("redcap_repeat_instrument", "redcap_repeat_instance");
 	foreach ($unmerged as $row) {
 		if ($row['redcap_repeat_instrument'] != "") {
 			array_push($newData, $row);
 		} else {
-			$recordId = false;
+			$recordId = FALSE;
 			foreach ($row as $field => $value) {
 				if ($field == $pk) {
-					$recordId = $row[$pk];
+					$recordId = $row[$pk]; 
 				}
 			}
 			if (!$recordId) {
 				throw new \Exception("Row does not have $pk: ".json_encode($row));
 			}
 			if (!isset($normativeRows[$recordId])) {
-				$normativeRows[$recordId] = [];
+				$normativeRows[$recordId] = array();
 				foreach ($repeatFields as $repeatField) {
 					$normativeRows[$recordId][$repeatField] = "";
 				}

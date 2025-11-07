@@ -6,5 +6,5 @@ use PhpOffice\Math\Math;
 
 interface WriterInterface
 {
-    public function write(Math $math): string;
+	public function write(Math $math): string;
 }

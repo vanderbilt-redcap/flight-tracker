@@ -1,37 +1,37 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/charts/baseWeb.php");
 require_once(dirname(__FILE__)."/classes/Autoload.php");
 
 if (isset($_GET['record'])) {
-	$records = Download::recordIds($token, $server);
+    $records = Download::recordIds($token, $server);
 	$record = Sanitizer::getSanitizedRecord($_GET['record'], $records);
-	if (!$record) {
-		throw new \Exception("Could not locate record");
-	}
-	$metadata = Download::metadata($token, $server);
-	$redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$record]);
-	$max = 0;
-	foreach ($redcapData as $row) {
-		if (($row['redcap_repeat_instrument'] == "custom_grant") && ($row['redcap_repeat_instance'] > $max)) {
-			$max = $row['redcap_repeat_instance'];
-		}
-	}
+    if (!$record) {
+        throw new \Exception("Could not locate record");
+    }
+    $metadata = Download::metadata($token, $server);
+    $redcapData = Download::fieldsForRecords($token, $server, Application::getCustomFields($metadata), [$record]);
+    $max = 0;
+    foreach ($redcapData as $row) {
+        if (($row['redcap_repeat_instrument'] == "custom_grant") && ($row['redcap_repeat_instance'] > $max)) {
+            $max = $row['redcap_repeat_instance'];
+        }
+    }
 
-	$url = Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1);
-	$url = Sanitizer::sanitizeURL($url);
-	if ($url) {
-		header("Location: ".$url);
-	} else {
-		throw new \Exception("Invalid URL");
-	}
+    $url = Links::makeFormUrl($pid, $record, $event_id, "custom_grant", $max + 1);
+    $url = Sanitizer::sanitizeURL($url);
+    if ($url) {
+        header("Location: ".$url);
+    } else {
+        throw new \Exception("Invalid URL");
+    }
 } else {
 	$names = Download::names($token, $server);
 
@@ -44,7 +44,7 @@ if (isset($_GET['record'])) {
 		echo "<option value='$recordId'>$name</option>\n";
 	}
 	echo "</select></p>\n";
-	?>
+?>
 <script>
 	$(document).ready(function() {
 		$('#record').change(function() {

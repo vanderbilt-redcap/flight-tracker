@@ -2,12 +2,12 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Upload;
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -21,7 +21,7 @@ if (isset($_POST['option'])) {
 	$newOptions = $options;
 	if ($_POST['action'] == "delete") {
 		unset($newOptions[$opt]);
-	} elseif (($_POST['action'] == "add") && ($_POST['title'])) {
+	} else if (($_POST['action'] == "add") && ($_POST['title'])) {
 		$newOptions[$opt] = $_POST['title'];
 	}
 
@@ -31,18 +31,18 @@ if (isset($_POST['option'])) {
 			$metadata[$i]['select_choices_or_calculations'] = collapseChoices($newOptions);
 		}
 		$i++;
-	}
+	} 
 	$feedback = Upload::metadata($metadata, $token, $server);
 	if ($feedback['error']) {
 		echo "ERROR: ".$feedback['error'];
-	} elseif ($feedback['errors']) {
+	} else if ($feedback['errors']) {
 		echo "ERROR: ".implode("; ", $feedback['errors']).".";
 	} else {
 		if ($feedback['count']) {
 			$cnt = $feedback['count'];
-		} elseif ($feedback['item_count']) {
+		} else if ($feedback['item_count']) {
 			$cnt = $feedback['item_count'];
-		} elseif (is_numeric($feedback)) {
+		} else if (is_numeric($feedback)) {
 			$cnt = $feedback;
 		} else {
 			throw new \Exception("No count specified in ".json_encode($feedback));
@@ -61,9 +61,9 @@ if (isset($_POST['option'])) {
 			if (!isset($resourceInstances[$resourceNum])) {
 				$resourceInstances[$resourceNum] = [];
 			}
-			if (!isset($resourceInstances[$resourceNum][$row['record_id']])) {
-				$resourceInstances[$resourceNum][$row['record_id']] = [];
-			}
+            if (!isset($resourceInstances[$resourceNum][$row['record_id']])) {
+                $resourceInstances[$resourceNum][$row['record_id']] = [];
+            }
 			$resourceInstances[$resourceNum][$row['record_id']][] = $row['redcap_repeat_instance'];
 		}
 	}
@@ -78,7 +78,7 @@ if (isset($_POST['option'])) {
 		}
 	}
 	$newOption = $max + 1;
-	?>
+?>
 <script>
 function deleteOption(opt) {
 	presentScreen("Deleting...");
@@ -124,7 +124,7 @@ function showMssg(str) {
 
 </script>
 <?php
-		$notUsedMssg = "No instances used.";
+    $notUsedMssg = "No instances used.";
 	echo "<div id='note' class='centered' style='display: none;'></div>\n";
 	echo "<h4>You must remove all instances of the resource in your data before deleting the resource!</h4>\n";
 
@@ -134,35 +134,35 @@ function showMssg(str) {
 	echo "</thead><tbody>";
 	$i = 0;
 	foreach ($options as $num => $option) {
-		$buttonHTML = "<button onclick='deleteOption(\"$num\");'>Delete</button>";
-		$rowClass = ($i % 2 == 0) ? "even" : "odd";
-		echo "<tr class='extraPaddedRow $rowClass'>";
-		echo "<td class='centered'>$option</td>";
-		if (isset($resourceInstances[$num])) {
-			$recordsAndInstances = $resourceInstances[$num];
-			echo "<td>";
-			if (count($recordsAndInstances) > 0) {
-				echo "<div class='tooltip centered'>".count($recordsAndInstances)." participants<span class='widetooltiptext smaller'>";
-				$namesForOption = [];
-				foreach ($recordsAndInstances as $recordId => $instances) {
-					$suffix = (count($instances) >= 2) ? " (x".count($instances).")" : "";
-					$name = $names[$recordId];
-					$nameWithLink = Links::makeProfileLink($pid, $name.$suffix, $recordId);
-					$namesForOption[] = $nameWithLink;
-				}
-				echo implode("<br>", $namesForOption);
-				echo "</span></div>";
-			} else {
-				echo "$notUsedMssg<br/>".$buttonHTML;
-			}
-			echo "</td></tr>";
-		} else {
-			echo "<td>$notUsedMssg<br/>$buttonHTML</td>";
-		}
-		echo "</tr>";
-		$i++;
+	    $buttonHTML = "<button onclick='deleteOption(\"$num\");'>Delete</button>";
+	    $rowClass = ($i % 2 == 0) ? "even" : "odd";
+        echo "<tr class='extraPaddedRow $rowClass'>";
+        echo "<td class='centered'>$option</td>";
+	    if (isset($resourceInstances[$num])) {
+            $recordsAndInstances = $resourceInstances[$num];
+            echo "<td>";
+            if (count($recordsAndInstances) > 0) {
+                echo "<div class='tooltip centered'>".count($recordsAndInstances)." participants<span class='widetooltiptext smaller'>";
+                $namesForOption = array();
+                foreach ($recordsAndInstances as $recordId => $instances) {
+                    $suffix = (count($instances) >= 2) ? " (x".count($instances).")" : "";
+                    $name = $names[$recordId];
+                    $nameWithLink = Links::makeProfileLink($pid, $name.$suffix, $recordId);
+                    $namesForOption[] = $nameWithLink;
+                }
+                echo implode("<br>", $namesForOption);
+                echo "</span></div>";
+            } else {
+                echo "$notUsedMssg<br/>".$buttonHTML;
+            }
+            echo "</td></tr>";
+        } else {
+	        echo "<td>$notUsedMssg<br/>$buttonHTML</td>";
+        }
+        echo "</tr>";
+	    $i++;
 	}
-	$rowClass = ($i % 2 == 0) ? "even" : "odd";
+    $rowClass = ($i % 2 == 0) ? "even" : "odd";
 	echo "<tr class='extraPaddedRow $rowClass'>";
 	echo "<td class='centered'><input type='text' id='title' value='' /></td>";
 	echo "<td class='centered'><button onclick='addOption($(\"#title\").val());'>Add</button></td>";
@@ -171,7 +171,7 @@ function showMssg(str) {
 }
 
 function collapseChoices($choiceHash) {
-	$choiceAry = [];
+	$choiceAry = array();
 	foreach ($choiceHash as $key => $str) {
 		array_push($choiceAry, "$key, $str");
 	}

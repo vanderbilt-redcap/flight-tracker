@@ -724,7 +724,7 @@ class Citation
 		} elseif ($this->getVariable("data_source") == "citation") {
 			$html = $this->makePubMedCitation($authors);
 		}
-		return mb_convert_encoding($html, 'UTF-8');
+		return utf8_encode($html);
 	}
 
 	private function getERICCitation($authorText) {

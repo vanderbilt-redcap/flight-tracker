@@ -478,7 +478,7 @@ class RePORTER
 		} elseif ($this->isNIH()) {
 			$payload = [
 				"criteria" => [
-					"org_names" => $institutions,
+					"org_names" => array_values($institutions),
 					"project_nums" => $searchStrings,
 				],
 			];
@@ -527,7 +527,7 @@ class RePORTER
 			if ($searchInstitutions) {
 				$criteria = [
 					"pi_names" => [["last_name" => $lastName]],
-					"org_names" => $institutions,
+					"org_names" => array_values($institutions),
 				];
 			} else {
 				$criteria = [

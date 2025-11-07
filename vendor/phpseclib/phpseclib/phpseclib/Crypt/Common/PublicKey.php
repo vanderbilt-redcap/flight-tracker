@@ -18,8 +18,8 @@ namespace phpseclib3\Crypt\Common;
  */
 interface PublicKey
 {
-    public function verify($message, $signature);
-    //public function encrypt($plaintext);
-    public function toString($type, array $options = []);
-    public function getFingerprint($algorithm);
+	public function verify($message, $signature);
+	//public function encrypt($plaintext);
+	public function toString($type, array $options = []);
+	public function getFingerprint($algorithm);
 }

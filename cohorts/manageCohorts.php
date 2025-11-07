@@ -1,11 +1,11 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Filter;
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Filter;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 # rename, delete, reorder
 
@@ -102,17 +102,17 @@ function cancel(selector) {
 
 $cohorts = new Cohorts($token, $server, CareerDev::getModule());
 $cohortTitles = $cohorts->getCohortTitles();
-$redcapData = [];
+$redcapData = array();
 if (!empty($cohortTitles)) {
 	$allFields = $cohorts->getAllFields();
 	$redcapData = Download::getIndexedRedcapData($token, $server, $allFields);
 }
 if (count($cohortTitles) > 0) {
-	echo "<input type='hidden' id='cohortAPIKey' value='' />";
-	echo "<div id='cohortDialog' title='Create Cohort'><p>Are you sure that you want to create a project for Cohort <span id='cohortTitle' class='bolded'></span>? It will delete any data in the project with the API key.</p>
+    echo "<input type='hidden' id='cohortAPIKey' value='' />";
+    echo "<div id='cohortDialog' title='Create Cohort'><p>Are you sure that you want to create a project for Cohort <span id='cohortTitle' class='bolded'></span>? It will delete any data in the project with the API key.</p>
 <p><button onclick='createCohortProject($(\"#cohortTitle\").html(), $(\"#cohortAPIKey\").val(), \"#cohortDialog\");'>Yes</button> <button onclick='$(\"#cohortDialog\").dialog(\"close\");'>Cancel</button></p></div>";
-	echo "<p class='centered max-width'>A cohort project is a <strong>read-only</strong> project that gets completely overwritten every week with a fresh set of data from the source project. It should never be used to capture new data or configured further.</p>";
-	echo "<table class='centered'>";
+    echo "<p class='centered max-width'>A cohort project is a <strong>read-only</strong> project that gets completely overwritten every week with a fresh set of data from the source project. It should never be used to capture new data or configured further.</p>";
+    echo "<table class='centered'>";
 	echo "<tr class='paddedRow borderedRow whiteRow centeredRow'><td></td><th>Cohort Size</th><th>Delete</th><th>Rename</th>";
 	echo "<th>Make Cohort Project</th>";
 	echo "</tr>";
@@ -128,13 +128,13 @@ if (count($cohortTitles) > 0) {
 		echo "<td>".count($records)." Scholars</td>";
 		echo "<td><button class='red biggerButton' onclick='deleteCohort(\"$title\", \"#$htmlTitle\");' style='font-weight: bold;'>X</button></td>";
 		echo "<td><button class='biggerButton' onclick='rename(\"#$htmlTitle\", this);'>Rename</button></td>";
-		if ($cohortPid = $cohorts->getReadonlyPortalValue($title, "pid")) {
-			echo "<td>Project Enabled (".Links::makeProjectHomeLink($cohortPid, "PID $cohortPid").")</td>";
-		} else {
-			$id = REDCapManagement::makeHTMLId($title);
-			echo "<td><input type='text' id='api_$id' value='' onchange='if ($(this).val().length === 32) { $(\"#button_$id\").show(); } else { $(\"#button_$id\").hide(); }' placeholder='API Key with Import/Export Rights' style='width: 270px;'/><br/>
+        if ($cohortPid = $cohorts->getReadonlyPortalValue($title, "pid")) {
+            echo "<td>Project Enabled (".Links::makeProjectHomeLink($cohortPid, "PID $cohortPid").")</td>";
+        } else {
+            $id = REDCapManagement::makeHTMLId($title);
+            echo "<td><input type='text' id='api_$id' value='' onchange='if ($(this).val().length === 32) { $(\"#button_$id\").show(); } else { $(\"#button_$id\").hide(); }' placeholder='API Key with Import/Export Rights' style='width: 270px;'/><br/>
 <button style='display: none;' id='button_$id' onclick='$(\"#cohortTitle\").html(\"$title\"); $(\"#cohortAPIKey\").val($(\"#api_$id\").val()); if ($(\"#cohortAPIKey\").val().length === 32) { $(\"#cohortDialog\").dialog(\"open\"); } else { $.sweetModal({content: \"Invalid API Key\", icon: $.sweetModal.ICON_ERROR}); } return false;'>Take Over Project</button></td>";
-		}
+        }
 		echo "</tr>";
 	}
 	echo "</table>";

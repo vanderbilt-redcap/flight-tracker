@@ -20,17 +20,16 @@ use phpseclib3\Crypt\EC;
  */
 final class Parameters extends EC
 {
-    /**
-     * Returns the parameters
-     *
-     * @param string $type
-     * @param array $options optional
-     * @return string
-     */
-    public function toString($type = 'PKCS1', array $options = [])
-    {
-        $type = self::validatePlugin('Keys', 'PKCS1', 'saveParameters');
+	/**
+	 * Returns the parameters
+	 *
+	 * @param string $type
+	 * @param array $options optional
+	 * @return string
+	 */
+	public function toString($type = 'PKCS1', array $options = []) {
+		$type = self::validatePlugin('Keys', 'PKCS1', 'saveParameters');
 
-        return $type::saveParameters($this->curve, $options);
-    }
+		return $type::saveParameters($this->curve, $options);
+	}
 }

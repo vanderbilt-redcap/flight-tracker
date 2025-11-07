@@ -13,35 +13,36 @@ $emailFields = ["mentorEmail", "menteeEmail"];
 $nameFields = ["menteeFirstName", "menteeLastName", "mentorFirstName", "mentorLastName"];
 
 foreach ($emailFields as $field) {
-	if (!$_POST[$field] || !REDCapManagement::isEmail($_POST[$field])) {
-		die("Emails not specified!");
-	}
+    if (!$_POST[$field] || !REDCapManagement::isEmail($_POST[$field])) {
+        die("Emails not specified!");
+    }
 }
 foreach ($nameFields as $field) {
-	if (!$_POST[$field]) {
-		die("Not all names are specified!");
-	}
+    if (!$_POST[$field]) {
+        die("Not all names are specified!");
+    }
 }
 
 $recordId = $data['record'];
 if ($recordId) {
-	$uploadRow = [
-		"record_id" => $recordId,
-		"identifier_first_name" => REDCapManagement::sanitize($_POST['menteeFirstName']),
-		"identifier_last_name" => REDCapManagement::sanitize($_POST['menteeLastName']),
-		"identifier_email" => REDCapManagement::sanitize($_POST['menteeEmail']),
-		"mentor_first_name" => REDCapManagement::sanitize($_POST['mentorFirstName']),
-		"mentor_last_name" => REDCapManagement::sanitize($_POST['mentorLastName']),
-		"mentor_email" => REDCapManagement::sanitize($_POST['mentorEmail']),
-		"identifiers_complete" => "2",
-	];
-	Upload::oneRow($uploadRow, $token, $server);
+    $uploadRow = [
+        "record_id" => $recordId,
+        "identifier_first_name" => REDCapManagement::sanitize($_POST['menteeFirstName']),
+        "identifier_last_name" => REDCapManagement::sanitize($_POST['menteeLastName']),
+        "identifier_email" => REDCapManagement::sanitize($_POST['menteeEmail']),
+        "mentor_first_name" => REDCapManagement::sanitize($_POST['mentorFirstName']),
+        "mentor_last_name" => REDCapManagement::sanitize($_POST['mentorLastName']),
+        "mentor_email" => REDCapManagement::sanitize($_POST['mentorEmail']),
+        "identifiers_complete" => "2",
+    ];
+    Upload::oneRow($uploadRow, $token, $server);
 
-	foreach ($nameFields as $field) {
-		$data[$field] = REDCapManagement::sanitize($_POST[$field]);
-	}
+    foreach ($nameFields as $field) {
+        $data[$field] = REDCapManagement::sanitize($_POST[$field]);
+    }
 
-	echo json_encode($data);
+    echo json_encode($data);
 } else {
-	die("Record could not be created!");
+    die("Record could not be created!");
 }
+

@@ -27,36 +27,34 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class ASN1
 {
-    /**
-     * Loads a signature
-     *
-     * @param string $sig
-     * @return array
-     */
-    public static function load($sig)
-    {
-        if (!is_string($sig)) {
-            return false;
-        }
+	/**
+	 * Loads a signature
+	 *
+	 * @param string $sig
+	 * @return array
+	 */
+	public static function load($sig) {
+		if (!is_string($sig)) {
+			return false;
+		}
 
-        $decoded = Encoder::decodeBER($sig);
-        if (empty($decoded)) {
-            return false;
-        }
-        $components = Encoder::asn1map($decoded[0], EcdsaSigValue::MAP);
+		$decoded = Encoder::decodeBER($sig);
+		if (empty($decoded)) {
+			return false;
+		}
+		$components = Encoder::asn1map($decoded[0], EcdsaSigValue::MAP);
 
-        return $components;
-    }
+		return $components;
+	}
 
-    /**
-     * Returns a signature in the appropriate format
-     *
-     * @param BigInteger $r
-     * @param BigInteger $s
-     * @return string
-     */
-    public static function save(BigInteger $r, BigInteger $s)
-    {
-        return Encoder::encodeDER(compact('r', 's'), EcdsaSigValue::MAP);
-    }
+	/**
+	 * Returns a signature in the appropriate format
+	 *
+	 * @param BigInteger $r
+	 * @param BigInteger $s
+	 * @return string
+	 */
+	public static function save(BigInteger $r, BigInteger $s) {
+		return Encoder::encodeDER(compact('r', 's'), EcdsaSigValue::MAP);
+	}
 }

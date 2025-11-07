@@ -756,12 +756,12 @@ SELECT DISTINCT s.project_id AS pid
 		if (self::hasComposer()) {
 			require_once(self::getComposerAutoloadLocation());
 
-			$html = str_replace("<br>", "<br/>", $html);
+            $html = str_replace("<br>","<br/>",$html);
 			$phpWord = new \PhpOffice\PhpWord\PhpWord();
 			$section = $phpWord->addSection();
 			\PhpOffice\PhpWord\Shared\Html::addHtml($section, $html);
-			$filename = REDCapManagement::makeSafeFilename($filename);
-			$phpWord->save($filename, 'Word2007', true);
+            $filename = REDCapManagement::makeSafeFilename($filename);
+			$phpWord->save($filename, 'Word2007',true);
 		}
 	}
 

@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @package php-font-lib
  * @link    https://github.com/dompdf/php-font-lib
@@ -15,20 +16,21 @@ use FontLib\Table\DirectoryEntry;
  *
  * @package php-font-lib
  */
-class TableDirectoryEntry extends DirectoryEntry {
-  public $origLength;
+class TableDirectoryEntry extends DirectoryEntry
+{
+	public $origLength;
 
-  function __construct(File $font) {
-    parent::__construct($font);
-  }
+	public function __construct(File $font) {
+		parent::__construct($font);
+	}
 
-  function parse() {
-    parent::parse();
+	public function parse() {
+		parent::parse();
 
-    $font             = $this->font;
-    $this->offset     = $font->readUInt32();
-    $this->length     = $font->readUInt32();
-    $this->origLength = $font->readUInt32();
-    $this->checksum   = $font->readUInt32();
-  }
+		$font             = $this->font;
+		$this->offset     = $font->readUInt32();
+		$this->length     = $font->readUInt32();
+		$this->origLength = $font->readUInt32();
+		$this->checksum   = $font->readUInt32();
+	}
 }

@@ -8,17 +8,17 @@ require_once(dirname(__FILE__)."/base.php");
 
 $recordId = REDCapManagement::sanitize($_GET['menteeRecord']);
 
-if (isset($_REQUEST['uid']) && MMAHelper::getMMADebug()) {
-	$username = REDCapManagement::sanitize($_REQUEST['uid']);
-	$uidString = "&uid=$username";
+if(isset($_REQUEST['uid']) && MMAHelper::getMMADebug()){
+    $username = REDCapManagement::sanitize($_REQUEST['uid']);
+    $uidString = "&uid=$username";
 } else {
-	$username = Application::getUsername();
-	$uidString = "";
+    $username = Application::getUsername();
+    $uidString = "";
 }
 $error = "";
 $message = "";
 if (!MMAHelper::isMentee($recordId, $username)) {
-	$error = "Invalid username";
+    $error = "Invalid username";
 }
 
 
@@ -30,31 +30,31 @@ $myPrimaryMentors = $allPrimaryMentors[$recordId] ?? [];
 $myPrimaryMentorUserids = $allPrimaryMentorUserids[$recordId] ?? [];
 
 if ($_POST['newMentorName'] && $_POST['newMentorUserid']) {
-	$newName = REDCapManagement::sanitize($_POST['newMentorName']);
-	$newUserid = REDCapManagement::sanitize($_POST['newMentorUserid']);
-	if (in_array($newUserid, $myPrimaryMentorUserids)) {
-		$error = "Name already added";
-	} else {
-		$myPrimaryMentors[] = $newName;
-		$myPrimaryMentorUserids[] = $newUserid;
-		$uploadRow = [
-			"record_id" => $recordId,
-			"summary_mentor" => implode(", ", $myPrimaryMentors),
-			"summary_mentor_userid" => implode(", ", $myPrimaryMentorUserids),
-		];
-		try {
-			$feedback = Upload::oneRow($uploadRow, $token, $server);
-			if ($feedback['errors']) {
-				$error = implode("<br>", $feedback['errors']);
-			} elseif ($feedback['error']) {
-				$error = $feedback['error'];
-			} else {
-				$message = "Upload successful!";
-			}
-		} catch (\Exception $e) {
-			$error = $e->getMessage();
-		}
-	}
+    $newName = REDCapManagement::sanitize($_POST['newMentorName']);
+    $newUserid = REDCapManagement::sanitize($_POST['newMentorUserid']);
+    if (in_array($newUserid, $myPrimaryMentorUserids)) {
+        $error = "Name already added";
+    } else {
+        $myPrimaryMentors[] = $newName;
+        $myPrimaryMentorUserids[] = $newUserid;
+        $uploadRow = [
+            "record_id" => $recordId,
+            "summary_mentor" => implode(", ", $myPrimaryMentors),
+            "summary_mentor_userid" => implode(", ", $myPrimaryMentorUserids),
+        ];
+        try {
+            $feedback = Upload::oneRow($uploadRow, $token, $server);
+            if ($feedback['errors']) {
+                $error = implode("<br>", $feedback['errors']);
+            } else if ($feedback['error']) {
+                $error = $feedback['error'];
+            } else {
+                $message = "Upload successful!";
+            }
+        } catch(\Exception $e) {
+            $error = $e->getMessage();
+        }
+    }
 }
 
 require_once dirname(__FILE__).'/_header.php';
@@ -70,18 +70,18 @@ echo "<p><a href='$link'>Back to Mentoring Agreement Home</a></p>";
 echo "<h2>Add a Mentor for $myName</h2>";
 
 if (count($myPrimaryMentors) == 0) {
-	echo "<p>$myName does not have any mentors listed.</p>";
-} elseif (count($myPrimaryMentors) == 1) {
-	echo "<p>$myName's current mentor is:<br>".REDCapManagement::makeConjunction($myPrimaryMentors)."</p>";
-} elseif (count($myPrimaryMentors) > 1) {
-	echo "<p>$myName's current mentors are:<br>".REDCapManagement::makeConjunction($myPrimaryMentors)."</p>";
+    echo "<p>$myName does not have any mentors listed.</p>";
+} else if (count($myPrimaryMentors) == 1) {
+    echo "<p>$myName's current mentor is:<br>".REDCapManagement::makeConjunction($myPrimaryMentors)."</p>";
+} else if (count($myPrimaryMentors) > 1) {
+    echo "<p>$myName's current mentors are:<br>".REDCapManagement::makeConjunction($myPrimaryMentors)."</p>";
 }
 
 if ($error) {
-	echo "<div class='red'><h4>Error!</h4><p style='text-align: center;'>$error</p></div>";
+    echo "<div class='red'><h4>Error!</h4><p style='text-align: center;'>$error</p></div>";
 }
 if ($message) {
-	echo "<p class='green' style='text-align: center;'>$message</p>";
+    echo "<p class='green' style='text-align: center;'>$message</p>";
 }
 
 $link = Application::link("mentor/addMentor.php")."&menteeRecord=$recordId".$uidString;
@@ -144,3 +144,4 @@ function lookupName(name) {
 
 <?php
 require_once dirname(__FILE__).'/_footer.php';
+

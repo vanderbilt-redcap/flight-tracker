@@ -40,104 +40,100 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class PKCS1 extends Progenitor
 {
-    /**
-     * Break a public or private key down into its constituent components
-     *
-     * @param string $key
-     * @param string $password optional
-     * @return array
-     */
-    public static function load($key, $password = '')
-    {
-        $key = parent::load($key, $password);
+	/**
+	 * Break a public or private key down into its constituent components
+	 *
+	 * @param string $key
+	 * @param string $password optional
+	 * @return array
+	 */
+	public static function load($key, $password = '') {
+		$key = parent::load($key, $password);
 
-        $decoded = ASN1::decodeBER($key);
-        if (!$decoded) {
-            throw new \RuntimeException('Unable to decode BER');
-        }
+		$decoded = ASN1::decodeBER($key);
+		if (!$decoded) {
+			throw new \RuntimeException('Unable to decode BER');
+		}
 
-        $key = ASN1::asn1map($decoded[0], Maps\DSAParams::MAP);
-        if (is_array($key)) {
-            return $key;
-        }
+		$key = ASN1::asn1map($decoded[0], Maps\DSAParams::MAP);
+		if (is_array($key)) {
+			return $key;
+		}
 
-        $key = ASN1::asn1map($decoded[0], Maps\DSAPrivateKey::MAP);
-        if (is_array($key)) {
-            return $key;
-        }
+		$key = ASN1::asn1map($decoded[0], Maps\DSAPrivateKey::MAP);
+		if (is_array($key)) {
+			return $key;
+		}
 
-        $key = ASN1::asn1map($decoded[0], Maps\DSAPublicKey::MAP);
-        if (is_array($key)) {
-            return $key;
-        }
+		$key = ASN1::asn1map($decoded[0], Maps\DSAPublicKey::MAP);
+		if (is_array($key)) {
+			return $key;
+		}
 
-        throw new \RuntimeException('Unable to perform ASN1 mapping');
-    }
+		throw new \RuntimeException('Unable to perform ASN1 mapping');
+	}
 
-    /**
-     * Convert DSA parameters to the appropriate format
-     *
-     * @param BigInteger $p
-     * @param BigInteger $q
-     * @param BigInteger $g
-     * @return string
-     */
-    public static function saveParameters(BigInteger $p, BigInteger $q, BigInteger $g)
-    {
-        $key = [
-            'p' => $p,
-            'q' => $q,
-            'g' => $g
-        ];
+	/**
+	 * Convert DSA parameters to the appropriate format
+	 *
+	 * @param BigInteger $p
+	 * @param BigInteger $q
+	 * @param BigInteger $g
+	 * @return string
+	 */
+	public static function saveParameters(BigInteger $p, BigInteger $q, BigInteger $g) {
+		$key = [
+			'p' => $p,
+			'q' => $q,
+			'g' => $g
+		];
 
-        $key = ASN1::encodeDER($key, Maps\DSAParams::MAP);
+		$key = ASN1::encodeDER($key, Maps\DSAParams::MAP);
 
-        return "-----BEGIN DSA PARAMETERS-----\r\n" .
-               chunk_split(Strings::base64_encode($key), 64) .
-               "-----END DSA PARAMETERS-----\r\n";
-    }
+		return "-----BEGIN DSA PARAMETERS-----\r\n" .
+			   chunk_split(Strings::base64_encode($key), 64) .
+			   "-----END DSA PARAMETERS-----\r\n";
+	}
 
-    /**
-     * Convert a private key to the appropriate format.
-     *
-     * @param BigInteger $p
-     * @param BigInteger $q
-     * @param BigInteger $g
-     * @param BigInteger $y
-     * @param BigInteger $x
-     * @param string $password optional
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePrivateKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, BigInteger $x, $password = '', array $options = [])
-    {
-        $key = [
-            'version' => 0,
-            'p' => $p,
-            'q' => $q,
-            'g' => $g,
-            'y' => $y,
-            'x' => $x
-        ];
+	/**
+	 * Convert a private key to the appropriate format.
+	 *
+	 * @param BigInteger $p
+	 * @param BigInteger $q
+	 * @param BigInteger $g
+	 * @param BigInteger $y
+	 * @param BigInteger $x
+	 * @param string $password optional
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePrivateKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, BigInteger $x, $password = '', array $options = []) {
+		$key = [
+			'version' => 0,
+			'p' => $p,
+			'q' => $q,
+			'g' => $g,
+			'y' => $y,
+			'x' => $x
+		];
 
-        $key = ASN1::encodeDER($key, Maps\DSAPrivateKey::MAP);
+		$key = ASN1::encodeDER($key, Maps\DSAPrivateKey::MAP);
 
-        return self::wrapPrivateKey($key, 'DSA', $password, $options);
-    }
+		return self::wrapPrivateKey($key, 'DSA', $password, $options);
+	}
 
-    /**
-     * Convert a public key to the appropriate format
-     *
-     * @param BigInteger $p
-     * @param BigInteger $q
-     * @param BigInteger $g
-     * @param BigInteger $y
-     * @return string
-     */
-    public static function savePublicKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y)
-    {
-        $key = ASN1::encodeDER($y, Maps\DSAPublicKey::MAP);
+	/**
+	 * Convert a public key to the appropriate format
+	 *
+	 * @param BigInteger $p
+	 * @param BigInteger $q
+	 * @param BigInteger $g
+	 * @param BigInteger $y
+	 * @return string
+	 */
+	public static function savePublicKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y) {
+		$key = ASN1::encodeDER($y, Maps\DSAPublicKey::MAP);
 
-        return self::wrapPublicKey($key, 'DSA');
-    }
+		return self::wrapPublicKey($key, 'DSA');
+	}
 }

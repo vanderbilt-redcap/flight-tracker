@@ -4,8 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class FlightTrackerTester
-{
+class FlightTrackerTester {
 	public function __construct($token, $server, $pid) {
 		$this->metadata = Download::metadata($token, $server);
 		$this->module = Application::getModule();
@@ -36,8 +35,8 @@ class FlightTrackerTester
 
 		$goodFirst = $this->getGoodFirstName();
 		$goodLast = $this->getGoodLastName();
-		$lasts = [$last, $goodLast];
-		$firsts = [$first, $goodFirst];
+		$lasts = array($last, $goodLast);
+		$firsts = array($first, $goodFirst);
 		$records = NameMatcher::matchNames($firsts, $lasts, $this->token, $this->server);
 		$tester->tag("number of records in array from matchNames");
 		$tester->assertEqual(count($lasts), count($records));
@@ -86,7 +85,7 @@ class FlightTrackerTester
 			$race = self::assignRandomChoiceIndex($choices, "imported_race");
 			$eth = self::assignRandomChoiceIndex($choices, "imported_ethnicity");
 			$citizenship = self::assignRandomChoiceIndex($choices, "imported_citizenship");
-			$row = [
+			$row = array(
 					"record_id" => $this->testRecordId,
 					"redcap_repeat_instrument" => "",
 					"redcap_repeat_instance" => "",
@@ -98,8 +97,8 @@ class FlightTrackerTester
 					"imported_race" => $race,
 					"imported_ethnicity" => $eth,
 					"imported_citizenship" => $citizenship,
-					];
-			$rows = [$row];
+					);
+			$rows = array($row);
 
 			$scholar = new Scholar($this->token, $this->server, $this->metadata, $this->pid);
 			$scholar->setRows($rows);
@@ -136,7 +135,7 @@ class FlightTrackerTester
 					$tester->assertEqual($newRow["summary_gender"], $gender);
 					$tester->tag("Imported Gender Equal to Summary");
 					$tester->assertEqual($row["imported_gender"], $newRow["summary_gender"]);
-
+	
 					$tester->tag("Citizenship Equal to Summary");
 					$tester->assertEqual($newRow["summary_citizenship"], $citizenship);
 					$tester->tag("Imported Citizenship Equal to Summary");
@@ -144,7 +143,7 @@ class FlightTrackerTester
 
 					if ($eth == 1) {
 						# Hispanic
-						switch ($race) {
+						switch($race) {
 							case "1":
 								$expectedRaceEth = "6";
 								break;
@@ -170,9 +169,9 @@ class FlightTrackerTester
 								$expectedRaceEth = "";
 								break;
 						}
-					} elseif ($eth == 2) {
-						# Non-Hispanic
-						switch ($race) {
+					} else if ($eth == 2) {
+							# Non-Hispanic
+						switch($race) {
 							case "1":
 								$expectedRaceEth = "6";
 								break;
@@ -219,32 +218,32 @@ class FlightTrackerTester
 		$recordIds = Download::recordIds($this->token, $this->server);
 		$maxRecordId = max($recordIds);
 
-		$headers = ["record_id", "bad_field_name"];
-		$data = [["1", "0"]];
+		$headers = array("record_id", "bad_field_name");
+		$data = array(array("1", "0"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("Improper field name");
 		$tester->assertNotEmpty($errors);
 
-		$headers = ["record_id", "identifier_email"];
-		$data = [["1", "joe.cool@vumc.org", "3"]];
+		$headers = array("record_id", "identifier_email");
+		$data = array(array("1", "joe.cool@vumc.org", "3"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("column mismatch");
 		$tester->assertNotEmpty($errors);
 
-		$headers = ["record_id", "identifier_email", "followup_orcid_id"];
-		$data = [["1", "joe.cool@vumc.org", "ABCDEFG"]];
+		$headers = array("record_id", "identifier_email", "followup_orcid_id");
+		$data = array(array("1", "joe.cool@vumc.org", "ABCDEFG"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("multiple forms in same row");
 		$tester->assertNotEmpty($errors);
 
-		$headers = ["identifier_email"];
-		$data = [["joe.cool@vumc.org"]];
+		$headers = array("identifier_email");
+		$data = array(array("joe.cool@vumc.org"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("no identifying information");
 		$tester->assertNotEmpty($errors);
 
-		$headers = ["record_id", "identifier_email"];
-		$data = [["1", "joe.cool@vumc.org"]];
+		$headers = array("record_id", "identifier_email");
+		$data = array(array("1", "joe.cool@vumc.org"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("proper record_id errors");
 		$tester->assertEmpty($errors);
@@ -253,8 +252,8 @@ class FlightTrackerTester
 		$tester->tag("proper record_id existing record");
 		$tester->assertLessThan($upload[0]["record_id"], $maxRecordId + 1);
 
-		$headers = ["identifier_last_name", "identifier_first_name", "identifier_email"];
-		$data = [[$this->getGoodLastName(), $this->getGoodFirstName(), "joe.cool@vumc.org"]];
+		$headers = array("identifier_last_name", "identifier_first_name", "identifier_email");
+		$data = array(array($this->getGoodLastName(), $this->getGoodFirstName(), "joe.cool@vumc.org"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("proper matched names errors");
 		$tester->assertEmpty($errors);
@@ -272,8 +271,8 @@ class FlightTrackerTester
 		$tester->tag("proper matched names existing record: Errors empty");
 		$tester->assertEmpty($errors);
 
-		$headers = ["identifier_last_name", "identifier_first_name", "identifier_email"];
-		$data = [[$this->getGoodLastName(), $this->getGoodFirstName(), "joe.cool@vumc.org"], ["Name", "New", "new.name@vumc.org"]];
+		$headers = array("identifier_last_name", "identifier_first_name", "identifier_email");
+		$data = array(array($this->getGoodLastName(), $this->getGoodFirstName(), "joe.cool@vumc.org"), array("Name", "New", "new.name@vumc.org"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("mixed matched names and new names errors");
 		$tester->assertEmpty($errors);
@@ -286,8 +285,8 @@ class FlightTrackerTester
 		$tester->tag("proper matched names new record ".json_encode($upload[1]));
 		$tester->assertGreaterThan($upload[1]["record_id"], $maxRecordId);
 
-		$headers = ["identifier_last_name", "identifier_first_name", "followup_orcid_id"];
-		$data = [[$this->getGoodLastName(), $this->getGoodFirstName(), "ABCDEFG"]];
+		$headers = array("identifier_last_name", "identifier_first_name", "followup_orcid_id");
+		$data = array(array($this->getGoodLastName(), $this->getGoodFirstName(), "ABCDEFG"));
 		list($upload, $errors, $newCounts) = Upload::prepareFromCSV($headers, $data, $this->token, $this->server, $this->pid, $metadata);
 		$tester->tag("proper repeatable instance (followup) errors");
 		$tester->assertEmpty($errors);
@@ -307,15 +306,15 @@ class FlightTrackerTester
 		$numTestRecords = 10;
 
 		$recordIds = Download::recordIds($this->token, $this->server);
-		$testRecords = [];
+		$testRecords = array();
 		for ($i = 0; $i < $numTestRecords; $i++) {
 			$idx = rand(0, count($recordIds));
 			array_push($testRecords, $recordIds[$idx]);
 		}
 		foreach ($testRecords as $recordId) {
-			$recordData = Download::records($this->token, $this->server, [$recordId]);
+			$recordData = Download::records($this->token, $this->server, array($recordId));
 
-			$maxInstances = [];
+			$maxInstances = array();
 			foreach ($recordData as $row) {
 				if (isset($row['redcap_repeat_instance']) && isset($row['redcap_repeat_instrument'])) {
 					if (!isset($maxInstances[$row['redcap_repeat_instrument']])) {
@@ -350,13 +349,13 @@ class FlightTrackerTester
 				$tester->assertEqual(count($recordIds), count($rows));
 				$tester->tag("Setting $name rows not zero - might be zero if all names not in database");
 				$tester->assertNotEqual(count($rows), 0);
-			} elseif ($who["individuals"]) {
+			} else if ($who["individuals"]) {
 				$checkedIndivs = $who["individuals"];
 				$tester->tag("Setting $name ".json_encode($who)." count");
 				$tester->assertEqual(count($checkedIndivs), count($rows));
 				$tester->tag("Setting $name rows not zero");
 				$tester->assertNotEqual(count($rows), 0);
-			} elseif ($who['filter'] == "some") {
+			} else if ($who['filter'] == "some") {
 				# $who['filter'] == "some"
 				$names = $mgr->getNames($who);
 				$emails = $mgr->getNames($who);

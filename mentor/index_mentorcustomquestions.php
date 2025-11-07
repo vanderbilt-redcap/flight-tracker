@@ -16,7 +16,7 @@ require_once dirname(__FILE__).'/_header.php';
 
 <p>Here is where the custom questions will be made.</p>
 <?php for ($i = 0; $i <= CUSTOM_QUESTION_LIMIT; $i++) {
-	?>
+?>
 <br>
 <label for="custom_question<?echo $i?>">Custom Question <?echo $i?></label>
 <input type="text" name="custom_question<?echo $i?>" id="custom_question1"/>

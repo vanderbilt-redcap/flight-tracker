@@ -9,26 +9,24 @@ use PHPUnit\Framework\TestCase;
 
 class SemanticsTest extends TestCase
 {
-    public function testConstruct(): void
-    {
-        $semantics = new Semantics();
+	public function testConstruct(): void {
+		$semantics = new Semantics();
 
-        $this->assertIsArray($semantics->getAnnotations());
-        $this->assertCount(0, $semantics->getAnnotations());
-    }
+		$this->assertIsArray($semantics->getAnnotations());
+		$this->assertCount(0, $semantics->getAnnotations());
+	}
 
-    public function testAnnotation(): void
-    {
-        $semantics = new Semantics();
+	public function testAnnotation(): void {
+		$semantics = new Semantics();
 
-        $this->assertIsArray($semantics->getAnnotations());
-        $this->assertCount(0, $semantics->getAnnotations());
+		$this->assertIsArray($semantics->getAnnotations());
+		$this->assertCount(0, $semantics->getAnnotations());
 
-        $this->assertInstanceOf(Semantics::class, $semantics->addAnnotation('encoding', 'content'));
-        $this->assertEquals(['encoding' => 'content'], $semantics->getAnnotations());
-        $this->assertCount(1, $semantics->getAnnotations());
+		$this->assertInstanceOf(Semantics::class, $semantics->addAnnotation('encoding', 'content'));
+		$this->assertEquals(['encoding' => 'content'], $semantics->getAnnotations());
+		$this->assertCount(1, $semantics->getAnnotations());
 
-        $this->assertEquals('content', $semantics->getAnnotation('encoding'));
-        $this->assertNull($semantics->getAnnotation('notexisting'));
-    }
+		$this->assertEquals('content', $semantics->getAnnotation('encoding'));
+		$this->assertNull($semantics->getAnnotation('notexisting'));
+	}
 }

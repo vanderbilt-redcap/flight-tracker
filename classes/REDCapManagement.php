@@ -240,7 +240,7 @@ class REDCapManagement
 	}
 
 	public static function formatMangledText($str) {
-		return mb_convert_encoding($str, 'UTF-8');
+		return utf8_decode($str);
 	}
 
 	public static function getNormativeRow($rows) {
@@ -1311,7 +1311,7 @@ class REDCapManagement
 	 */
 	public static function convert_from_latin1_to_utf8_recursively($dat) {
 		if (is_string($dat)) {
-			return mb_convert_encoding($dat, 'UTF-8');
+			return utf8_encode($dat);
 		} elseif (is_array($dat)) {
 			$ret = [];
 			foreach ($dat as $i => $d) {
@@ -1878,8 +1878,8 @@ class REDCapManagement
 			// HTML right single quote
 			"&rsquo;"      => "'",
 		];
-		$module = Application::getModule();
-		return $module->escape(strtr(html_entity_decode($text, ENT_QUOTES, "UTF-8"), $quoteMapping));
+
+		return strtr(html_entity_decode($text, ENT_QUOTES, "UTF-8"), $quoteMapping);
 	}
 
 	public static function clearUnicodeInArray($ary) {

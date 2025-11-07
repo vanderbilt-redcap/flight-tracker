@@ -1,31 +1,30 @@
 <?php
-
+ 
 namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class EmailManager
-{
-	public function __construct($token, $server, $pid, $module = null, $metadata = []) {
+class EmailManager {
+	public function __construct($token, $server, $pid, $module = NULL, $metadata = array()) {
 		$this->token = $token;
 		$this->server = $server;
 		$this->pid = $pid;
 		$this->metadata = $metadata;
 		$this->hijackedField = "";
 
-		$this->preparingMins = Application::getWarningEmailMinutes($pid);
-		$adminEmail = Application::getSetting("admin_email", $pid);
-		if (!$adminEmail) {
-			global $adminEmail;
-		}
-		$this->adminEmail = $adminEmail;
-		$defaultFrom = Application::getSetting("default_from", $pid);
-		if (!$defaultFrom) {
-			$defaultFrom = "noreply.flighttracker@vumc.org";
-		}
-		$this->defaultFrom = $defaultFrom;
+        $this->preparingMins = Application::getWarningEmailMinutes($pid);
+        $adminEmail = Application::getSetting("admin_email", $pid);
+        if (!$adminEmail) {
+            global $adminEmail;
+        }
+        $this->adminEmail = $adminEmail;
+        $defaultFrom = Application::getSetting("default_from", $pid);
+        if (!$defaultFrom) {
+            $defaultFrom = "noreply.flighttracker@vumc.org";
+        }
+        $this->defaultFrom = $defaultFrom;
 
-		$possibleFields = ["identifier_vunet", "identifier_userid"];
+		$possibleFields = array("identifier_vunet", "identifier_userid");
 		foreach ($this->metadata as $row) {
 			if (in_array($row['field_name'], $possibleFields)) {
 				$this->hijackedField = $row['field_name'];
@@ -44,9 +43,9 @@ class EmailManager
 
 	public static function isEmailAddress($str) {
 		if (preg_match("/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/", $str)) {
-			return true;
+			return TRUE;
 		}
-		return false;
+		return FALSE;
 	}
 
 	public static function getFormat() {
@@ -56,7 +55,7 @@ class EmailManager
 	public function deleteEmail($name) {
 		if (isset($this->data[$name])) {
 			unset($this->data[$name]);
-			$this->saveData();
+            $this->saveData();
 		}
 	}
 
@@ -71,26 +70,26 @@ class EmailManager
 		return self::getBlankSetting();
 	}
 
-	public static function makeEmailSetting($datetimeToSend, $to, $from, $subject, $message, $isEnabled = false) {
-		$setting = self::getBlankSetting();
-		$setting["who"]["individuals"] = $to;
-		$setting["who"]["from"] = $from;
-		$setting["what"]["message"] = $message;
-		$setting["what"]["subject"] = $subject;
-		$setting["when"]["initial_time"] = $datetimeToSend;
-		$setting['enabled'] = $isEnabled;
+	public static function makeEmailSetting($datetimeToSend, $to, $from, $subject, $message, $isEnabled = FALSE) {
+	    $setting = self::getBlankSetting();
+        $setting["who"]["individuals"] = $to;
+        $setting["who"]["from"] = $from;
+        $setting["what"]["message"] = $message;
+        $setting["what"]["subject"] = $subject;
+        $setting["when"]["initial_time"] = $datetimeToSend;
+        $setting['enabled'] = $isEnabled;
 
-		return $setting;
-	}
+	    return $setting;
+    }
 
 	public static function getBlankSetting() {
-		return ["who" => [], "what" => [], "when" => [], "enabled" => false];
+		return ["who" => [], "what" => [], "when" => [], "enabled" => FALSE];
 	}
 
 	# default is all names and to the actual 'to' emails
 	# $to, if specified, denotes a test email
 	# prepares one email per recipient per setting-name specified (in other words, prepares many emails)
-	public function prepareRelevantEmails($to = "", $names = []) {
+	public function prepareRelevantEmails($to = "", $names = array()) {
 		return $this->enqueueRelevantEmails($to, $names, "prepareEmail");
 	}
 
@@ -98,14 +97,14 @@ class EmailManager
 	# prepares one email per setting-name specified
 	public function prepareSummaryTestEmail($to, $names) {
 		if (!is_array($names)) {
-			$names = [$names];
+			$names = array($names);
 		}
 		$func = "prepareOneEmail";
 
-		$results = [];
+		$results = array();
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
-				$results[$name] = [];
+				$results[$name] = array();
 				$when = $emailSetting["when"];
 				foreach ($when as $type => $datetime) {
 					if ($type == "initial_time") {
@@ -119,11 +118,11 @@ class EmailManager
 		return $results;
 	}
 
-	public function sendPreparedEmails($messages, $isTest = false) {
+	public function sendPreparedEmails($messages, $isTest = FALSE) {
 		if (!is_array($messages)) {
-			$messages = json_decode($messages, true);
+			$messages = json_decode($messages, TRUE);
 		}
-		if ($messages !== null) {
+		if ($messages !== NULL) {
 			foreach ($messages as $name => $types) {
 				foreach ($types as $type => $emailData) {
 					$this->sendPreparedEmail($emailData, $isTest);
@@ -137,23 +136,23 @@ class EmailManager
 	# default is all names and to the actual 'to' emails
 	# $to, if specified, denotes a test email
 	# main way of sending emails
-	public function sendRelevantEmails($to = "", $names = []) {
-		self::$turnOffShutdownFunction = false;
-		register_shutdown_function([$this, "reportCronErrors"]);
-		$messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
-		// Application::log(count($messages)." emails are enqueued to send.", $this->pid);
+	public function sendRelevantEmails($to = "", $names = array()) {
+	    self::$turnOffShutdownFunction = FALSE;
+        register_shutdown_function([$this, "reportCronErrors"]);
+        $messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
+        // Application::log(count($messages)." emails are enqueued to send.", $this->pid);
 		$this->sendPreparedEmails($messages, ($to !== ""));
-		self::$turnOffShutdownFunction = true;
+	    self::$turnOffShutdownFunction = TRUE;
 	}
 
-	public static function reportCronErrors() {
-		if (!self::$turnOffShutdownFunction) {
-			CronManager::reportCronErrors("email");
-		}
-	}
+    public static function reportCronErrors() {
+        if (!self::$turnOffShutdownFunction) {
+            CronManager::reportCronErrors("email");
+        }
+    }
 
 	private static function transformToTS($datetime) {
-		if (preg_match("/^\d+-\d+-\d\d\d\d/", $datetime, $matches)) {
+        if (preg_match("/^\d+-\d+-\d\d\d\d/", $datetime, $matches)) {
 			# assume MDY
 			$match = $matches[0];
 			$nodes = explode("-", $match);
@@ -164,127 +163,126 @@ class EmailManager
 
 		$ts = strtotime($datetime);
 		if (!$ts) {
-			if (!$datetime) {
-				throw new \Exception("No date or time for this email was set! This is a required field.");
-			}
-			throw new \Exception("Could not create timestamp from ".$datetime);
+            if (!$datetime) {
+                throw new \Exception("No date or time for this email was set! This is a required field.");
+            }
+            throw new \Exception("Could not create timestamp from ".$datetime);
 		}
 		return $ts;
 	}
 
 	public function getQueue($thresholdTs) {
-		$rows = [];
-		foreach ($this->data as $name => $emailSetting) {
-			foreach ($emailSetting["when"] as $whenType => $datetime) {
-				$ts = self::transformToTS($datetime);
-				if ($ts >= $thresholdTs) {
-					$processedRows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
-					$emailsByRecord = self::processEmails($processedRows);
-					$emails = [];
-					foreach ($emailsByRecord as $recordId => $email) {
-						if ($email) {
-							$emails[] = Links::makeRecordHomeLink($this->pid, $recordId, "Record $recordId").": $email";
-						}
-					}
+	    $rows = [];
+        foreach ($this->data as $name => $emailSetting) {
+            foreach ($emailSetting["when"] as $whenType => $datetime) {
+                $ts = self::transformToTS($datetime);
+                if ($ts >= $thresholdTs) {
+                    $processedRows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
+                    $emailsByRecord = self::processEmails($processedRows);
+                    $emails = [];
+                    foreach ($emailsByRecord as $recordId => $email) {
+                        if ($email) {
+                            $emails[] = Links::makeRecordHomeLink($this->pid, $recordId, "Record $recordId").": $email";
+                        }
+                    }
 
-					$row = [];
-					$row['name'] = $name;
-					list($row['date'], $row['time']) = explode(" ", $datetime);
-					$row['from'] = $emailSetting['what']['from'];
-					$row['subject'] = self::getSubject($emailSetting["what"]);
-					;
-					$row['to'] = $emails;
-					$row['to_count'] = count($emails);
-					$rows[] = $row;
-				}
-			}
-		}
-		return $rows;
-	}
+                    $row = [];
+                    $row['name'] = $name;
+                    list($row['date'], $row['time']) = explode(" ", $datetime);
+                    $row['from'] = $emailSetting['what']['from'];
+                    $row['subject'] = self::getSubject($emailSetting["what"]);;
+                    $row['to'] = $emails;
+                    $row['to_count'] = count($emails);
+                    $rows[] = $row;
+                }
+            }
+        }
+        return $rows;
+    }
 
-	private function enqueueRelevantEmails($to = "", $names = [], $func = "sendEmail", $currTime = false) {
+	private function enqueueRelevantEmails($to = "", $names = array(), $func = "sendEmail", $currTime = FALSE) {
 		if (!is_array($names)) {
-			$names = [$names];
+			$names = array($names);
 		}
-		$logHeader = "Flight Tracker Email Manager";
+        $logHeader = "Flight Tracker Email Manager";
 		$results = [];
 		if ($currTime) {
-			$currTimes = [$currTime];
-		} else {
-			$currTimes = [];
-			$currTime = $_SERVER['REQUEST_TIME'] ?? 0;
-			$lastRunTs = Application::getSetting("emails_last_run", $this->pid);
-			if ($lastRunTs) {
-				if ($currTime > $lastRunTs) {
-					# turns away older crons who are just reappearing
-					$minsSinceEpochCurr = floor($currTime / 60);
-					$minsSinceEpochLastRun = floor($lastRunTs / 60);
-					$threeHoursInMinutes = 3 * 60;
-					if ($minsSinceEpochCurr - $minsSinceEpochLastRun > $threeHoursInMinutes) {
-						$minsSinceEpochLastRun = $minsSinceEpochCurr - $threeHoursInMinutes;
-					}
-					for ($mins = $minsSinceEpochCurr; $mins > $minsSinceEpochLastRun; $mins--) {
-						$currTimes[] = $mins * 60;
-					}
-					self::saveLastRun($currTime, $this->pid);
-					if (Application::isVanderbilt()) {
-						foreach ($currTimes as $time) {
-							if ($time <= $lastRunTs) {
-								$mssg = "Tried to run Flight Tracker's email cron at an earlier time. This should never happen. The time requested is ".date("Y-m-d H:i", (int) $time).". The last run was at ".date("Y-m-d H:i", $lastRunTs).".";
-								\REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName()." Running out of order", $mssg);
-							}
-						}
-					}
-				}
-			} else {
-				$currTimes = [$currTime];
-				Application::saveSetting("emails_last_run", $currTime, $this->pid);
-			}
+		    $currTimes = [$currTime];
+        } else {
+		    $currTimes = [];
+		    $currTime = $_SERVER['REQUEST_TIME'] ?? 0;
+		    $lastRunTs = Application::getSetting("emails_last_run", $this->pid);
+		    if ($lastRunTs) {
+                if ($currTime > $lastRunTs) {
+                    # turns away older crons who are just reappearing
+                    $minsSinceEpochCurr = floor($currTime / 60);
+                    $minsSinceEpochLastRun = floor($lastRunTs / 60);
+                    $threeHoursInMinutes = 3 * 60;
+                    if ($minsSinceEpochCurr - $minsSinceEpochLastRun > $threeHoursInMinutes) {
+                        $minsSinceEpochLastRun = $minsSinceEpochCurr - $threeHoursInMinutes;
+                    }
+                    for ($mins = $minsSinceEpochCurr; $mins > $minsSinceEpochLastRun; $mins--) {
+                        $currTimes[] = $mins * 60;
+                    }
+                    self::saveLastRun($currTime, $this->pid);
+                    if (Application::isVanderbilt()) {
+                        foreach ($currTimes as $time) {
+                            if ($time <= $lastRunTs) {
+                                $mssg = "Tried to run Flight Tracker's email cron at an earlier time. This should never happen. The time requested is ".date("Y-m-d H:i", (int) $time).". The last run was at ".date("Y-m-d H:i", $lastRunTs).".";
+                                \REDCap::email("scott.j.pearson@vumc.org", "noreply.flighttracker@vumc.org", Application::getProgramName()." Running out of order", $mssg);
+                            }
+                        }
+                    }
+                }
+            } else {
+		        $currTimes = [$currTime];
+                Application::saveSetting("emails_last_run", $currTime, $this->pid);
+            }
 		}
 
-		$oneMinute = 60;
+        $oneMinute = 60;
 		$sentEmails = [];
 		foreach ($this->data as $name => $emailSetting) {
 			if (in_array($name, $names) || empty($names)) {
-				// Application::log("Checking if $name is enabled");
+                // Application::log("Checking if $name is enabled");
 				if ($emailSetting['enabled'] || ($func == "prepareEmail")) {
-					$when = $emailSetting["when"];
-					if (!Application::isLocalhost()) {
-						$whenKeys = array_keys($when);
-						// if (!empty($whenKeys)) {
-						// $firstKey = array_shift($whenKeys);
-						// foreach ($currTimes as $currTime) {
-						// Application::log("$name is enabled for send at ".$when[$firstKey].". Current time is ".date("Y-m-d H:i", (int) $currTime)."; process spawned at ".date("Y-m-d H:i", $_SERVER['REQUEST_TIME']), $this->pid);
-						// }
-						// }
-					}
+                    $when = $emailSetting["when"];
+                    if (!Application::isLocalhost()) {
+                        $whenKeys = array_keys($when);
+                        // if (!empty($whenKeys)) {
+                            // $firstKey = array_shift($whenKeys);
+                            // foreach ($currTimes as $currTime) {
+                                // Application::log("$name is enabled for send at ".$when[$firstKey].". Current time is ".date("Y-m-d H:i", (int) $currTime)."; process spawned at ".date("Y-m-d H:i", $_SERVER['REQUEST_TIME']), $this->pid);
+                            // }
+                        // }
+                    }
 					foreach ($when as $type => $datetime) {
 						$ts = self::transformToTS($datetime);
-						$result = false;
+						$result = FALSE;
 						if ($to) {
 							# This is a test email because a $to is specified
 							if ($type == "initial_time") {
-								$result = $this->$func($emailSetting, $name, $type, $to);
-								$sentEmails[$name] = time();
+                                $result = $this->$func($emailSetting, $name, $type, $to);
+                                $sentEmails[$name] = time();
 							}
 						} else {
 							if ($this->isReadyToSend($ts, $currTimes)) {
-								if (!Application::isLocalhost()) {
-									Application::log("Sending $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
-								}
-								$result = $this->$func($emailSetting, $name, $type);
-								if (!Application::isLocalhost()) {
-									Application::log("Sent to $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
-								}
-								$sentEmails[$name] = time();
-							} elseif ($this->isReadyToSend($ts - $this->preparingMins * $oneMinute, $currTimes)) {
-								$this->sendPreviewEmail($emailSetting, $name);
-							}
+							    if (!Application::isLocalhost()) {
+                                    Application::log("Sending $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
+                                }
+                                $result = $this->$func($emailSetting, $name, $type);
+                                if (!Application::isLocalhost()) {
+                                    Application::log("Sent to $name scheduled at ".date("Y-m-d H:i", $ts), $this->pid);
+                                }
+                                $sentEmails[$name] = time();
+							} else if ($this->isReadyToSend($ts - $this->preparingMins * $oneMinute, $currTimes)) {
+                                $this->sendPreviewEmail($emailSetting, $name);
+                            }
 						}
 						if ($result && !empty($result)) {
-							if (!isset($results[$name])) {
-								$results[$name] = [];
-							}
+                            if (!isset($results[$name])) {
+                                $results[$name] = [];
+                            }
 							$results[$name][$type] = $result;
 						}
 					}
@@ -293,93 +291,93 @@ class EmailManager
 				}
 			}
 		}
-		# log notes will break on localhost because $_GET['test'] is enabled for verbose output
-		$format = "Y-m-d H:i";
-		foreach ($sentEmails as $sendName => $ts) {
-			if (!Application::isLocalhost()) {
-				Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
-			}
-		}
-		if (!empty($sentEmails)) {
-			foreach ($currTimes as $currTime) {
-				if (!Application::isLocalhost()) {
-					Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME'] ?? 0), $this->pid);
-				}
-			}
-		}
-		return $results;
+        # log notes will break on localhost because $_GET['test'] is enabled for verbose output
+        $format = "Y-m-d H:i";
+        foreach ($sentEmails as $sendName => $ts) {
+            if (!Application::isLocalhost()) {
+                Application::log("$logHeader: $sendName sent at ".date($format, $ts).".", $this->pid);
+            }
+        }
+        if (!empty($sentEmails)) {
+            foreach ($currTimes as $currTime) {
+                if (!Application::isLocalhost()) {
+                    Application::log("$logHeader: Sending emails for " . date($format, (int)$currTime) . "; process spawned at " . date($format, $_SERVER['REQUEST_TIME'] ?? 0), $this->pid);
+                }
+            }
+        }
+        return $results;
 	}
 
-	private static function saveLastRun($ts, $pid, $retriesLeft = 5) {
-		$field = "emails_last_run";
-		try {
-			Application::saveSetting($field, $ts, $pid);
-		} catch (\Exception $e) {
-			if (
-				($retriesLeft > 0)
-				&& ($e->getMessage() == "Prepared statement execution failed")
-			) {
-				sleep(5);
-				$retriesLeft--;
-				Application::log("Retrying saving $field; $retriesLeft retries remaining", $pid);
-				self::saveLastRun($ts, $pid, $retriesLeft);
-			} else {
-				Application::log("Exception ".$e->getMessage()."\n".$e->getTraceAsString(), $pid);
-				sleep(5);
-				Application::saveSetting("emails_last_run", $ts, $pid);
-			}
-		}
-	}
+    private static function saveLastRun($ts, $pid, $retriesLeft = 5) {
+        $field = "emails_last_run";
+        try {
+            Application::saveSetting($field, $ts, $pid);
+        } catch (\Exception $e) {
+            if (
+                ($retriesLeft > 0)
+                && ($e->getMessage() == "Prepared statement execution failed")
+            ) {
+                sleep(5);
+                $retriesLeft--;
+                Application::log("Retrying saving $field; $retriesLeft retries remaining", $pid);
+                self::saveLastRun($ts, $pid, $retriesLeft);
+            } else {
+                Application::log("Exception ".$e->getMessage()."\n".$e->getTraceAsString(), $pid);
+                sleep(5);
+                Application::saveSetting("emails_last_run", $ts, $pid);
+            }
+        }
+    }
 
-	public function sendPreviewEmail($emailSetting, $name) {
-		$to = $this->adminEmail;
-		$from = $this->defaultFrom ?: "noreply.flighttracker@vumc.org";
-		$subject = self::getSubject($emailSetting["what"]);
-		$link = Application::link("emailMgmt/cancelEmail.php", $this->pid, true)."&name=".urlencode($name);
-		$oneMinute = 60;
-		$sendDateTime = $emailSetting["when"]["initial_time"] ?: time() + $this->preparingMins * $oneMinute;
+    public function sendPreviewEmail($emailSetting, $name) {
+        $to = $this->adminEmail;
+        $from = $this->defaultFrom ?: "noreply.flighttracker@vumc.org";
+        $subject = self::getSubject($emailSetting["what"]);
+        $link = Application::link("emailMgmt/cancelEmail.php", $this->pid, TRUE)."&name=".urlencode($name);
+        $oneMinute = 60;
+        $sendDateTime = $emailSetting["when"]["initial_time"] ?: time() + $this->preparingMins * $oneMinute;
 
-		$sendInfo = $this->getRows($emailSetting["who"]);
-		$emailAddresses = [];
-		foreach ($sendInfo as $row) {
-			if ($row['first_name'] && $row['last_name']) {
-				$name = $row['first_name']." ".$row['last_name'];
-				$emailAddresses[] = $name." &lt;".$row['email']."&gt;";
-			} else {
-				$emailAddresses[] = $row['email'];
-			}
-		}
-		$emailFrom = $emailSetting["who"]["from"] ?: "<strong>[BLANK]</strong>";
+        $sendInfo = $this->getRows($emailSetting["who"]);
+        $emailAddresses = [];
+        foreach ($sendInfo as $row) {
+            if ($row['first_name'] && $row['last_name']) {
+                $name = $row['first_name']." ".$row['last_name'];
+                $emailAddresses[] = $name." &lt;".$row['email']."&gt;";
+            } else {
+                $emailAddresses[] = $row['email'];
+            }
+        }
+        $emailFrom = $emailSetting["who"]["from"] ?: "<strong>[BLANK]</strong>";
 
-		$mssg = "<h1>Preparing Email</h1>";
-		$mssg .= "<style>
+        $mssg = "<h1>Preparing Email</h1>";
+        $mssg .= "<style>
 a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #ddd); color: black; text-decoration: none; padding: 5px 20px; text-align: center; font-size: 24px; };
 </style>";
-		$mssg .= "<p>A version of the below email will be sent at $sendDateTime (".$this->preparingMins." minutes from the time that this email was sent) <strong>unless you cancel it below.</strong></p>";
-		$mssg .= "<p><a class='button' href='$link'>Cancel Email Now</a> (before $sendDateTime)</p>";
-		$mssg .= "<p>You must be a user on the Flight Tracker/REDCap project to cancel this email.</p>";
-		$mssg .= "<p>Doing nothing will cause the email to send automatically at $sendDateTime.</p>";
-		$mssg .= "<hr/>";
-		$mssg .= "<p><strong>To (".count($emailAddresses)."):</strong><br/>".implode("<br/>", $emailAddresses)."<br/><strong>From:</strong> $emailFrom</p>";
-		$mssg .= $emailSetting["what"]["message"];
+        $mssg .= "<p>A version of the below email will be sent at $sendDateTime (".$this->preparingMins." minutes from the time that this email was sent) <strong>unless you cancel it below.</strong></p>";
+        $mssg .= "<p><a class='button' href='$link'>Cancel Email Now</a> (before $sendDateTime)</p>";
+        $mssg .= "<p>You must be a user on the Flight Tracker/REDCap project to cancel this email.</p>";
+        $mssg .= "<p>Doing nothing will cause the email to send automatically at $sendDateTime.</p>";
+        $mssg .= "<hr/>";
+        $mssg .= "<p><strong>To (".count($emailAddresses)."):</strong><br/>".implode("<br/>", $emailAddresses)."<br/><strong>From:</strong> $emailFrom</p>";
+        $mssg .= $emailSetting["what"]["message"];
 
-		Application::log(date("Y-m-d H:i:s")." EmailManager sending preparation email $name to {$to}; from $from; $subject", $this->pid);
-		if (Application::isLocalhost()) {
-			\REDCap::email("scott.j.pearson@vumc.org", $from, "PREPARING EMAIL: $subject", $mssg);
-		} else {
-			\REDCap::email($to, $from, "PREPARING EMAIL: $subject", $mssg);
-		}
-	}
+        Application::log(date("Y-m-d H:i:s")." EmailManager sending preparation email $name to {$to}; from $from; $subject", $this->pid);
+        if (Application::isLocalhost()) {
+            \REDCap::email("scott.j.pearson@vumc.org", $from, "PREPARING EMAIL: $subject", $mssg);
+        } else {
+            \REDCap::email($to, $from, "PREPARING EMAIL: $subject", $mssg);
+        }
+    }
 
 	public function isReadyToSend($ts1, $arrayOfTs) {
-		$minutesSinceEpoch1 = floor($ts1 / 60);
-		foreach ($arrayOfTs as $ts2) {
-			$minutesSinceEpoch2 = floor($ts2 / 60);
-			if ($minutesSinceEpoch1 == $minutesSinceEpoch2) {
-				return true;
-			}
-		}
-		return false;
+	    $minutesSinceEpoch1 = floor($ts1 / 60);
+	    foreach ($arrayOfTs as $ts2) {
+	        $minutesSinceEpoch2 = floor($ts2 / 60);
+            if ($minutesSinceEpoch1 == $minutesSinceEpoch2) {
+                return TRUE;
+            }
+        }
+	    return FALSE;
 	}
 
 	public function saveSetting($name, $emailSetting) {
@@ -391,7 +389,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	public function getMessageHash() {
-		$messages = [];
+		$messages = array();
 		foreach ($this->getSettingsNames() as $name) {
 			$mssg = $this->data[$name]["what"]["message"];
 			if ($mssg) {
@@ -402,14 +400,14 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	private static function filterOutSettingsWithPrefix($names, $prefix) {
-		$newNames = [];
-		foreach ($names as $name) {
-			if (strpos($name, $prefix) === false) {
-				$newNames[] = $name;
-			}
-		}
-		return $newNames;
-	}
+	    $newNames = [];
+	    foreach ($names as $name) {
+            if (strpos($name, $prefix) === FALSE) {
+                $newNames[] = $name;
+            }
+        }
+	    return $newNames;
+    }
 
 	public function getSelectForExistingNames($elemName, $settingName = "") {
 		$names = $this->getSettingsNames();
@@ -435,42 +433,42 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	# returns records of emails
 	private function sendEmail($emailSetting, $settingName, $whenType, $toField = "who") {
-		try {
-			Application::log("Preparing Email to ".$emailSetting["who"]["to"], $this->pid);
-			$emailData = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
-			Application::log("Prepared ".count($emailData)." Emails", $this->pid);
-			if (!empty($emailData)) {
-				return $this->sendPreparedEmail($emailData, ($toField != "who"));
-			}
-			return [];
-		} catch (\Exception $e) {
-			Application::log("Email Exception: ".$e->getMessage(), $this->pid);
-			return [];
-		}
+        try {
+            Application::log("Preparing Email to ".$emailSetting["who"]["to"], $this->pid);
+            $emailData = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
+            Application::log("Prepared ".count($emailData)." Emails", $this->pid);
+            if (!empty($emailData)) {
+                return $this->sendPreparedEmail($emailData, ($toField != "who"));
+            }
+            return [];
+        } catch (\Exception $e) {
+            Application::log("Email Exception: ".$e->getMessage(), $this->pid);
+            return [];
+        }
 	}
 
-	public function disable($name) {
-		$settingNames = $this->getSettingsNames();
-		if (in_array($name, $settingNames)) {
-			$emailSetting = $this->data[$name] ?? [];
-			if (!empty($emailSetting)) {
-				if ($emailSetting["enabled"]) {
-					$emailSetting["enabled"] = false;
-					$this->saveSetting($name, $emailSetting);
-				} else {
-					throw new \Exception("The email setting $name is already not enabled!");
-				}
-			} else {
-				throw new \Exception("The email setting $name is empty!");
-			}
-		} else {
-			throw new \Exception("Invalid email setting name $name!");
-		}
-	}
+    public function disable($name) {
+        $settingNames = $this->getSettingsNames();
+        if (in_array($name, $settingNames)) {
+            $emailSetting = $this->data[$name] ?? [];
+            if (!empty($emailSetting)) {
+                if ($emailSetting["enabled"]) {
+                    $emailSetting["enabled"] = FALSE;
+                    $this->saveSetting($name, $emailSetting);
+                } else {
+                    throw new \Exception("The email setting $name is already not enabled!");
+                }
+            } else {
+                throw new \Exception("The email setting $name is empty!");
+            }
+        } else {
+            throw new \Exception("Invalid email setting name $name!");
+        }
+    }
 
 	# returns records of emails
-	private function sendPreparedEmail($emailData, $isTest = false) {
-		Application::log("sendPrepared ".count($emailData)." emails: ".($isTest ? "TEST" : "REAL"), $this->pid);
+	private function sendPreparedEmail($emailData, $isTest = FALSE) {
+        Application::log("sendPrepared ".count($emailData)." emails: ".($isTest ? "TEST" : "REAL"), $this->pid);
 		$name = $emailData["name"];
 		$mssgs = $emailData["mssgs"] ?? [];
 		$to = $emailData["to"];
@@ -486,21 +484,21 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 				throw new \Exception("Could not find REDCap class!");
 			}
 
-			if (Application::isLocalhost()) {
-				Application::log("mssg: ".$mssg, $this->pid);
-				\REDCap::email("scott.j.pearson@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
-			} else {
-				\REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
-			}
+            if (Application::isLocalhost()) {
+                Application::log("mssg: ".$mssg, $this->pid);
+                \REDCap::email("scott.j.pearson@vumc.org", $from, $to[$recordId].": ".$subjects[$recordId], $mssg);
+            } else {
+                \REDCap::email($to[$recordId], $from, $subjects[$recordId], $mssg);
+            }
 			usleep(200000); // wait 0.2 seconds for other items to process
 		}
 		$records = array_keys($mssgs);
 		if (!$isTest) {
 			if (!isset($this->data[$name]['sent'])) {
-				$this->data[$name]['sent'] = [];
+				$this->data[$name]['sent'] = array();
 			}
 			if ($records) {
-				$sentAry = ["ts" => time(), "records" => $records];
+				$sentAry = array("ts" => time(), "records" => $records);
 				$this->data[$name]['sent'][] = $sentAry;
 				$this->saveData();
 			}
@@ -519,50 +517,50 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 					$sentAry[$name] = $setting['sent'];
 				}
 			}
-			if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
-				$sourcePid = Application::getSourcePid($this->pid);
-				$sourceData = self::loadData($this->settingName, $this->module, $this->hijackedField, $sourcePid);
-				if (!empty($sourceData)) {
-					foreach ($sourceData as $name => $setting) {
-						if ($setting['sent']) {
-							$sentAry[$name] = $setting['sent'];
-						}
-					}
-				}
-			}
-			return $sentAry;
-		} elseif ($this->data[$settingName] && $this->data[$settingName]['sent']) {
+            if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
+                $sourcePid = Application::getSourcePid($this->pid);
+                $sourceData = self::loadData($this->settingName, $this->module, $this->hijackedField, $sourcePid);
+                if (!empty($sourceData)) {
+                    foreach ($sourceData as $name => $setting) {
+                        if ($setting['sent']) {
+                            $sentAry[$name] = $setting['sent'];
+                        }
+                    }
+                }
+            }
+			return $sentAry; 
+		} else if ($this->data[$settingName] && $this->data[$settingName]['sent']) {
 			return $this->data[$settingName]['sent'];
-		} elseif (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
-			$sourcePid = Application::getSourcePid($this->pid);
-			$sourceData = self::loadData($this->settingName, $this->module, $this->hijackedField, $sourcePid);
-			if (!empty($sourceData) && $sourceData[$settingName] && $sourceData[$settingName]['sent']) {
-				return $sourceData[$settingName]['sent'];
-			}
-		}
+		} else if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
+                $sourcePid = Application::getSourcePid($this->pid);
+                $sourceData = self::loadData($this->settingName, $this->module, $this->hijackedField, $sourcePid);
+                if (!empty($sourceData) && $sourceData[$settingName] && $sourceData[$settingName]['sent']) {
+                    return $sourceData[$settingName]['sent'];
+                }
+            }
 		return [];
 	}
 
-	private function getLastNames($recordIds) {
-		$allLastNames = Download::lastnames($this->token, $this->server);
-		$filteredLastNames = [];
-		foreach ($recordIds as $recordId) {
-			$filteredLastNames[$recordId] = $allLastNames[$recordId];
-		}
-		return $filteredLastNames;
-	}
+    private function getLastNames($recordIds) {
+        $allLastNames = Download::lastnames($this->token, $this->server);
+        $filteredLastNames = array();
+        foreach ($recordIds as $recordId) {
+            $filteredLastNames[$recordId] = $allLastNames[$recordId];
+        }
+        return $filteredLastNames;
+    }
 
-	private function getFirstNames($recordIds) {
-		$allFirstNames = Download::firstnames($this->token, $this->server);
-		$filteredFirstNames = [];
-		foreach ($recordIds as $recordId) {
-			$filteredFirstNames[$recordId] = $allFirstNames[$recordId];
-		}
-		return $filteredFirstNames;
-	}
+    private function getFirstNames($recordIds) {
+        $allFirstNames = Download::firstnames($this->token, $this->server);
+        $filteredFirstNames = array();
+        foreach ($recordIds as $recordId) {
+            $filteredFirstNames[$recordId] = $allFirstNames[$recordId];
+        }
+        return $filteredFirstNames;
+    }
 
-	private function getForms($what) {
-		$forms = [];
+    private function getForms($what) {
+		$forms = array();
 		if (isset($what["message"])) {
 			$mssg = $what["message"];
 			$surveys = $this->getSurveys();
@@ -578,16 +576,16 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	private function prepareOneEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$data = $this->prepareEmail($emailSetting, $settingName, $whenType, $toField);
 		if (!empty($data)) {
-			$mssgRecords = array_keys($data['mssgs']);
+            $mssgRecords = array_keys($data['mssgs']);
 			$numMssgs = count($mssgRecords);
-			$recordId = false;
+			$recordId = FALSE;
 			if ($numMssgs > 0) {
 				$recordId = reset($mssgRecords);
 			}
 			if ($recordId) {
-				$data['mssgs'] = [$recordId => $data['mssgs'][$recordId]];
-				$data['subjects'] = [$recordId => "Sample Email (of $numMssgs total): ".$data['subjects'][$recordId]];
-				$data['to'] = [$recordId => $data['to'][$recordId]];
+				$data['mssgs'] = array($recordId => $data['mssgs'][$recordId]);
+				$data['subjects'] = array($recordId => "Sample Email (of $numMssgs total): ".$data['subjects'][$recordId]);
+				$data['to'] = array($recordId => $data['to'][$recordId]);
 			}
 		}
 		return $data;
@@ -595,40 +593,40 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	private function prepareEmail($emailSetting, $settingName, $whenType, $toField = "who") {
 		$rows = $this->getRows($emailSetting["who"], $whenType, $this->getForms($emailSetting["what"]));
-		if (empty($rows)) {
-			Application::log("PrepareEmail: Rows empty", $this->pid);
-			return [];
-		}
+        if (empty($rows)) {
+            Application::log("PrepareEmail: Rows empty", $this->pid);
+            return [];
+        }
 
-		$data = [];
+		$data = array();
 		$emails = self::processEmails($rows);
 		$names = self::processNames($rows);
-		Application::log("PrepareEmail: Getting names", $this->pid);
-		$lastNames = $this->getLastNames(array_keys($rows));
-		$firstNames = $this->getFirstNames(array_keys($rows));
-		Application::log("PrepareEmail: Got names", $this->pid);
+        Application::log("PrepareEmail: Getting names", $this->pid);
+        $lastNames = $this->getLastNames(array_keys($rows));
+        $firstNames = $this->getFirstNames(array_keys($rows));
+        Application::log("PrepareEmail: Got names", $this->pid);
 		$subject = self::getSubject($emailSetting["what"]);
 		$data['name'] = $settingName;
-		Application::log("PrepareEmail: Getting Messages", $this->pid);
-		$data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames, $firstNames);
-		Application::log("PrepareEmail: Got Messages", $this->pid);
-		$data['subjects'] = [];
-		$data['to'] = [];
+        Application::log("PrepareEmail: Getting Messages", $this->pid);
+        $data['mssgs'] = $this->getMessages($emailSetting["what"], array_keys($rows), $names, $lastNames, $firstNames);
+        Application::log("PrepareEmail: Got Messages", $this->pid);
+		$data['subjects'] = array();
+		$data['to'] = array();
 		if ($toField == "who") {
-			Application::log("PrepareEmail: Processing who", $this->pid);
+            Application::log("PrepareEmail: Processing who", $this->pid);
 			foreach (array_keys($rows) as $recordId) {
 				$data['to'][$recordId] = $emails[$recordId];
 				$data['subjects'][$recordId] = $subject;
 			}
 		} else {
-			Application::log("PrepareEmail: Processing email address", $this->pid);
+            Application::log("PrepareEmail: Processing email address", $this->pid);
 			foreach (array_keys($rows) as $recordId) {
 				$data['to'][$recordId] = $toField;
 				$data['subjects'][$recordId] = $emails[$recordId].": ".$subject;
 			}
 		}
 		$data['from'] = $emailSetting["who"]["from"];
-		Application::log("PrepareEmail: Returning", $this->pid);
+        Application::log("PrepareEmail: Returning", $this->pid);
 
 		return $data;
 	}
@@ -638,12 +636,12 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		// Application::log("Email keys: ".json_encode($allEmailKeys));
 		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "getEmailName")) {
 			$allRecords = Download::recordIds($this->token, $this->server);
-			$unmatchedKeys = [];
+			$unmatchedKeys = array();
 			foreach ($allEmailKeys as $key) {
-				$keyFound = false;
+				$keyFound = FALSE;
 				foreach ($allRecords as $recordId) {
 					if ($key == Application::getEmailName($recordId)) {
-						$keyFound = true;
+						$keyFound = TRUE;
 					}
 				}
 				if (!$keyFound) {
@@ -666,8 +664,8 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		return self::processEmails($rows);
 	}
 
-	public static function getSurveyLinks($pid, $records, $instrument, $maxInstances = []) {
-		$newInstances = [];
+	public static function getSurveyLinks($pid, $records, $instrument, $maxInstances = array()) {
+		$newInstances = array();
 		foreach ($records as $recordId) {
 			if ($maxInstances[$recordId]) {
 				$newInstances[$recordId] = $maxInstances[$recordId] + 1;
@@ -676,38 +674,38 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			}
 		}
 
-		$results = [];
-		foreach ($records as $record) {
-			$instance = $newInstances[$record] ?? 1;
-			$link = \REDCap::getSurveyLink($record, $instrument, null, $instance, $pid);
-			$results[$record] = $link;
-		}
-		return $results;
+        $results = array();
+        foreach ($records as $record) {
+            $instance = $newInstances[$record] ?? 1;
+            $link = \REDCap::getSurveyLink($record, $instrument, NULL, $instance, $pid);
+            $results[$record] = $link;
+        }
+        return $results;
 
 
-		/*
-		 * Old way - POST URL
+        /*
+         * Old way - POST URL
 		$oldPid = $_GET['pid'];
 		$_GET['pid'] = $pid;    // for the Application::link on the cron
-		$data = [
+        $data = [
 				"records" => $records,
 				"instrument" => $instrument,
 				"instances" => $newInstances,
-				"redcap_csrf_token" => Application::generateCSRFToken(),
-		];
-		$url = Application::link("emailMgmt/makeSurveyLinks.php", $pid, TRUE)."&NOAUTH";
-		list($resp, $output) = URLManagement::downloadURLWithPOST($url, $data, $pid);
-		Application::log("makeSurveyLinks POST: ".json_encode($data), $pid);
-		Application::log("makeSurveyLinks output: $output", $pid);
-		$_GET['pid'] = $oldPid;
+                "redcap_csrf_token" => Application::generateCSRFToken(),
+        ];
+        $url = Application::link("emailMgmt/makeSurveyLinks.php", $pid, TRUE)."&NOAUTH";
+        list($resp, $output) = URLManagement::downloadURLWithPOST($url, $data, $pid);
+        Application::log("makeSurveyLinks POST: ".json_encode($data), $pid);
+        Application::log("makeSurveyLinks output: $output", $pid);
+        $_GET['pid'] = $oldPid;
 		if ($returnList = json_decode((string) $output, TRUE)) {
 			return $returnList;
 		} else {
-			Application::log("makeSurveyLinks URL: $url", $pid);
-			Application::log("makeSurveyLinks Warning! Could not decode JSON: $output", $pid);
+		    Application::log("makeSurveyLinks URL: $url", $pid);
+		    Application::log("makeSurveyLinks Warning! Could not decode JSON: $output", $pid);
 			return $output;
 		}
-		*/
+        */
 	}
 
 	private function getMessages($what, $recordIds, $names, $lastNames, $firstNames) {
@@ -715,19 +713,19 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		$server = $this->server;
 
 		if (empty($this->metadata)) {
-			$this->metadata = Download::metadata($token, $server);
-		}
+		    $this->metadata = Download::metadata($token, $server);
+        }
 
 		$mssg = $what["message"];
 
-		$mssgs = [];
+		$mssgs = array();
 		foreach ($recordIds as $recordId) {
 			$mssgs[$recordId] = $mssg;
 		}
 
 		$repeatingForms = $this->getRepeatingForms();
 
-		$fields = ["record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv"];
+		$fields = array("record_id", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
 		$surveys = $this->getSurveys();
 		foreach ($surveys as $form => $title) {
 			$fields[] = $form . "_complete";
@@ -739,23 +737,23 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		$redcapData = Download::fields($this->token, $this->server, $fields);
 
 		$mssgFrags = preg_split("/[\[\]]/", $mssg);
-		$formRecords = [];
+		$formRecords = array();
 		foreach ($mssgFrags as $fragment) {
 			if (preg_match("/^survey_link_(.+)$/", $fragment, $matches)) {
 				$formName = $matches[1];
 				if (!isset($formRecords[$formName])) {
-					$formRecords[$formName] = [];
+					$formRecords[$formName] = array();
 				}
 				foreach ($recordIds as $recordId) {
 					$formRecords[$formName][] = $recordId;
 				}
 			}
 		}
-		$surveyLinks = [];
-		$maxInstances = [];
+		$surveyLinks = array();
+		$maxInstances = array();
 		foreach ($formRecords as $formName => $records) {
 			if (in_array($formName, $repeatingForms)) {
-				$maxInstances[$formName] = [];
+				$maxInstances[$formName] = array();
 				foreach ($records as $recordId) {
 					$maxInstances[$formName][$recordId] = 0;
 					foreach ($redcapData as $row) {
@@ -782,29 +780,29 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 				$mssgs[$recordId] = str_replace("[survey_link_".$formName."]", Links::makeLink($surveyLink, $surveyLink), $mssgs[$recordId]);
 			}
-			if (preg_match("/\[name\]/", $mssgs[$recordId])) {
-				if ($names[$recordId]) {
-					$mssgs[$recordId] = str_replace("[name]", $names[$recordId], $mssgs[$recordId]);
-				}
-			}
-			if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
-				$menteeLink = Application::getMenteeAgreementLink($this->pid);
-				$mssgs[$recordId] = str_replace("[mentoring_agreement]", Links::makeLink($menteeLink, $menteeLink), $mssgs[$recordId]);
-			}
-			if (preg_match("/\[scholar_portal\]/", $mssgs[$recordId])) {
-				$portalLink = Application::getScholarPortalLink();
-				$mssgs[$recordId] = str_replace("[scholar_portal]", Links::makeLink($portalLink, $portalLink), $mssgs[$recordId]);
-			}
-			if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
-				if ($lastNames[$recordId]) {
-					$mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
-				}
-			}
-			if (preg_match("/\[first_name\]/", $mssgs[$recordId])) {
-				if ($lastNames[$recordId]) {
-					$mssgs[$recordId] = str_replace("[first_name]", $firstNames[$recordId], $mssgs[$recordId]);
-				}
-			}
+            if (preg_match("/\[name\]/", $mssgs[$recordId])) {
+                if ($names[$recordId]) {
+                    $mssgs[$recordId] = str_replace("[name]", $names[$recordId], $mssgs[$recordId]);
+                }
+            }
+            if (preg_match("/\[mentoring_agreement\]/", $mssgs[$recordId])) {
+                $menteeLink = Application::getMenteeAgreementLink($this->pid);
+                $mssgs[$recordId] = str_replace("[mentoring_agreement]", Links::makeLink($menteeLink, $menteeLink), $mssgs[$recordId]);
+            }
+            if (preg_match("/\[scholar_portal\]/", $mssgs[$recordId])) {
+                $portalLink = Application::getScholarPortalLink();
+                $mssgs[$recordId] = str_replace("[scholar_portal]", Links::makeLink($portalLink, $portalLink), $mssgs[$recordId]);
+            }
+            if (preg_match("/\[last_name\]/", $mssgs[$recordId])) {
+                if ($lastNames[$recordId]) {
+                    $mssgs[$recordId] = str_replace("[last_name]", $lastNames[$recordId], $mssgs[$recordId]);
+                }
+            }
+            if (preg_match("/\[first_name\]/", $mssgs[$recordId])) {
+                if ($lastNames[$recordId]) {
+                    $mssgs[$recordId] = str_replace("[first_name]", $firstNames[$recordId], $mssgs[$recordId]);
+                }
+            }
 			// $mssgs[$recordId] = str_replace("</p><p>", "<br>", $mssgs[$recordId]);
 			// $mssgs[$recordId] = str_replace("<p><br></p>", "<br>", $mssgs[$recordId]);
 			// $mssgs[$recordId] = str_replace("<br><br><br>", "<br><br>", $mssgs[$recordId]);
@@ -833,7 +831,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	private static function processEmails($rows) {
-		$emails = [];
+		$emails = array();
 		foreach ($rows as $recordId => $row) {
 			$emails[$recordId] =  $row['email'];
 		}
@@ -841,20 +839,20 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	private static function processNames($rows) {
-		$lastNames = [];
+		$lastNames = array();
 		foreach ($rows as $recordId => $row) {
-			if ($row['email'] !== '') {
-				$lastNames[$recordId] = $row['last_name'];
-			}
+            if ($row['email'] !== '') {
+                $lastNames[$recordId] = $row['last_name'];
+            }
 		}
 		asort($lastNames);
 
-		$names = [];
+		$names = array();
 		foreach ($lastNames as $recordId => $lastName) {
 			$row = $rows[$recordId];
-			if ($row['email'] !== '') {
-				$names[$recordId] = $row['first_name'] . " " . $row['last_name'];
-			}
+            if ($row['email'] !== '') {
+                $names[$recordId] = $row['first_name'] . " " . $row['last_name'];
+            }
 		}
 		return $names;
 	}
@@ -873,13 +871,13 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		$lastNames = Download::lastNames($this->token, $this->server);
 		$recordIds = array_unique(array_merge(array_keys($emails), array_keys($firstNames), array_keys($lastNames)));
 
-		$rows = [];
+		$rows = array();
 		foreach ($recordIds as $recordId) {
-			$rows[$recordId] = [
+			$rows[$recordId] = array(
 							"last_name" => $lastNames[$recordId],
 							"first_name" => $firstNames[$recordId],
 							"email" => $emails[$recordId],
-						];
+						);
 
 		}
 		return $rows;
@@ -887,13 +885,13 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	# coordinate with emailMgmtNew.js
 	public static function makeEmailIntoID($email) {
-		return preg_replace("/\@/", "_at_", $email);
-	}
+	    return preg_replace("/\@/", "_at_", $email);
+    }
 
 	public function getAllCheckedEmails($who) {
 		# checked off emails, specified in who
 		if (is_array($who['individuals'])) {
-			$pickedEmails = [];
+			$pickedEmails = array();
 			for ($i = 0; $i < count($who['individuals']); $i++) {
 				$pickedEmails[] = strtolower($who['individuals'][$i]);
 			}
@@ -905,15 +903,15 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		$lastNames = Download::lastNames($this->token, $this->server);
 		$recordIds = array_unique(array_merge(array_keys($allEmails), array_keys($firstNames), array_keys($lastNames)));
 
-		$rows = [];
+		$rows = array();
 		foreach ($recordIds as $recordId) {
 			$email = strtolower($allEmails[$recordId]);
 			if (in_array($email, $pickedEmails)) {
-				$rows[$recordId] = [
+				$rows[$recordId] = array(
 								"last_name" => $lastNames[$recordId],
 								"first_name" => $firstNames[$recordId],
 								"email" => $email,
-							];
+							);
 			}
 
 		}
@@ -921,36 +919,36 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	public function filterSome($who, $whenType, $when, $what) {
-		// Application::log("filterSome: ".json_encode_with_spaces($who));
-		if (count($this->metadata) == 0) {
-			$this->metadata = Download::metadata($this->token, $this->server);
-		}
-		$fields = ["record_id", "summary_training_start", "summary_training_end", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv"];
+	    // Application::log("filterSome: ".json_encode_with_spaces($who));
+        if (count($this->metadata) == 0) {
+            $this->metadata = Download::metadata($this->token, $this->server);
+        }
+		$fields = array("record_id", "summary_training_start", "summary_training_end", "identifier_first_name", "identifier_last_name", "identifier_email", "summary_ever_r01_or_equiv");
 		$surveys = $this->getSurveys();
-		$steps = [];
-		$steps["surveys"] = $surveys;
-		$steps["metadata"] = $this->metadata;
+        $steps = [];
+        $steps["surveys"] = $surveys;
+        $steps["metadata"] = $this->metadata;
 		foreach ($surveys as $form => $title) {
 			$fields[] = $form . "_complete";
 			$fields[] = self::getDateField($form);
 		}
-		$steps["fields 1"] = $fields;
+        $steps["fields 1"] = $fields;
 		$fields = REDCapManagement::filterOutInvalidFields($this->metadata, $fields);
 
 
-		if (isset($who['cohort'])) {
-			$cohort = Sanitizer::sanitizeCohort($who['cohort']);
-			if ($cohort) {
-				$records = Download::cohortRecordIds($this->token, $this->server, Application::getModule(), $cohort);
-			} else {
-				# use all records since cohort is no longer valid
-				$records = Download::recordIds($this->token, $this->server);
-			}
-		} else {
-			$records = Download::recordIds($this->token, $this->server);
-		}
+        if (isset($who['cohort'])) {
+            $cohort = Sanitizer::sanitizeCohort($who['cohort']);
+            if ($cohort) {
+                $records = Download::cohortRecordIds($this->token, $this->server, Application::getModule(), $cohort);
+            } else {
+                # use all records since cohort is no longer valid
+                $records = Download::recordIds($this->token, $this->server);
+            }
+        } else {
+            $records = Download::recordIds($this->token, $this->server);
+        }
 		# structure data
-		$steps["fields 2"] = $fields;
+        $steps["fields 2"] = $fields;
 		$redcapData = Download::fieldsForRecords($this->token, $this->server, $fields, $records);
 		$steps["redcapData"] = count($redcapData);
 		$identifiers = [];
@@ -962,34 +960,34 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		foreach ($redcapData as $row) {
 			$recordId = $row['record_id'];
 			if ($row['redcap_repeat_instrument'] == "") {
-				if (isset($row['summary_ever_r01_or_equiv'])) {
-					$converted[$recordId] = $row['summary_ever_r01_or_equiv'];
-				}
-				$identifiers[$recordId] = [
+			    if (isset($row['summary_ever_r01_or_equiv'])) {
+                    $converted[$recordId] = $row['summary_ever_r01_or_equiv'];
+                }
+				$identifiers[$recordId] = array(
 								"last_name" => $row['identifier_last_name'],
 								"first_name" => $row['identifier_first_name'],
 								"email" => $row['identifier_email'],
-								];
-				if ($row['summary_training_start']) {
-					$trainingStarts[$recordId] = $row['summary_training_start'];
-				}
-				if ($row['summary_training_end']) {
-					$trainingEnds[$recordId] = $row['summary_training_end'];
-				}
+								);
+			    if ($row['summary_training_start']) {
+                    $trainingStarts[$recordId] = $row['summary_training_start'];
+                }
+			    if ($row['summary_training_end']) {
+                    $trainingEnds[$recordId] = $row['summary_training_end'];
+                }
 			}
 			foreach ($surveys as $currForm => $title) {
 				$dateField = self::getDateField($currForm);
 				if ($row[$dateField]) {
 					$ts = strtotime($row[$dateField]);
 					if (!isset($lastUpdate[$recordId])) {
-						$lastUpdate[$recordId] = [ $currForm => $ts ];
-					} elseif ($ts > $lastUpdate[$recordId][$currForm]) {
+						$lastUpdate[$recordId] = array( $currForm => $ts );
+					} else if ($ts > $lastUpdate[$recordId][$currForm]) {
 						$lastUpdate[$recordId][$currForm] = $ts;
 					}
-				} elseif ($row[$currForm."_complete"] == "2") {
+				} else if ($row[$currForm."_complete"] == "2") {
 					# date blank
 					if (!isset($complete[$recordId])) {
-						$complete[$recordId] = [$currForm];
+						$complete[$recordId] = array($currForm);
 					} else {
 						$complete[$recordId][] = $currForm;
 					}
@@ -997,10 +995,10 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			}
 		}
 
-		$created = [];
+		$created = array();
 		$queue = array_keys($identifiers);
 		$steps["queue"] = $queue;
-		$filterFields = [
+		$filterFields = array(
 					"affiliations",
 					"primary_affiliation",
 					"department",
@@ -1017,14 +1015,14 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 					"imph_pi",
 					"other_pi",
 					"imph_coi",
-					];
-		$fieldsToDownload = [];
-		$filtersToApply = [];
+					);
+		$fieldsToDownload = array();
+		$filtersToApply = array();
 		foreach ($filterFields as $whoFilterField) {
 			if (isset($who[$whoFilterField])) {
-				$redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
-				$fieldsToDownload[] = $redcapField;
-				$filtersToApply[] = $whoFilterField;
+                $redcapField = self::getFieldAssociatedWithFilter($whoFilterField);
+                $fieldsToDownload[] = $redcapField;
+                $filtersToApply[] = $whoFilterField;
 			}
 		}
 		if (!empty($fieldsToDownload)) {
@@ -1033,151 +1031,151 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			foreach ($filtersToApply as $filter) {
 				$redcapField = self::getFieldAssociatedWithFilter($filter);
 				if ($filter == "team") {
-					$queue = self::filterForTeams($redcapField, $who[$filter], $filterREDCapData, $queue);
-				} else {
-					$queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
-				}
+                    $queue = self::filterForTeams($redcapField, $who[$filter], $filterREDCapData, $queue);
+                } else {
+                    $queue = self::filterForField($redcapField, $who[$filter], $filterREDCapData, $queue);
+                }
 			}
 		}
 
-		if ($who['last_complete']) {
+        if ($who['last_complete']) {
 			$queue = self::filterForMonths($who['last_complete'], $lastUpdate, $queue);
 			$steps["1"] = $queue;
 		}
 		if ($who['none_complete'] == "true") {
 			$queue = self::filterForNoComplete($lastUpdate, $complete, $queue);
-			$steps["2"] = $queue;
-		} elseif ($who['none_complete'] == "false") {
-			$queue = self::filterForComplete($lastUpdate, $complete, $queue);
-			$steps["3"] = $queue;
-		}
+            $steps["2"] = $queue;
+		} else if ($who['none_complete'] == "false") {
+            $queue = self::filterForComplete($lastUpdate, $complete, $queue);
+            $steps["3"] = $queue;
+        }
 		if ($who['converted']) {
 			$queue = self::filterForConverted($who['converted'], $converted, $queue);
-			$steps["4"] = $queue;
+            $steps["4"] = $queue;
 		}
 		if ($who['max_emails'] || $who['new_records_since']) {
-			$created = self::findRecordCreateDates($this->pid, $queue);
-			# no change in queue
-			$steps["5"] = $queue;
+            $created = self::findRecordCreateDates($this->pid, $queue);
+            # no change in queue
+            $steps["5"] = $queue;
 		}
 		if ($who['max_emails']) {
 			$queue = $this->filterForMaxEmails($who['max_emails'], $created, $queue);
-			$steps["6"] = $queue;
+            $steps["6"] = $queue;
 		}
 		if ($who['new_records_since']) {
 			$queue = self::filterForNewRecordsSince($who['new_records_since'], $created, $queue);
-			$steps["7"] = $queue;
+            $steps["7"] = $queue;
 		}
 		if ($whenType == "followup_time") {
 			$queue = self::filterOutSurveysCompleted($this->getForms($what), $when, $complete, $lastUpdate, $queue);
-			$steps["8"] = $queue;
+            $steps["8"] = $queue;
 		}
 		if ($who['trainee_class']) {
-			$queue = self::filterByTraineeClass($who['trainee_class'], $trainingStarts, $trainingEnds, $queue);
-			$steps["9"] = $queue;
-		}
+            $queue = self::filterByTraineeClass($who['trainee_class'], $trainingStarts, $trainingEnds, $queue);
+		    $steps["9"] = $queue;
+        }
 
 		# build row of names and emails
-		$rows = [];
+		$rows = array();
 		foreach ($queue as $recordId) {
 			$rows[$recordId] = $identifiers[$recordId];
 		}
-		// Application::log("filterSome rows: ".count($rows));
+        // Application::log("filterSome rows: ".count($rows));
 		foreach ($steps as $num => $items) {
-			// Application::log("filterSome step $num: ".count($items));
-		}
+            // Application::log("filterSome step $num: ".count($items));
+        }
 
-		return $rows;
+        return $rows;
 	}
 
 	public static function getFieldForCurrentEmailSetting() {
-		return "existingName";
-	}
+	    return "existingName";
+    }
 
 	private static function filterByTraineeClass($traineeClass, $trainingStarts, $trainingEnds, $records) {
-		if ($traineeClass == "current") {
-			$currTs = time();
-			$filteredRecords = [];
-			foreach ($records as $recordId) {
-				$include = false;
-				if (isset($trainingStarts[$recordId])) {
-					$startTs = strtotime($trainingStarts[$recordId]);
-					if ($startTs <= $currTs) {
-						$include = true;
-					}
-				}
-				if ($include && isset($trainingEnds[$recordId])) {
-					$endTs = $trainingEnds[$recordId];
-					if ($endTs < $currTs) {
-						$include = false;
-					}
-				}
-				if ($include) {
-					$filteredRecords[] = $recordId;
-				}
-			}
-			return $filteredRecords;
-		} elseif ($traineeClass == "alumni") {
-			$currTs = time();
-			$filteredRecords = [];
-			foreach ($records as $recordId) {
-				$include = false;
-				if (isset($trainingEnds[$recordId])) {
-					$endTs = $trainingEnds[$recordId];
-					if ($endTs < $currTs) {
-						$include = true;
-					}
-				}
-				if ($include) {
-					$filteredRecords[] = $recordId;
-				}
-			}
-			return $filteredRecords;
-		} else {
-			return $records;
-		}
-	}
+	    if ($traineeClass == "current") {
+	        $currTs = time();
+	        $filteredRecords = [];
+	        foreach ($records as $recordId) {
+                $include = FALSE;
+	            if (isset($trainingStarts[$recordId])) {
+	                $startTs = strtotime($trainingStarts[$recordId]);
+	                if ($startTs <= $currTs) {
+                        $include = TRUE;
+                    }
+                }
+	            if ($include && isset($trainingEnds[$recordId])) {
+	                $endTs = $trainingEnds[$recordId];
+	                if ($endTs < $currTs) {
+	                    $include = FALSE;
+                    }
+                }
+	            if ($include) {
+	                $filteredRecords[] = $recordId;
+                }
+            }
+	        return $filteredRecords;
+        } else  if ($traineeClass == "alumni") {
+            $currTs = time();
+            $filteredRecords = [];
+            foreach ($records as $recordId) {
+                $include = FALSE;
+                if (isset($trainingEnds[$recordId])) {
+                    $endTs = $trainingEnds[$recordId];
+                    if ($endTs < $currTs) {
+                        $include = TRUE;
+                    }
+                }
+                if ($include) {
+                    $filteredRecords[] = $recordId;
+                }
+            }
+            return $filteredRecords;
+        } else {
+	        return $records;
+        }
+    }
 
-	public function getRows($who, $whenType = "", $when = [], $what = []) {
+	public function getRows($who, $whenType = "", $when = array(), $what = array()) {
 		if (($who['filter'] == "all") || ($who['recipient'] == "individuals")) {
 			$rows = $this->collectAllEmails();
-		} elseif ($who['individuals']) {
+		} else if ($who['individuals']) {
 			$rows = $this->getAllCheckedEmails($who);
-		} elseif (in_array($who['filter'], ["some", "cohort_group"])) {
+        } else if (in_array($who['filter'], ["some", "cohort_group"])) {
 			$rows = $this->filterSome($who, $whenType, $when, $what);
-		} elseif (empty($who)) {
-			return [];
+		} else if (empty($who)) {
+			return array();
 		} else {
 			throw new \Exception("Could not interpret who: ".json_encode($who));
 		}
-		if (!empty($this->metadata)) {
-			$metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
-		} else {
-			$metadataFields = Download::metadataFields($this->token, $this->server);
-		}
-		if (in_array("identifier_stop_collection", $metadataFields)) {
-			$stops = Download::oneField($this->token, $this->server, "identifier_stop_collection");
-			$newRows = [];
-			foreach ($rows as $recordId => $row) {
-				if (!isset($stops[$recordId]) || ($stops[$recordId] !== "1")) {
-					$newRows[$recordId] = $row;
-				}
-			}
-			return $newRows;
-		}
-		return $rows;
+        if (!empty($this->metadata)) {
+            $metadataFields = DataDictionaryManagement::getFieldsFromMetadata($this->metadata);
+        } else {
+            $metadataFields = Download::metadataFields($this->token, $this->server);
+        }
+        if (in_array("identifier_stop_collection", $metadataFields)) {
+            $stops = Download::oneField($this->token, $this->server, "identifier_stop_collection");
+            $newRows = [];
+            foreach ($rows as $recordId => $row) {
+                if (!isset($stops[$recordId]) || ($stops[$recordId] !== "1")) {
+                    $newRows[$recordId] = $row;
+                }
+            }
+            return $newRows;
+        }
+        return $rows;
 	}
 
 	private static function filterOutSurveysCompleted($usedForms, $when, $complete, $lastUpdate, $queue) {
 		if (!empty($when) && !empty($usedForms)) {
-			$whenTs = [];
+			$whenTs = array();
 			foreach ($when as $type => $datetime) {
 				$whenTs[$type] = self::transformToTS($datetime);
 			}
-			$newQueue = [];
+			$newQueue = array();
 			foreach ($queue as $recordId) {
-				$recentlyFilledOut = false;
-				$formsComplete = [];
+				$recentlyFilledOut = FALSE;
+				$formsComplete = array();
 				if (isset($complete[$recordId])) {
 					$formsComplete = $complete[$recordId];
 				}
@@ -1187,7 +1185,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 						$ts = $lastUpdate[$recordId][$form] + 24 * 3600;
 						foreach ($whenTs as $type => $emailTs) {
 							if ($ts > $emailTs) {
-								$recentlyFilledOut = true;
+								$recentlyFilledOut = TRUE;
 								break;
 							}
 						}
@@ -1206,17 +1204,17 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	public static function getFieldAssociatedWithFilter($whoFilter) {
-		switch ($whoFilter) {
+		switch($whoFilter) {
 			case "affiliations":
 				return "summary_affiliations";
 			case "team":
 				return "survey_team";
-			case "leadership_teams":
-				return "survey_leadership_teams";
-			case "floor":
-				return "survey_floor";
-			case "suite":
-				return "survey_suite";
+            case "leadership_teams":
+                return "survey_leadership_teams";
+            case "floor":
+                return "survey_floor";
+            case "suite":
+                return "survey_suite";
 			case "primary_affiliation":
 				return "summary_primary_affiliation";
 			case "department":
@@ -1259,7 +1257,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			$sinceTs = strtotime("$year-$month-01");
 		}
 
-		$newQueue = [];
+		$newQueue = array();
 		foreach ($queue as $recordId) {
 			$createdTs = strtotime($created[$recordId]);
 			if ($createdTs > $sinceTs) {
@@ -1271,7 +1269,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	# not static because requires access to sent dates in $this->data
 	private function filterForMaxEmails($maxEmails, $created, $queue) {
-		$newQueue = [];
+		$newQueue = array();
 		foreach ($queue as $recordId) {
 			$createdTs = $created[$recordId];
 			$numEmailsSent = 0;
@@ -1303,10 +1301,10 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		$threshold = time() - $months * 30 * 24 * 3600;
 		foreach ($lastUpdate as $recordId => $forms) {
 			if (in_array($recordId, $queue)) {
-				$afterThreshold = false;
+				$afterThreshold = FALSE;
 				foreach ($forms as $form => $ts) {
 					if ($ts > $threshold) {
-						$afterThreshold = true;
+						$afterThreshold = TRUE;
 						break;
 					}
 				}
@@ -1318,34 +1316,34 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		return $queue;
 	}
 
-	# if no surveys ever completed
-	private static function filterForNoComplete($lastUpdate, $complete, $queue) {
-		foreach ($queue as $recordId) {
-			if (isset($lastUpdate[$recordId]) || isset($complete[$recordId])) {
-				unset($queue[array_search($recordId, $queue)]);
-			}
-		}
-		return $queue;
-	}
+    # if no surveys ever completed
+    private static function filterForNoComplete($lastUpdate, $complete, $queue) {
+        foreach ($queue as $recordId) {
+            if (isset($lastUpdate[$recordId]) || isset($complete[$recordId])) {
+                unset($queue[array_search($recordId, $queue)]);
+            }
+        }
+        return $queue;
+    }
 
-	# if any surveys ever completed
-	private static function filterForComplete($lastUpdate, $complete, $queue) {
-		foreach ($queue as $recordId) {
-			if (!isset($lastUpdate[$recordId]) && !isset($complete[$recordId])) {
-				unset($queue[array_search($recordId, $queue)]);
-			}
-		}
-		return $queue;
-	}
+    # if any surveys ever completed
+    private static function filterForComplete($lastUpdate, $complete, $queue) {
+        foreach ($queue as $recordId) {
+            if (!isset($lastUpdate[$recordId]) && !isset($complete[$recordId])) {
+                unset($queue[array_search($recordId, $queue)]);
+            }
+        }
+        return $queue;
+    }
 
-	private static function filterForConverted($status, $converted, $queue) {
+    private static function filterForConverted($status, $converted, $queue) {
 		$convValue = "";
 		if ($status == "yes") {
 			$convValue = "1";
-		} elseif ($status == "no") {
+		} else if ($status == "no") {
 			$convValue = "0";
 		}
-		foreach ($converted as $recordId => $currVal) {
+		foreach($converted as $recordId => $currVal) {
 			if (($convValue !== "") && in_array($recordId, $queue) && ($convValue !== $currVal)) {
 				unset($queue[array_search($recordId, $queue)]);
 			}
@@ -1364,83 +1362,83 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 		foreach ($sent as $ary) {
 			$ts = $ary['ts'];
 			if ($ts && ($ts >= $currTs)) {
-				return false;
+				return FALSE;
 			}
 		}
-		return true;
+		return TRUE;
 	}
 
-	private function changeWhoScopeForAnotherProject($emailSetting) {
-		if (isset($emailSetting["who"]["individuals"])) {
-			return $emailSetting;
-		}
+    private function changeWhoScopeForAnotherProject($emailSetting) {
+        if (isset($emailSetting["who"]["individuals"])) {
+            return $emailSetting;
+        }
 
-		$emails = [];
-		$rows = $this->getRows($emailSetting["who"]);
-		foreach ($rows as $recordId => $person) {
-			if (isset($person['email']) && $person['email']) {
-				$emails[] = $person['email'];
-			}
-		}
+        $emails = [];
+        $rows = $this->getRows($emailSetting["who"]);
+        foreach ($rows as $recordId => $person) {
+            if (isset($person['email']) && $person['email']) {
+                $emails[] = $person['email'];
+            }
+        }
 
-		$emailSetting["who"]["individuals"] = implode(",", $emails);
-		unset($emailSetting["who"]["filter"]);
-		return $emailSetting;
-	}
+        $emailSetting["who"]["individuals"] = implode(",", $emails);
+        unset($emailSetting["who"]["filter"]);
+        return $emailSetting;
+    }
 
 	private function saveData() {
-		$settingName = $this->settingName;
-		$data = self::cleanUpEmails($this->data, $this->token, $this->server);
-		if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
-			$savePid = Application::getSourcePid($this->pid);
-			if ($savePid) {
-				$combinedData = [];
-				foreach ($data as $name => $emailSetting) {
-					$combinedData[$name] = $this->changeWhoScopeForAnotherProject($emailSetting);
-				}
-				$sourceData = self::loadData($settingName, $this->module, $this->hijackedField, $savePid);
-				foreach ($sourceData as $name => $setting) {
-					if (!isset($combinedData[$name])) {
-						$combinedData[$name] = $setting;
-					}
-					# in case of conflict, prefer newer data ($data)
-				}
-			} else {
-				$savePid = $this->pid;
-				$combinedData = $data;
-			}
-		} else {
-			$savePid = $this->pid;
-			$combinedData = $data;
-		}
+        $settingName = $this->settingName;
+        $data = self::cleanUpEmails($this->data, $this->token, $this->server);
+        if (Application::isPluginProject() && Application::isCopiedProject($this->pid)) {
+            $savePid = Application::getSourcePid($this->pid);
+            if ($savePid) {
+                $combinedData = [];
+                foreach ($data as $name => $emailSetting) {
+                    $combinedData[$name] = $this->changeWhoScopeForAnotherProject($emailSetting);
+                }
+                $sourceData = self::loadData($settingName, $this->module, $this->hijackedField, $savePid);
+                foreach ($sourceData as $name => $setting) {
+                    if (!isset($combinedData[$name])) {
+                        $combinedData[$name] = $setting;
+                    }
+                    # in case of conflict, prefer newer data ($data)
+                }
+            } else {
+                $savePid = $this->pid;
+                $combinedData = $data;
+            }
+        } else {
+            $savePid = $this->pid;
+            $combinedData = $data;
+        }
 
-		if ($this->module) {
-			Application::log("Saving email data into $settingName");
-			return $this->module->setProjectSetting($settingName, $combinedData, $savePid);
-		} elseif ($this->metadata) {
-			$json = json_encode($data);
-			$newMetadata = [];
-			foreach ($this->metadata as $row) {
-				if ($row['field_name'] == $this->hijackedField) {
-					$row['field_annotation'] = $json;
-				}
-				$newMetadata[] = $row;
-			}
-			$this->metadata = $newMetadata;
-			$feedback = Upload::metadata($newMetadata, $this->token, $this->server);
-			Application::log("Email Manager save: ".json_encode($feedback));
-			return $feedback;
-		} else {
-			throw new \Exception("Could not save settings to $settingName! No module available!");
-		}
+        if ($this->module) {
+            Application::log("Saving email data into $settingName");
+            return $this->module->setProjectSetting($settingName, $combinedData, $savePid);
+        } else if ($this->metadata) {
+            $json = json_encode($data);
+            $newMetadata = [];
+            foreach ($this->metadata as $row) {
+                if ($row['field_name'] == $this->hijackedField) {
+                    $row['field_annotation'] = $json;
+                }
+                $newMetadata[] = $row;
+            }
+            $this->metadata = $newMetadata;
+            $feedback = Upload::metadata($newMetadata, $this->token, $this->server);
+            Application::log("Email Manager save: ".json_encode($feedback));
+            return $feedback;
+        } else {
+            throw new \Exception("Could not save settings to $settingName! No module available!");
+        }
 	}
 
 	private static function cleanUpEmails($data, $token, $server) {
 		$recordIds = Download::recordIds($token, $server);
-		$cleanedData = [];
+		$cleanedData = array();
 		$currTime = time();
 		foreach ($data as $key => $setting) {
-			$include = true;
+			$include = TRUE;
 			$when = $setting["when"] ?? [];
 			$sent = $setting["sent"] ?? [];
 			foreach ($recordIds as $recordId) {
@@ -1449,7 +1447,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 					&& self::afterAllTimestamps($currTime, [$when])
 					&& self::areAllSent($when, $sent)) {
 
-					$include = false;
+					$include = FALSE;
 					break;
 				}
 			}
@@ -1462,12 +1460,12 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 
 	private static function areAllSent($when, $sent) {
 		foreach ($when as $type => $datetime) {
-			$ts = self::transformToTS($datetime);
+			$ts = self::transformToTS($datetime); 
 			if (self::afterAllTimestamps($ts, $sent)) {
-				return false;
+				return FALSE;
 			}
 		}
-		return true;
+		return TRUE;
 	}
 
 	private static function loadData($settingName, $moduleOrMetadata, $hijackedField, $pid) {
@@ -1476,9 +1474,9 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 			if ($setting) {
 				return $setting;
 			} else {
-				return [];
+				return array();
 			}
-		} elseif ($moduleOrMetadata && is_array($moduleOrMetadata)) {
+		} else if ($moduleOrMetadata && is_array($moduleOrMetadata)) {
 			foreach ($moduleOrMetadata as $row) {
 				if ($row['field_name'] == $hijackedField) {
 					$json = $row['field_annotation'];
@@ -1488,7 +1486,7 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 							return $setting;
 						}
 					}
-					return [];
+					return array();
 				}
 			}
 			throw new \Exception("Could not find field in metadata: '".$hijackedField."'");
@@ -1498,115 +1496,115 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	}
 
 	public static function findRecordCreateDates($pid, $records) {
-		$pullSize = 100;
-		$batchedRecords = [];
-		for ($i = 0; $i < count($records); $i += $pullSize) {
-			$batch = [];
-			for ($j = $i; $j < $i + $pullSize && $j < count($records); $j++) {
-				$batch[] = $records[$j];
-			}
-			if (!empty($batch)) {
-				$batchedRecords[] = $batch;
-			}
-		}
+	    $pullSize = 100;
+	    $batchedRecords = [];
+	    for ($i = 0; $i < count($records); $i += $pullSize) {
+	        $batch = [];
+	        for ($j = $i; $j < $i + $pullSize && $j < count($records); $j++) {
+	            $batch[] = $records[$j];
+            }
+	        if (!empty($batch)) {
+                $batchedRecords[] = $batch;
+            }
+        }
 
 		$logEventTable = method_exists('\REDCap', 'getLogEventTable') ? \REDCap::getLogEventTable($pid) : "redcap_log_event";
-		$module = Application::getModule();
+        $module = Application::getModule();
 		if (!method_exists($module, "query")) {
 			require_once(dirname(__FILE__)."/../../../redcap_connect.php");
 		}
 
-		$allTimestamps = [];
+        $allTimestamps = [];
 		$createTimestamps = [];
 		foreach ($batchedRecords as $batch) {
-			$params = array_merge([$pid], $batch);
-			$questionMarks = [];
-			while (count($questionMarks) < count($batch)) {
-				$questionMarks[] = "?";
-			}
-			$sql = "SELECT pk, ts, description FROM $logEventTable WHERE project_id = ? AND pk IN (".implode(",", $questionMarks).") AND event='INSERT' ORDER BY log_event_id";
-			$q = $module->query($sql, $params);
-			while ($row = $q->fetch_assoc()) {
-				if (!isset($allTimestamps[$row['pk']])) {
-					$allTimestamps[$row['pk']] = [];
-				}
-				$allTimestamps[$row['pk']][] = $row['ts'];
+            $params = array_merge([$pid], $batch);
+            $questionMarks = [];
+            while (count($questionMarks) < count($batch)) {
+                $questionMarks[] = "?";
+            }
+            $sql = "SELECT pk, ts, description FROM $logEventTable WHERE project_id = ? AND pk IN (".implode(",", $questionMarks).") AND event='INSERT' ORDER BY log_event_id";
+            $q = $module->query($sql, $params);
+            while ($row = $q->fetch_assoc()) {
+                if (!isset($allTimestamps[$row['pk']])) {
+                    $allTimestamps[$row['pk']] = [];
+                }
+                $allTimestamps[$row['pk']][] = $row['ts'];
 
-				if ($row['description'] == "Create record") {
-					if (!isset($createTimestamps[$row['pk']])) {
-						$createTimestamps[$row['pk']] = [];
-					}
-					$createTimestamps[$row['pk']][] = $row['ts'];
-				}
-			}
-			foreach (array_keys($allTimestamps) as $recordId) {
-				asort($allTimestamps[$recordId]);       // get earliest
-				if (isset($createTimestamps[$recordId])) {
-					rsort($createTimestamps[$recordId]);   // get latest
-				}
-			}
-		}
+                if ($row['description'] == "Create record") {
+                    if (!isset($createTimestamps[$row['pk']])) {
+                        $createTimestamps[$row['pk']] = [];
+                    }
+                    $createTimestamps[$row['pk']][] = $row['ts'];
+                }
+            }
+            foreach (array_keys($allTimestamps) as $recordId) {
+                asort($allTimestamps[$recordId]);       // get earliest
+                if (isset($createTimestamps[$recordId])) {
+                    rsort($createTimestamps[$recordId]);   // get latest
+                }
+            }
+        }
 
-		$created = [];
-		foreach (array_keys($allTimestamps) as $recordId) {
-			if (count($allTimestamps[$recordId]) > 0) {
-				$nodes = [];
-				$ts = isset($createTimestamps[$recordId]) ? $createTimestamps[$recordId][0] : $allTimestamps[$recordId][0];
-				$i = 0;
-				$len = 2;
-				while ($i < strlen($ts)) {
-					$sub = substr($ts, $i, $len);
-					$nodes[] = $sub;
-					$i += $len;
-				}
-				if (count($nodes) >= 7) {
-					$date = $nodes[0] . $nodes[1] . "-" . $nodes[2] . "-" . $nodes[3] . " " . $nodes[4] . ":" . $nodes[5] . ":" . $nodes[6];
-					$created[$recordId] = $date;
-				}
-			}
+        $created = [];
+        foreach (array_keys($allTimestamps) as $recordId) {
+		    if (count($allTimestamps[$recordId]) > 0) {
+                $nodes = [];
+                $ts = isset($createTimestamps[$recordId]) ? $createTimestamps[$recordId][0] : $allTimestamps[$recordId][0];
+                $i = 0;
+                $len = 2;
+                while ($i < strlen($ts)) {
+                    $sub = substr($ts, $i, $len);
+                    $nodes[] = $sub;
+                    $i += $len;
+                }
+                if (count($nodes) >= 7) {
+                    $date = $nodes[0] . $nodes[1] . "-" . $nodes[2] . "-" . $nodes[3] . " " . $nodes[4] . ":" . $nodes[5] . ":" . $nodes[6];
+                    $created[$recordId] = $date;
+                }
+            }
 		}
 		return $created;
 	}
 
 	private static function filterForTeams($field, $values, $redcapData, $queue) {
-		$newQueue = [];
-		if (in_array("", $values)) {
-			# ANY option
-			return $queue;
-		}
-		foreach ($values as $recordId) {
-			foreach ($redcapData as $row) {
-				if ($recordId == $row['record_id']) {
-					$teamRecords = [];
-					$team = preg_split("/\n/", $row[$field]);
-					foreach ($team as $line) {
-						if ($line) {
-							$items = preg_split("/\s*,\s*/", $line);
-							if (is_numeric($items[0])) {
-								$teamRecords[] = $items[0];
-							}
-						}
-					}
-					foreach ($teamRecords as $teamRecordId) {
-						if (in_array($teamRecordId, $queue) && !in_array($teamRecordId, $newQueue)) {
-							$newQueue[] = $teamRecordId;
-						}
-					}
-				}
-			}
-		}
-		return $newQueue;
-	}
+        $newQueue = array();
+        if (in_array("", $values)) {
+            # ANY option
+            return $queue;
+        }
+        foreach ($values as $recordId) {
+            foreach ($redcapData as $row) {
+                if ($recordId == $row['record_id']) {
+                    $teamRecords = array();
+                    $team = preg_split("/\n/", $row[$field]);
+                    foreach ($team as $line) {
+                        if ($line) {
+                            $items = preg_split("/\s*,\s*/", $line);
+                            if (is_numeric($items[0])) {
+                                $teamRecords[] = $items[0];
+                            }
+                        }
+                    }
+                    foreach ($teamRecords as $teamRecordId) {
+                        if (in_array($teamRecordId, $queue) && !in_array($teamRecordId, $newQueue)) {
+                            $newQueue[] = $teamRecordId;
+                        }
+                    }
+                }
+            }
+        }
+        return $newQueue;
+    }
 
 	private static function filterForField($field, $value, $redcapData, $queue) {
-		$newQueue = [];
+		$newQueue = array();
 		foreach ($queue as $recordId) {
 			foreach ($redcapData as $row) {
 				if (is_array($value)) {
 					if (empty($value)) {
 						# select all
 						$newQueue[] = $recordId;
-					} elseif (($recordId == $row['record_id']) && in_array($row[$field], $value)) {
+					} else if (($recordId == $row['record_id']) && in_array($row[$field], $value)) {
 						$newQueue[] = $recordId;
 					}
 				} else {
@@ -1635,8 +1633,8 @@ a.button { font-weight: bold; background-image: linear-gradient(45deg, #fff, #dd
 	private $module;
 	private $settingName;
 	protected $data;
-	private $adminEmail;
-	private $defaultFrom;
-	private $preparingMins;
-	private static $turnOffShutdownFunction = true;
+    private $adminEmail;
+    private $defaultFrom;
+    private $preparingMins;
+	private static $turnOffShutdownFunction = TRUE;
 }

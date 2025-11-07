@@ -9,10 +9,9 @@ use PHPUnit\Framework\TestCase;
 
 class OperatorTest extends TestCase
 {
-    public function testConstruct(): void
-    {
-        $operator = new Operator('+');
+	public function testConstruct(): void {
+		$operator = new Operator('+');
 
-        $this->assertEquals('+', $operator->getValue());
-    }
+		$this->assertEquals('+', $operator->getValue());
+	}
 }

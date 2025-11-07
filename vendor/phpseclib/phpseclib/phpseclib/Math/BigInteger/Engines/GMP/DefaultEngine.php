@@ -22,19 +22,18 @@ use phpseclib3\Math\BigInteger\Engines\GMP;
  */
 abstract class DefaultEngine extends GMP
 {
-    /**
-     * Performs modular exponentiation.
-     *
-     * @param GMP $x
-     * @param GMP $e
-     * @param GMP $n
-     * @return GMP
-     */
-    protected static function powModHelper(GMP $x, GMP $e, GMP $n)
-    {
-        $temp = new GMP();
-        $temp->value = gmp_powm($x->value, $e->value, $n->value);
+	/**
+	 * Performs modular exponentiation.
+	 *
+	 * @param GMP $x
+	 * @param GMP $e
+	 * @param GMP $n
+	 * @return GMP
+	 */
+	protected static function powModHelper(GMP $x, GMP $e, GMP $n) {
+		$temp = new GMP();
+		$temp->value = gmp_powm($x->value, $e->value, $n->value);
 
-        return $x->normalize($temp);
-    }
+		return $x->normalize($temp);
+	}
 }

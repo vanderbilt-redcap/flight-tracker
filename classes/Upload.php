@@ -27,7 +27,7 @@ class Upload
 				$mixed[$key] = self::utf8ize($value);
 			}
 		} elseif (is_string($mixed)) {
-			return mb_convert_encoding($mixed, 'UTF-8');
+			return utf8_encode($mixed);
 		}
 		return $mixed;
 	}
@@ -640,7 +640,7 @@ class Upload
 		self::filterOutDescriptiveFields($rows, $pid);
 		if (!is_numeric($pid)) {
 			Application::log("Non-numeric pid $pid");
-			echo "Non-numeric pid $pid\n";
+			echo "Non-numeric pid\n";
 			die();
 		}
 		if (REDCapManagement::versionGreaterThanOrEqualTo(REDCAP_VERSION, "12.5.2")) {
@@ -680,7 +680,7 @@ class Upload
 		}
 		if (!REDCapManagement::isValidToken($token)) {
 			Application::log("Upload::rows: second parameter should be token (= '$token')");
-			echo "Upload::rows: second parameter should be token (= '$token')\n";
+			echo "Upload::rows: second parameter should be a token\n";
 			die();
 		}
 		if (!$token || !$server) {

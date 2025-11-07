@@ -7,12 +7,11 @@ namespace Sabberworm\CSS\Parsing;
  */
 class OutputException extends SourceException
 {
-    /**
-     * @param string $sMessage
-     * @param int $iLineNo
-     */
-    public function __construct($sMessage, $iLineNo = 0)
-    {
-        parent::__construct($sMessage, $iLineNo);
-    }
+	/**
+	 * @param string $sMessage
+	 * @param int $iLineNo
+	 */
+	public function __construct($sMessage, $iLineNo = 0) {
+		parent::__construct($sMessage, $iLineNo);
+	}
 }

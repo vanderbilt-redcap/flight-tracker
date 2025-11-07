@@ -1,13 +1,13 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Download;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
 $metadata = Download::metadata($token, $server);
 
-$possHeaders = [
+$possHeaders = array(
 			"record_id",
 			"identifier_first_name", "identifier_last_name",
 			"summary_mentor",
@@ -18,8 +18,8 @@ $possHeaders = [
 			"newman_sheet2_mentor1", "newman_sheet2_mentor2",
 			"newman_new_mentor1",
 			"followup_primary_mentor",
-		];
-$headers = [];
+		);
+$headers = array();
 foreach ($metadata as $row) {
 	if (in_array($row['field_name'], $possHeaders)) {
 		array_push($headers, $row['field_name']);
@@ -27,13 +27,13 @@ foreach ($metadata as $row) {
 }
 
 $redcapData = Download::fields($token, $server, $headers);
-$lines = [];
+$lines = array();
 
-$linesRow = [];
+$linesRow = array();
 foreach ($redcapData as $row) {
 	if ($linesRow['record_id'] && ($row['record_id'] != $linesRow['record_id'])) {
 		$lines[] = $linesRow;
-		$linesRow = [];
+		$linesRow = array();
 	}
 	foreach ($headers as $item) {
 		if ($item != "followup_primary_mentor") {
@@ -42,7 +42,7 @@ foreach ($redcapData as $row) {
 			}
 		} else {
 			if (!isset($linesRow[$item])) {
-				$linesRow[$item] = [];
+				$linesRow[$item] = array();
 			}
 			if ($row['redcap_repeat_instrument'] == "followup") {
 				$linesRow[$item][] = $row[$item];
@@ -52,7 +52,7 @@ foreach ($redcapData as $row) {
 }
 $lines[] = $linesRow;
 
-$numHeaders = [];
+$numHeaders = array();
 foreach ($headers as $item) {
 	$numHeaders[$item] = 1;
 }
@@ -72,13 +72,13 @@ $filename = 'mentors_' . date('Ymd') .'_' . date('His').".csv";
 header("Pragma: public");
 header("Expires: 0");
 header("Cache-Control: must-revalidate, post-check=0, pre-check=0");
-header("Cache-Control: private", false);
+header("Cache-Control: private",false);
 header("Content-Type: application/octet-stream");
-header("Content-Disposition: attachment; filename=\"$filename\";");
+header("Content-Disposition: attachment; filename=\"$filename\";" );
 header("Content-Transfer-Encoding: binary");
 
 $fp = fopen('php://output', 'w');
-$firstRow = [];
+$firstRow = array();
 foreach ($headers as $item) {
 	for ($i = 0; $i < $numHeaders[$item]; $i++) {
 		$firstRow[] = $item;
@@ -86,7 +86,7 @@ foreach ($headers as $item) {
 }
 fputcsv($fp, $firstRow);
 foreach ($lines as $line) {
-	$thisRow = [];
+	$thisRow = array();
 	foreach ($line as $item => $values) {
 		if (is_array($values)) {
 			for ($i = 0; $i < $numHeaders[$item]; $i++) {
@@ -106,3 +106,5 @@ foreach ($lines as $line) {
 	fputcsv($fp, $thisRow);
 }
 fclose($fp);
+
+

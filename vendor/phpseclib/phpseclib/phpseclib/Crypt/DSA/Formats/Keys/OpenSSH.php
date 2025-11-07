@@ -26,93 +26,90 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class OpenSSH extends Progenitor
 {
-    /**
-     * Supported Key Types
-     *
-     * @var array
-     */
-    protected static $types = ['ssh-dss'];
+	/**
+	 * Supported Key Types
+	 *
+	 * @var array
+	 */
+	protected static $types = ['ssh-dss'];
 
-    /**
-     * Break a public or private key down into its constituent components
-     *
-     * @param string $key
-     * @param string $password optional
-     * @return array
-     */
-    public static function load($key, $password = '')
-    {
-        $parsed = parent::load($key, $password);
+	/**
+	 * Break a public or private key down into its constituent components
+	 *
+	 * @param string $key
+	 * @param string $password optional
+	 * @return array
+	 */
+	public static function load($key, $password = '') {
+		$parsed = parent::load($key, $password);
 
-        if (isset($parsed['paddedKey'])) {
-            list($type) = Strings::unpackSSH2('s', $parsed['paddedKey']);
-            if ($type != $parsed['type']) {
-                throw new \RuntimeException("The public and private keys are not of the same type ($type vs $parsed[type])");
-            }
+		if (isset($parsed['paddedKey'])) {
+			list($type) = Strings::unpackSSH2('s', $parsed['paddedKey']);
+			if ($type != $parsed['type']) {
+				throw new \RuntimeException("The public and private keys are not of the same type ($type vs $parsed[type])");
+			}
 
-            list($p, $q, $g, $y, $x, $comment) = Strings::unpackSSH2('i5s', $parsed['paddedKey']);
+			list($p, $q, $g, $y, $x, $comment) = Strings::unpackSSH2('i5s', $parsed['paddedKey']);
 
-            return compact('p', 'q', 'g', 'y', 'x', 'comment');
-        }
+			return compact('p', 'q', 'g', 'y', 'x', 'comment');
+		}
 
-        list($p, $q, $g, $y) = Strings::unpackSSH2('iiii', $parsed['publicKey']);
+		list($p, $q, $g, $y) = Strings::unpackSSH2('iiii', $parsed['publicKey']);
 
-        $comment = $parsed['comment'];
+		$comment = $parsed['comment'];
 
-        return compact('p', 'q', 'g', 'y', 'comment');
-    }
+		return compact('p', 'q', 'g', 'y', 'comment');
+	}
 
-    /**
-     * Convert a public key to the appropriate format
-     *
-     * @param BigInteger $p
-     * @param BigInteger $q
-     * @param BigInteger $g
-     * @param BigInteger $y
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePublicKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, array $options = [])
-    {
-        if ($q->getLength() != 160) {
-            throw new \InvalidArgumentException('SSH only supports keys with an N (length of Group Order q) of 160');
-        }
+	/**
+	 * Convert a public key to the appropriate format
+	 *
+	 * @param BigInteger $p
+	 * @param BigInteger $q
+	 * @param BigInteger $g
+	 * @param BigInteger $y
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePublicKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, array $options = []) {
+		if ($q->getLength() != 160) {
+			throw new \InvalidArgumentException('SSH only supports keys with an N (length of Group Order q) of 160');
+		}
 
-        // from <http://tools.ietf.org/html/rfc4253#page-15>:
-        // string    "ssh-dss"
-        // mpint     p
-        // mpint     q
-        // mpint     g
-        // mpint     y
-        $DSAPublicKey = Strings::packSSH2('siiii', 'ssh-dss', $p, $q, $g, $y);
+		// from <http://tools.ietf.org/html/rfc4253#page-15>:
+		// string    "ssh-dss"
+		// mpint     p
+		// mpint     q
+		// mpint     g
+		// mpint     y
+		$DSAPublicKey = Strings::packSSH2('siiii', 'ssh-dss', $p, $q, $g, $y);
 
-        if (isset($options['binary']) ? $options['binary'] : self::$binary) {
-            return $DSAPublicKey;
-        }
+		if (isset($options['binary']) ? $options['binary'] : self::$binary) {
+			return $DSAPublicKey;
+		}
 
-        $comment = isset($options['comment']) ? $options['comment'] : self::$comment;
-        $DSAPublicKey = 'ssh-dss ' . base64_encode($DSAPublicKey) . ' ' . $comment;
+		$comment = isset($options['comment']) ? $options['comment'] : self::$comment;
+		$DSAPublicKey = 'ssh-dss ' . base64_encode($DSAPublicKey) . ' ' . $comment;
 
-        return $DSAPublicKey;
-    }
+		return $DSAPublicKey;
+	}
 
-    /**
-     * Convert a private key to the appropriate format.
-     *
-     * @param BigInteger $p
-     * @param BigInteger $q
-     * @param BigInteger $g
-     * @param BigInteger $y
-     * @param BigInteger $x
-     * @param string $password optional
-     * @param array $options optional
-     * @return string
-     */
-    public static function savePrivateKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, BigInteger $x, $password = '', array $options = [])
-    {
-        $publicKey = self::savePublicKey($p, $q, $g, $y, ['binary' => true]);
-        $privateKey = Strings::packSSH2('si5', 'ssh-dss', $p, $q, $g, $y, $x);
+	/**
+	 * Convert a private key to the appropriate format.
+	 *
+	 * @param BigInteger $p
+	 * @param BigInteger $q
+	 * @param BigInteger $g
+	 * @param BigInteger $y
+	 * @param BigInteger $x
+	 * @param string $password optional
+	 * @param array $options optional
+	 * @return string
+	 */
+	public static function savePrivateKey(BigInteger $p, BigInteger $q, BigInteger $g, BigInteger $y, BigInteger $x, $password = '', array $options = []) {
+		$publicKey = self::savePublicKey($p, $q, $g, $y, ['binary' => true]);
+		$privateKey = Strings::packSSH2('si5', 'ssh-dss', $p, $q, $g, $y, $x);
 
-        return self::wrapPrivateKey($publicKey, $privateKey, $password, $options);
-    }
+		return self::wrapPrivateKey($publicKey, $privateKey, $password, $options);
+	}
 }

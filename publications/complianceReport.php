@@ -2,16 +2,16 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\Publications;
-use Vanderbilt\CareerDevLibrary\Citation;
-use Vanderbilt\CareerDevLibrary\Grant;
-use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\REDCapLookup;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\REDCapLookup;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -20,68 +20,68 @@ $userInfo = REDCapLookup::getUserInfo(Application::getUsername());
 $userEmail = $userInfo['user_email'];
 
 if (isset($_POST['message']) && isset($_POST['to']) && isset($_POST['subject'])) {
-	$mssg = Sanitizer::sanitizeWithoutStrippingHTML($_POST['message'], false);
-	$to = Sanitizer::sanitize($_POST['to']);
-	$subject = Sanitizer::sanitize($_POST['subject']);
-	$from = $userEmail ?: $adminEmail;
-	$cc = Sanitizer::sanitize($_POST['cc'] ?? "");
+    $mssg = Sanitizer::sanitizeWithoutStrippingHTML($_POST['message'], FALSE);
+    $to = Sanitizer::sanitize($_POST['to']);
+    $subject = Sanitizer::sanitize($_POST['subject']);
+    $from = $userEmail ?: $adminEmail;
+    $cc = Sanitizer::sanitize($_POST['cc'] ?? "");
 
-	$returnData = ["error" => "No action taken."];
-	if (
-		$mssg
-		&& $to
-		&& $from
-		&& REDCapManagement::isEmail($from)
-		&& REDCapManagement::isEmail($to)
-		&& (
-			!$cc
-			|| REDCapManagement::isEmail($cc)
-		)
-	) {
-		if (Application::isLocalhost()) {
-			$subject = "$to: ".$subject;
-			$to = "scott.j.pearson@vumc.org";
-		}
-		\REDCap::email($to, $from, $subject, $mssg, $cc);
-		$returnData = ["status" => "Successfully sent."];
-	} elseif (!$mssg) {
-		$returnData = ["error" => "No message."];
-	} elseif (!$adminEmail) {
-		$returnData = ["error" => "No from email set up."];
-	} else {
-		$returnData = ["error" => "Invalid email."];
-	}
+    $returnData = ["error" => "No action taken."];
+    if (
+        $mssg
+        && $to
+        && $from
+        && REDCapManagement::isEmail($from)
+        && REDCapManagement::isEmail($to)
+        && (
+            !$cc
+            || REDCapManagement::isEmail($cc)
+        )
+    ) {
+        if (Application::isLocalhost()) {
+            $subject = "$to: ".$subject;
+            $to = "scott.j.pearson@vumc.org";
+        }
+        \REDCap::email($to, $from, $subject, $mssg, $cc);
+        $returnData = ["status" => "Successfully sent."];
+    } else if (!$mssg) {
+        $returnData = ["error" => "No message."];
+    } else if (!$adminEmail) {
+        $returnData = ["error" => "No from email set up."];
+    } else {
+        $returnData = ["error" => "Invalid email."];
+    }
 
-	echo json_encode($returnData);
-	exit;
+    echo json_encode($returnData);
+    exit;
 }
 
 $headers = [
-	"Scholar Name",
-	"PMID<br>PMCID<br>NIHMS",
-	"Title &amp; Date",
-	"Associated Grants",
-	"Contact",
+    "Scholar Name",
+    "PMID<br>PMCID<br>NIHMS",
+    "Title &amp; Date",
+    "Associated Grants",
+    "Contact",
 ];
 
 $isTrainingOnly = isset($_GET['trainingFocused']) && ($_GET['trainingFocused'] == "on");
 $thisLink = Application::link("this");
 if (isset($_GET['record'])) {
-	$possibleRecords = Download::recordIds($token, $server);
-	$recordId = Sanitizer::getSanitizedRecord($_GET['record'], $possibleRecords);
-	$records = [];
-	if ($recordId) {
-		$records[] = $recordId;
-	} else {
-		die("Could not find record.");
-	}
-	$cohort = "";
-} elseif (isset($_GET['cohort']) && ($_GET['cohort'] !== "all")) {
-	$cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
-	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+    $possibleRecords = Download::recordIds($token, $server);
+    $recordId = Sanitizer::getSanitizedRecord($_GET['record'], $possibleRecords);
+    $records = [];
+    if ($recordId) {
+        $records[] = $recordId;
+    } else {
+        die("Could not find record.");
+    }
+    $cohort = "";
+} else if (isset($_GET['cohort']) && ($_GET['cohort'] !== "all")) {
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
-	$cohort = "all";
-	$records = Download::recordIds($token, $server);
+    $cohort = "all";
+    $records = Download::recordIds($token, $server);
 }
 $trainingParam = ($isTrainingOnly ? "&trainingFocused=on" : "");
 $grantListParam = !empty($grantsSearchedFor) ? "&grantList=".implode(",", $grantsSearchedFor) : "";
@@ -99,39 +99,39 @@ $threeMonthsPrior = strtotime($threeMonthsPriorDate);
 $grantsSearchedFor = isset($_GET['grantList']) ? processGrantList(Sanitizer::sanitize($_GET['grantList'])) : [];
 
 if (isset($_GET['csv'])) {
-	Application::increaseProcessingMax(8);
-	$csvData = [];
-	$csvData[] = [
-		"Scholar Name",
-		"PMID",
-		"PMCID",
-		"NIHMS",
-		"Title",
-		"Date",
-		"Associated Grants",
-	];
-	foreach ($records as $recordId) {
-		$rows = processRecord(
-			$token,
-			$server,
-			$pid,
-			$event_id,
-			$metadata,
-			$names,
-			$recordId,
-			$trainingExtraMonths,
-			$isTrainingOnly,
-			$threeMonthsPrior,
-			$headers,
-			$grantsSearchedFor,
-			false
-		);
-		$csvData = array_merge($csvData, $rows);
-	}
+        Application::increaseProcessingMax(8);
+        $csvData = [];
+        $csvData[] = [
+            "Scholar Name",
+            "PMID",
+            "PMCID",
+            "NIHMS",
+            "Title",
+            "Date",
+            "Associated Grants",
+        ];
+        foreach ($records as $recordId) {
+        $rows = processRecord(
+            $token,
+            $server,
+            $pid,
+            $event_id,
+            $metadata,
+            $names,
+            $recordId,
+            $trainingExtraMonths,
+            $isTrainingOnly,
+            $threeMonthsPrior,
+            $headers,
+            $grantsSearchedFor,
+            FALSE
+        );
+        $csvData = array_merge($csvData, $rows);
+    }
 
-	$date = date("Y_m_d");
-	REDCapManagement::outputAsCSV($csvData, "publicAccessCompliance_$date.csv");
-	exit;
+    $date = date("Y_m_d");
+    REDCapManagement::outputAsCSV($csvData, "publicAccessCompliance_$date.csv");
+    exit;
 }
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -139,54 +139,54 @@ require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 $itemsPerPage = isset($_GET['numPerPage']) ? REDCapManagement::sanitize($_GET['numPerPage']) : 50;
 $lastPage = (int) ceil(count($records) / $itemsPerPage);
 if (isset($_GET['pageNum'])) {
-	$page = REDCapManagement::sanitize($_GET['pageNum']);
-	if (count($records) / $itemsPerPage <= $page) {
-		$page = 1;
-	}
+    $page = REDCapManagement::sanitize($_GET['pageNum']);
+    if (count($records) / $itemsPerPage <= $page) {
+        $page = 1;
+    }
 } else {
-	$page = 1;
+    $page = 1;
 }
 if ($page < 1) {
-	die("Improper pageNum");
+    die("Improper pageNum");
 }
-$nextPage = ($page + 1 <= $lastPage) ? $page + 1 : false;
-$prevPage = ($page - 1 >= 1) ? $page - 1 : false;
+$nextPage = ($page + 1 <= $lastPage) ? $page + 1 : FALSE;
+$prevPage = ($page - 1 >= 1) ? $page - 1 : FALSE;
 
 $recordsForPage = [];
 for ($i = ($page - 1) * $itemsPerPage; ($i < $page * $itemsPerPage) && ($i < count($records)); $i++) {
-	$recordsForPage[] = $records[$i];
+    $recordsForPage[] = $records[$i];
 }
 
 $legend = [
-	"green" => [
-		"PMCIDs &amp; Dates" => "",
-		"Grants" => "Grants are cited by this publication with associated funding sources.",
-	],
-	"yellow" => [
-		"PMCIDs &amp; Dates" => "Not in compliance but within the $numMonths-month window.",
-		"Grants" => "No grants are cited by this publication -or- the grant has an unknown funding source. Therefore, compliance may or may not be an issue with this publication.",
-	],
-	"red" => [
-		"PMCIDs &amp; Dates" => "Not in compliance and out of the $numMonths-month window.",
-		"Grants" => "",
-	],
+    "green" => [
+        "PMCIDs &amp; Dates" => "",
+        "Grants" => "Grants are cited by this publication with associated funding sources.",
+    ],
+    "yellow" => [
+        "PMCIDs &amp; Dates" => "Not in compliance but within the $numMonths-month window.",
+        "Grants" => "No grants are cited by this publication -or- the grant has an unknown funding source. Therefore, compliance may or may not be an issue with this publication.",
+    ],
+    "red" => [
+        "PMCIDs &amp; Dates" => "Not in compliance and out of the $numMonths-month window.",
+        "Grants" => "",
+    ],
 ];
 
 $configParams = "";
 if ($cohort) {
-	$configParams .= "&cohort=".urlencode($cohort);
+    $configParams .= "&cohort=".urlencode($cohort);
 }
 if ($isTrainingOnly) {
-	$configParams .= $trainingParam;
+    $configParams .= $trainingParam;
 }
 $pageMssg = "On Page ".$page." of ".$lastPage;
-$prevPageLink = ($prevPage !== false) ? "<a href='$thisLink$configParams&pageNum=$prevPage&numPerPage=$itemsPerPage'>Previous</a>" : "No Previous Page";
-$nextPageLink = ($nextPage !== false) ? "<a href='$thisLink$configParams&pageNum=$nextPage&numPerPage=$itemsPerPage'>Next</a>" : "No Next Page";
+$prevPageLink = ($prevPage !== FALSE) ? "<a href='$thisLink$configParams&pageNum=$prevPage&numPerPage=$itemsPerPage'>Previous</a>" : "No Previous Page";
+$nextPageLink = ($nextPage !== FALSE) ? "<a href='$thisLink$configParams&pageNum=$nextPage&numPerPage=$itemsPerPage'>Next</a>" : "No Next Page";
 $spacing = "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;";
 if (isset($_GET['record'])) {
-	$togglePage = "";
+    $togglePage = "";
 } else {
-	$togglePage = "<p class='centered smaller'>".$prevPageLink.$spacing.$pageMssg.$spacing.$nextPageLink."</p>";
+    $togglePage = "<p class='centered smaller'>".$prevPageLink.$spacing.$pageMssg.$spacing.$nextPageLink."</p>";
 }
 
 $programName = Download::projectTitle($pid);
@@ -195,20 +195,20 @@ $grants = Download::oneFieldWithInstances($token, $server, "citation_grants");
 $includes = Download::oneFieldWithInstances($token, $server, "citation_include");
 $grantFrequency = [];
 foreach ($grants as $recordId => $instances) {
-	foreach ($instances as $instance => $grantStr) {
-		if ($includes[$recordId][$instance] == "1") {
-			$grantStr = preg_replace("/\s+/", "", $grantStr);
-			$awardNos = preg_split("/;/", $grantStr);
-			foreach ($awardNos as $awardNo) {
-				if ($awardNo) {
-					if (!isset($grantFrequency[$awardNo])) {
-						$grantFrequency[$awardNo] = 0;
-					}
-					$grantFrequency[$awardNo]++;
-				}
-			}
-		}
-	}
+    foreach ($instances as $instance => $grantStr) {
+        if ($includes[$recordId][$instance] == "1") {
+            $grantStr = preg_replace("/\s+/", "", $grantStr);
+            $awardNos = preg_split("/;/", $grantStr);
+            foreach ($awardNos as $awardNo) {
+                if ($awardNo) {
+                    if (!isset($grantFrequency[$awardNo])) {
+                        $grantFrequency[$awardNo] = 0;
+                    }
+                    $grantFrequency[$awardNo]++;
+                }
+            }
+        }
+    }
 }
 arsort($grantFrequency);
 $emailsJSON = json_encode($emails);
@@ -391,14 +391,14 @@ $pubWranglerLink = Application::link("/wrangler/include.php")."&wranglerType=Pub
 echo "<h2>Compliance Threshold: ".REDCapManagement::YMD2MDY($threeMonthsPriorDate)."</h2>";
 echo "<p class='centered max-width'>This only affects publications already included in the <a href='$pubWranglerLink'>Publication Wrangler</a>.</p>";
 if ($isTrainingOnly) {
-	echo "<p class='centered max-width'>If a scholar has a value for Start of Training (and End of Training) on the Identifiers form, then publications only during the training period <strong>plus $trainingExtraMonths months</strong> will be included; if the start of training does not exist, then a start date of ".REDCapManagement::YMD2MDY($pmcStartDate)." (the start date of the NIH Manuscript System) will be used for the record.</p>";
+    echo "<p class='centered max-width'>If a scholar has a value for Start of Training (and End of Training) on the Identifiers form, then publications only during the training period <strong>plus $trainingExtraMonths months</strong> will be included; if the start of training does not exist, then a start date of ".REDCapManagement::YMD2MDY($pmcStartDate)." (the start date of the NIH Manuscript System) will be used for the record.</p>";
 } else {
-	echo "<p class='centered max-width'>Publications earlier than ".REDCapManagement::YMD2MDY($pmcStartDate)." will be disregarded since the NIH Manuscript System only started on this date.</p>";
+    echo "<p class='centered max-width'>Publications earlier than ".REDCapManagement::YMD2MDY($pmcStartDate)." will be disregarded since the NIH Manuscript System only started on this date.</p>";
 }
 echo $cohortSelect;
 $trainingOnlyChecked = "";
 if ($isTrainingOnly) {
-	$trainingOnlyChecked = "checked";
+    $trainingOnlyChecked = "checked";
 }
 $noneCitedChecked = "";
 echo "<p class='centered'><input type='checkbox' id='trainingFocused' name='trainingFocused' $trainingOnlyChecked> <label for='trainingFocused'>Show Publications Only During Training + $trainingExtraMonths Months</label></p>";
@@ -413,31 +413,31 @@ echo "<table class='centered max-width bordered'>";
 echo "<thead>";
 echo "<tr>";
 foreach ($headers as $header) {
-	if ($header == "Contact") {
-		echo "<th colspan='2'>$header</th>";
-	} else {
-		echo "<th>$header</th>";
-	}
+    if ($header == "Contact") {
+        echo "<th colspan='2'>$header</th>";
+    } else {
+        echo "<th>$header</th>";
+    }
 }
 echo "</tr>";
 echo "</thead>";
 echo "<tbody>";
 foreach ($recordsForPage as $recordId) {
-	echo processRecord(
-		$token,
-		$server,
-		$pid,
-		$event_id,
-		$metadata,
-		$names,
-		$recordId,
-		$trainingExtraMonths,
-		$isTrainingOnly,
-		$threeMonthsPrior,
-		$headers,
-		$grantsSearchedFor,
-		true
-	);
+    echo processRecord(
+        $token,
+        $server,
+        $pid,
+        $event_id,
+        $metadata,
+        $names,
+        $recordId,
+        $trainingExtraMonths,
+        $isTrainingOnly,
+        $threeMonthsPrior,
+        $headers,
+        $grantsSearchedFor,
+        TRUE
+    );
 }
 echo "</tbody></table>";
 echo $togglePage;
@@ -455,254 +455,254 @@ $(document).ready(function() {
 </script>";
 
 function makeLegendForCompliance($legend) {
-	$types = [];
-	foreach (array_values($legend) as $descriptors) {
-		foreach (array_keys($descriptors) as $type) {
-			if (!in_array($type, $types)) {
-				$types[] = $type;
-			}
-		}
-	}
-	$html = "<table class='bordered centered max-width'>";
-	$html .= "<thead><tr>";
-	$html .= "<th>Color</th>";
-	foreach ($types as $type) {
-		$html .= "<th>For $type</th>";
-	}
-	$html .= "</tr></thead>";
-	$html .= "<tbody>";
-	foreach ($legend as $color => $descriptors) {
-		$descriptionTexts = [];
-		foreach ($types as $type) {
-			$description = $descriptors[$type];
-			if ($description) {
-				$descriptionTexts[$type] = "<td class='padded'>$description</td>";
-			} else {
-				$descriptionTexts[$type] = "<td>(Not used.)</td>";
-			}
-		}
-		if (!empty($descriptionTexts)) {
-			$html .= "<tr>";
-			$html .= "<td class='$color'>&nbsp;&nbsp;&nbsp;&nbsp;</td>";
-			foreach ($types as $type) {
-				$html .= $descriptionTexts[$type];
-			}
-			$html .= "</tr>";
-		}
-	}
-	$html .= "</tbody></table>";
-	return $html;
+    $types = [];
+    foreach (array_values($legend) as $descriptors) {
+        foreach (array_keys($descriptors) as $type) {
+            if (!in_array($type, $types)) {
+                $types[] = $type;
+            }
+        }
+    }
+    $html = "<table class='bordered centered max-width'>";
+    $html .= "<thead><tr>";
+    $html .= "<th>Color</th>";
+    foreach ($types as $type) {
+        $html .= "<th>For $type</th>";
+    }
+    $html .= "</tr></thead>";
+    $html .= "<tbody>";
+    foreach ($legend as $color => $descriptors) {
+        $descriptionTexts = [];
+        foreach ($types as $type) {
+            $description = $descriptors[$type];
+            if ($description) {
+                $descriptionTexts[$type] = "<td class='padded'>$description</td>";
+            } else {
+                $descriptionTexts[$type] = "<td>(Not used.)</td>";
+            }
+        }
+        if (!empty($descriptionTexts)) {
+            $html .= "<tr>";
+            $html .= "<td class='$color'>&nbsp;&nbsp;&nbsp;&nbsp;</td>";
+            foreach ($types as $type) {
+                $html .= $descriptionTexts[$type];
+            }
+            $html .= "</tr>";
+        }
+    }
+    $html .= "</tbody></table>";
+    return $html;
 }
 
 function processRecord($token, $server, $pid, $event_id, $metadata, $names, $recordId, $trainingExtraMonths, $isTrainingOnly, $threeMonthsPrior, $headers, $grantsSearchedFor, $returnHTML) {
-	$fields = [
-		"record_id",
-		"identifier_start_of_training",
-		"summary_training_start",
-		"summary_training_end",
-		"citation_pmid",
-		"citation_pmcid",
-		"citation_authors",
-		"citation_journal",
-		"citation_volume",
-		"citation_issue",
-		"citation_pages",
-		"citation_doi",
-		"citation_month",
-		"citation_year",
-		"citation_day",
-		"citation_grants",
-		"citation_title",
-		"citation_include",
-	];
-	$pmcStartTs = getPMCStartTs();
-	$agencies = [
-		"NIH" => "green",
-		"AHRQ" => "green",
-		"PCORI" => "green",
-		"VA" => "green",
-		"DOD" => "green",
-		"HHS" => "green",
-	];
+    $fields = [
+        "record_id",
+        "identifier_start_of_training",
+        "summary_training_start",
+        "summary_training_end",
+        "citation_pmid",
+        "citation_pmcid",
+        "citation_authors",
+        "citation_journal",
+        "citation_volume",
+        "citation_issue",
+        "citation_pages",
+        "citation_doi",
+        "citation_month",
+        "citation_year",
+        "citation_day",
+        "citation_grants",
+        "citation_title",
+        "citation_include",
+    ];
+    $pmcStartTs = getPMCStartTs();
+    $agencies = [
+        "NIH" => "green",
+        "AHRQ" => "green",
+        "PCORI" => "green",
+        "VA" => "green",
+        "DOD" => "green",
+        "HHS" => "green",
+    ];
 
-	$html = "";
-	$ary = [];
-	$redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
-	$recordStartDate = REDCapManagement::findField($redcapData, $recordId, "identifier_start_of_training");
-	if (!$recordStartDate) {
-		$recordStartDate = REDCapManagement::findField($redcapData, $recordId, "summary_training_start");
-	}
-	$recordEndDate = REDCapManagement::findField($redcapData, $recordId, "summary_training_end");
-	$recordStartTs = $recordStartDate ? strtotime($recordStartDate) : false;
-	$recordEndTs = $recordEndDate ? strtotime($recordEndDate) : false;
-	$timeframeStartTs = $recordStartTs;
-	$timeframeEndTs = $recordEndTs ? strtotime("+$trainingExtraMonths months", $recordEndTs) : false;
-	$name = $names[$recordId] ?? "";
-	$nameWithLink = Links::makeRecordHomeLink($pid, $recordId, $name);
-	$pubs = new Publications($token, $server, $metadata);
-	$pubs->setRows($redcapData);
-	$pmids = [];
-	foreach ($pubs->getCitations("pubmed") as $citation) {
-		if ($pmid = $citation->getPMID()) {
-			$pmids[] = $pmid;
-		}
-	}
-	$translator = (!isset($_GET['noNIHMS']) && !empty($pmids)) ? Publications::PMIDsToNIHMS($pmids, $pid) : [];
-	$numCitationsAllGo = 0;
-	$isFirst = true;
-	$numProblemRowsForRecord = 0;
-	foreach ([false, true] as $printResults) {
-		foreach ($pubs->getCitations("pubmed") as $citation) {
-			$pubTs = $citation->getTimestamp();
-			if ($isTrainingOnly && $timeframeStartTs) {
-				if ($timeframeEndTs) {
-					$isPubEligible = ($pubTs >= $timeframeStartTs) && ($pubTs <= $timeframeEndTs);
-				} else {
-					$isPubEligible = ($pubTs >= $timeframeStartTs);
-				}
-			} else {
-				$isPubEligible = ($pubTs >= $pmcStartTs);
-			}
+    $html = "";
+    $ary = [];
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, [$recordId]);
+    $recordStartDate = REDCapManagement::findField($redcapData, $recordId, "identifier_start_of_training");
+    if (!$recordStartDate) {
+        $recordStartDate = REDCapManagement::findField($redcapData, $recordId, "summary_training_start");
+    }
+    $recordEndDate = REDCapManagement::findField($redcapData, $recordId, "summary_training_end");
+    $recordStartTs = $recordStartDate ? strtotime($recordStartDate): FALSE;
+    $recordEndTs = $recordEndDate ? strtotime($recordEndDate): FALSE;
+    $timeframeStartTs = $recordStartTs;
+    $timeframeEndTs = $recordEndTs ? strtotime("+$trainingExtraMonths months", $recordEndTs) : FALSE;
+    $name = $names[$recordId] ?? "";
+    $nameWithLink = Links::makeRecordHomeLink($pid, $recordId, $name);
+    $pubs = new Publications($token, $server, $metadata);
+    $pubs->setRows($redcapData);
+    $pmids = [];
+    foreach ($pubs->getCitations("pubmed") as $citation) {
+        if ($pmid = $citation->getPMID()) {
+            $pmids[] = $pmid;
+        }
+    }
+    $translator = (!isset($_GET['noNIHMS']) && !empty($pmids)) ? Publications::PMIDsToNIHMS($pmids, $pid) : [];
+    $numCitationsAllGo = 0;
+    $isFirst = TRUE;
+    $numProblemRowsForRecord = 0;
+    foreach ([FALSE, TRUE] as $printResults) {
+        foreach ($pubs->getCitations("pubmed") as $citation) {
+            $pubTs = $citation->getTimestamp();
+            if ($isTrainingOnly && $timeframeStartTs) {
+                if ($timeframeEndTs) {
+                    $isPubEligible = ($pubTs >= $timeframeStartTs) && ($pubTs <= $timeframeEndTs);
+                } else {
+                    $isPubEligible = ($pubTs >= $timeframeStartTs);
+                }
+            } else {
+                $isPubEligible = ($pubTs >= $pmcStartTs);
+            }
 
-			if ($isPubEligible) {
-				$pmidUrl = $citation->getURL();
-				$pmcidUrl = $citation->getPMCURL();
-				$instance = $citation->getInstance();
-				$title = $citation->getVariable("title");
-				$pmid = $citation->getPMID();
-				$pubDate = $citation->getDate(true);
+            if ($isPubEligible) {
+                $pmidUrl = $citation->getURL();
+                $pmcidUrl = $citation->getPMCURL();
+                $instance = $citation->getInstance();
+                $title = $citation->getVariable("title");
+                $pmid = $citation->getPMID();
+                $pubDate = $citation->getDate(TRUE);
 
-				$pmcid = $citation->getPMCWithPrefix();
-				$isAllGoForCitation = ($pmcid != "");
-				if ($printResults) {
-					$pmcidWithLink = $pmcid ? Links::makeLink($pmcidUrl, $pmcid, true) : "No PMCID";
-					$pmidWithLink = Links::makeLink($pmidUrl, "PMID " . $pmid, true);
-					$titleWithLink = Links::makePublicationsLink($pid, $recordId, $event_id, $title, $instance, true);
-					$nihms = $translator[$pmid] ?? "";
-				} else {
-					$pmcidWithLink = "";
-					$pmidWithLink = "";
-					$nihms = "";
-					$titleWithLink = "";
-				}
-				if ($pmcid) {
-					$pubClass = "green";
-				} else {
-					$pubClass = ($pubTs < $threeMonthsPrior) ? "red" : "yellow";
-				}
-				$pmcidClass = $pubClass;
+                $pmcid = $citation->getPMCWithPrefix();
+                $isAllGoForCitation = ($pmcid != "");
+                if ($printResults) {
+                    $pmcidWithLink = $pmcid ? Links::makeLink($pmcidUrl, $pmcid, TRUE) : "No PMCID";
+                    $pmidWithLink = Links::makeLink($pmidUrl, "PMID " . $pmid, TRUE);
+                    $titleWithLink = Links::makePublicationsLink($pid, $recordId, $event_id, $title, $instance, TRUE);
+                    $nihms = $translator[$pmid] ?? "";
+                } else {
+                    $pmcidWithLink = "";
+                    $pmidWithLink = "";
+                    $nihms = "";
+                    $titleWithLink = "";
+                }
+                if ($pmcid) {
+                    $pubClass = "green";
+                } else {
+                    $pubClass = ($pubTs < $threeMonthsPrior) ? "red" : "yellow";
+                }
+                $pmcidClass = $pubClass;
 
-				$hasMatchedGrant = empty($grantsSearchedFor);
-				$grantsWithoutHTML = [];
-				if ($printResults) {
-					$grants = $citation->getGrantBaseAwardNumbers();
-					$grantHTML = [];
-					foreach ($grants as $baseAwardNo) {
-						$baseAwardNo = strtoupper($baseAwardNo);
-						if (in_array($baseAwardNo, $grantsSearchedFor)) {
-							$hasMatchedGrant = true;
-						}
-						$parseAry = Grant::parseNumber($baseAwardNo);
-						$membership = "Other";
-						$grantShading = "yellow";
-						foreach ($agencies as $agency => $shading) {
-							if ($agency == "HHS") {
-								if (Grant::isHHSGrant($baseAwardNo)) {
-									$membership = $agency;
-									$grantShading = $shading;
-									break;
-								}
-							} elseif (Grant::isMember($parseAry['institute_code'], $agency)) {
-								$membership = $agency;
-								$grantShading = $shading;
-								break;
-							}
-						}
-						$grantHTML[] = "<span class='$grantShading nobreak'>$baseAwardNo ($membership)</span>";
-						$grantsWithoutHTML[] = "$baseAwardNo ($membership)";
-						// $isAllGoForCitation = $isAllGoForCitation && ($grantShading != "red");
-					}
-					// $isAllGoForCitation = $isAllGoForCitation && !empty($grantHTML);
-				}
-				$isAllGoForCitation = $isAllGoForCitation && ($pubClass == "green");
+                $hasMatchedGrant = empty($grantsSearchedFor);
+                $grantsWithoutHTML = [];
+                if ($printResults) {
+                    $grants = $citation->getGrantBaseAwardNumbers();
+                    $grantHTML = [];
+                    foreach ($grants as $baseAwardNo) {
+                        $baseAwardNo = strtoupper($baseAwardNo);
+                        if (in_array($baseAwardNo, $grantsSearchedFor)) {
+                            $hasMatchedGrant = TRUE;
+                        }
+                        $parseAry = Grant::parseNumber($baseAwardNo);
+                        $membership = "Other";
+                        $grantShading = "yellow";
+                        foreach ($agencies as $agency => $shading) {
+                            if ($agency == "HHS") {
+                                if (Grant::isHHSGrant($baseAwardNo)) {
+                                    $membership = $agency;
+                                    $grantShading = $shading;
+                                    break;
+                                }
+                            } else if (Grant::isMember($parseAry['institute_code'], $agency)) {
+                                $membership = $agency;
+                                $grantShading = $shading;
+                                break;
+                            }
+                        }
+                        $grantHTML[] = "<span class='$grantShading nobreak'>$baseAwardNo ($membership)</span>";
+                        $grantsWithoutHTML[] = "$baseAwardNo ($membership)";
+                        // $isAllGoForCitation = $isAllGoForCitation && ($grantShading != "red");
+                    }
+                    // $isAllGoForCitation = $isAllGoForCitation && !empty($grantHTML);
+                }
+                $isAllGoForCitation = $isAllGoForCitation && ($pubClass == "green");
 
-				$showRow = (
-					!$isAllGoForCitation && $hasMatchedGrant
-					|| isset($_GET['record'])
-				);
+                $showRow = (
+                    !$isAllGoForCitation && $hasMatchedGrant
+                    || isset($_GET['record'])
+                );
 
-				if ($showRow && $printResults) {
-					$row = [];
-					$id = $recordId."___$instance";
-					$html .= "<tr>";
-					$html .= "<th>$nameWithLink</th>";
-					$row[] = $name;
-					$html .= "<td>";
-					$html .= "<span class='nobreak'>$pmidWithLink</span><br>";
-					$html .= "<span class='nobreak $pmcidClass'>$pmcidWithLink</span><br>";
-					$html .= ($nihms !== "") ? $nihms : "<span class='nobreak'>No NIHMS</span>";
-					$html .= "</td>";
-					$row[] = $pmid;
-					$row[] = $pmcid ? $pmcid : "Missing";
-					$row[] = ($nihms !== "") ? $nihms : "No NIHMS";
-					$html .= "<td><span class='nobreak $pubClass'>$pubDate</span><br>$titleWithLink</td>";
-					$row[] = $pubDate;
-					$row[] = $title;
-					if (empty($grantHTML)) {
-						$html .= "<td><span class='yellow'>None Cited.</span></td>";
-						$row[] = "None Cited.";
-					} else {
-						$html .= "<td>" . implode("<br>", $grantHTML) . "</td>";
-						$row[] = implode(", ", $grantsWithoutHTML);
-					}
-					$html .= "<td>";
-					$html .= "<input type='checkbox' id='check_$id' />";
-					$html .= "<input type='hidden' id='citation_$id' value='" . str_replace("'", "", $citation->getCitation()) . "' />";
-					$citationDate = $citation->getTimestamp() ? date("Y-m-d", $citation->getTimestamp()) : "";
-					$html .= "<input type='hidden' id='date_$id' value='$citationDate' />";
-					$html .= "</td>";
-					if ($isFirst) {
-						$html .= "<td rowspan='$numProblemRowsForRecord' style='vertical-align: middle;'><button onclick='composeComplianceEmail(\"$recordId\"); return false;'>Compose Email</button></td>";
-						$isFirst = false;
-					}
-					$html .= "</tr>";
+                if ($showRow && $printResults) {
+                    $row = [];
+                    $id = $recordId."___$instance";
+                    $html .= "<tr>";
+                    $html .= "<th>$nameWithLink</th>";
+                    $row[] = $name;
+                    $html .= "<td>";
+                    $html .= "<span class='nobreak'>$pmidWithLink</span><br>";
+                    $html .= "<span class='nobreak $pmcidClass'>$pmcidWithLink</span><br>";
+                    $html .= ($nihms !== "") ? $nihms : "<span class='nobreak'>No NIHMS</span>";
+                    $html .= "</td>";
+                    $row[] = $pmid;
+                    $row[] = $pmcid ? $pmcid : "Missing";
+                    $row[] = ($nihms !== "") ? $nihms : "No NIHMS";
+                    $html .= "<td><span class='nobreak $pubClass'>$pubDate</span><br>$titleWithLink</td>";
+                    $row[] = $pubDate;
+                    $row[] = $title;
+                    if (empty($grantHTML)) {
+                        $html .= "<td><span class='yellow'>None Cited.</span></td>";
+                        $row[] = "None Cited.";
+                    } else {
+                        $html .= "<td>" . implode("<br>", $grantHTML) . "</td>";
+                        $row[] = implode(", ", $grantsWithoutHTML);
+                    }
+                    $html .= "<td>";
+                    $html .= "<input type='checkbox' id='check_$id' />";
+                    $html .= "<input type='hidden' id='citation_$id' value='" . str_replace("'", "", $citation->getCitation()) . "' />";
+                    $citationDate = $citation->getTimestamp() ? date("Y-m-d", $citation->getTimestamp()) : "";
+                    $html .= "<input type='hidden' id='date_$id' value='$citationDate' />";
+                    $html .= "</td>";
+                    if ($isFirst) {
+                        $html .= "<td rowspan='$numProblemRowsForRecord' style='vertical-align: middle;'><button onclick='composeComplianceEmail(\"$recordId\"); return false;'>Compose Email</button></td>";
+                        $isFirst = FALSE;
+                    }
+                    $html .= "</tr>";
 
-					$ary[] = $row;
-				} elseif (!$showRow && $printResults) {
-					$numCitationsAllGo++;
-				} elseif (!$printResults && $showRow) {
-					$numProblemRowsForRecord++;
-				}
-			}
-		}
-	}
-	if ($numCitationsAllGo > 0) {
-		$html .= "<tr>";
-		$html .= "<th>$nameWithLink</th>";
-		$html .= "<td class='bolded' colspan='".(count($headers))."'><span class='greentext' style='font-size: 24px;'>&check;</span> $numCitationsAllGo Citations Already Good to Go</td>";
-		$html .= "</tr>";
-		$ary[] = [
-			$name,
-			"$numCitationsAllGo Citations Already Good to Go",
-		];
-	}
+                    $ary[] = $row;
+                } else if (!$showRow && $printResults) {
+                    $numCitationsAllGo++;
+                } else if (!$printResults && $showRow) {
+                    $numProblemRowsForRecord++;
+                }
+            }
+        }
+    }
+    if ($numCitationsAllGo > 0) {
+        $html .= "<tr>";
+        $html .= "<th>$nameWithLink</th>";
+        $html .= "<td class='bolded' colspan='".(count($headers))."'><span class='greentext' style='font-size: 24px;'>&check;</span> $numCitationsAllGo Citations Already Good to Go</td>";
+        $html .= "</tr>";
+        $ary[] = [
+            $name,
+            "$numCitationsAllGo Citations Already Good to Go",
+        ];
+    }
 
-	if ($returnHTML) {
-		return $html;
-	} else {
-		return $ary;
-	}
+    if ($returnHTML) {
+        return $html;
+    } else {
+        return $ary;
+    }
 }
 
 function getPMCStartTs() {
-	$pmcStartDate = "2008-04-01";
-	return strtotime($pmcStartDate);
+    $pmcStartDate = "2008-04-01";
+    return strtotime($pmcStartDate);
 }
 
 function processGrantList($grantList) {
-	if (!$grantList) {
-		return [];
-	}
-	$ary = preg_split("/\s*[,;]\s*/", $grantList);
-	return Grant::makeAryOfBaseAwardNumbers($ary);
+    if (!$grantList) {
+        return [];
+    }
+    $ary = preg_split("/\s*[,;]\s*/", $grantList);
+    return Grant::makeAryOfBaseAwardNumbers($ary);
 }

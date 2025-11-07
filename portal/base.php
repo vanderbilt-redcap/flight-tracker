@@ -1,7 +1,7 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Portal;
-use Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Portal;
+use \Vanderbilt\CareerDevLibrary\Application;
 
 require_once(__DIR__."/../classes/Autoload.php");
 

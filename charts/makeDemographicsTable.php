@@ -6,13 +6,13 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 # intended to be modified
 # for aggregate data
 
-use Vanderbilt\CareerDevLibrary\Links;
-use Vanderbilt\CareerDevLibrary\Grants;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\CareerDevLibrary\Grants;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__).'/baseWeb.php');
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -28,16 +28,16 @@ echo "<script>var data = {};</script>";
 $metadata = Download::metadata($token, $server);
 
 # fields to download: summary, scholars' survey, degree fields
-$fields = array_merge(["identifier_last_name", "identifier_first_name", "record_id"], CareerDev::$summaryFields, CareerDev::$checkFields, getDegreeFields($metadata));
+$fields = array_merge(array("identifier_last_name", "identifier_first_name", "record_id"), CareerDev::$summaryFields, CareerDev::$checkFields, getDegreeFields($metadata));
 $redcapData = Download::getIndexedRedcapData($token, $server, $fields, REDCapManagement::sanitizeCohort($_GET['cohort']), $metadata);
 
 # get the cohorts
-$cohortData = [];
+$cohortData = array();
 foreach ($redcapData as $recordId => $rows) {
 	foreach ($rows as $row) {
 		if ($currCohort = \Vanderbilt\FlightTrackerExternalModule\getCohort($row)) {
 			if (!isset($cohortData[$currCohort])) {
-				$cohortData[$currCohort] = [];
+                $cohortData[$currCohort] = array();
 			}
 			$cohortData[$currCohort][$recordId] = $row['identifier_first_name']." ".$row['identifier_last_name'];
 		}
@@ -48,13 +48,13 @@ foreach ($redcapData as $recordId => $rows) {
 function translateChoices($choiceStr) {
 	$choices2 = preg_split("/\s*\|\s*/", $choiceStr);
 	if (count($choices2) == 1) {
-		return [];
+		return array();
 	}
-	$choices = [];
-	foreach ($choices2 as $choice) {
+	$choices = array();
+	foreach($choices2 as $choice) {
 		$a = preg_split("/\s*,\s*/", $choice);
 		if (count($a) > 2) {
-			$b = [];
+			$b = array();
 			$b[] = $a[0];
 			$b[] = $a[1];
 			for ($i = 2; $i < count($a); $i++) {
@@ -71,16 +71,16 @@ function translateChoices($choiceStr) {
 # gets external k-to-r01 conversion rate
 # currently replaced by a summary field
 function get_converted_k_to_r01($row) {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
-	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
+    if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		return 1;
-	} elseif ($row['summary_first_external_k']) {
+	} else if ($row['summary_first_external_k']) {
 		if (REDCapManagement::datediff($row['summary_first_external_k'], date('Y-m-d'), "y") <= $extKLength) {
 			return 2;
 		} else {
 			return 3;
-		}
+		} 
 	} else {
 		return 4;
 	}
@@ -90,16 +90,16 @@ function get_converted_k_to_r01($row) {
 # gets any k-to-r01 conversion rate
 # currently replaced by a summary field
 function get_converted_any_k_to_r01($row) {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
-	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
+    if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		return 1;
-	} elseif ($row['summary_first_any_k']) {
+	} else if ($row['summary_first_any_k']) {
 		if (REDCapManagement::datediff($row['summary_first_any_k'], date('Y-m-d'), "y") <= $extKLength) {
 			return 2;
 		} else {
 			return 3;
-		}
+		} 
 	} else {
 		return 4;
 	}
@@ -108,10 +108,10 @@ function get_converted_any_k_to_r01($row) {
 # called dynamically
 # categories for any k conversion rate
 function get_converted_any_k_to_r01_cats() {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 
-	$ary = [];
+    $ary = array();
 	$ary[1] = "Converted Any K to R01-or-Equivalent";
 	$ary[2] = "Has Any K <= $extKLength Years Old; No R01-or-Equivalent";
 	$ary[3] = "Has Any K; No R01-or-Equivalent";
@@ -122,10 +122,10 @@ function get_converted_any_k_to_r01_cats() {
 # called dynamically
 # categories for external k conversion rate
 function get_converted_k_to_r01_cats() {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 
-	$ary = [];
+    $ary = array();
 	$ary[1] = "Converted External K to R01-or-Equivalent";
 	$ary[2] = "Has External K <= $extKLength Years Old; No R01-or-Equivalent";
 	$ary[3] = "Has External K; No R01-or-Equivalent";
@@ -135,8 +135,8 @@ function get_converted_k_to_r01_cats() {
 
 # get timespan from any k to r01/equivalent
 function get_any_timespan_less_than_ext_k_length($row) {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 	if ($row['summary_first_any_k'] && $row['summary_first_r01']) {
 		$val = REDCapManagement::datediff($row['summary_first_any_k'], $row['summary_first_r01'], "y");
 		if ($val > $extKLength) {
@@ -144,9 +144,9 @@ function get_any_timespan_less_than_ext_k_length($row) {
 		} else {
 			return 1;  // yes
 		}
-	} elseif ($row['summary_first_any_k']) {
+	} else if ($row['summary_first_any_k']) {
 		$d = strtotime($row['summary_first_any_k']);
-		$dnow = strtotime('now');
+		$dnow = strtotime('now'); 
 		$span = $dnow - $d;
 		if ($span > $extKLength * 3600 * 24 * 365) {
 			return 2; // no
@@ -160,8 +160,8 @@ function get_any_timespan_less_than_ext_k_length($row) {
 
 # get timespan from external k to r01/equivalent
 function get_timespan_less_than_ext_k_length($row) {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
 	if ($row['summary_first_external_k'] && $row['summary_first_r01']) {
 		$val = REDCapManagement::datediff($row['summary_first_external_k'], $row['summary_first_r01'], "y");
 		if ($val > $extKLength) {
@@ -169,9 +169,9 @@ function get_timespan_less_than_ext_k_length($row) {
 		} else {
 			return 1;  // yes
 		}
-	} elseif ($row['summary_first_external_k']) {
+	} else if ($row['summary_first_external_k']) {
 		$d = strtotime($row['summary_first_external_k']);
-		$dnow = strtotime('now');
+		$dnow = strtotime('now'); 
 		$span = $dnow - $d;
 		if ($span > $extKLength * 3600 * 24 * 365) {
 			return 2; // no
@@ -185,7 +185,7 @@ function get_timespan_less_than_ext_k_length($row) {
 
 # timespan categories
 function get_any_timespan_less_than_ext_k_length_cats() {
-	$ary = [];
+	$ary = array();
 	$ary[1] = "Yes";
 	$ary[2] = "No";
 	$ary[3] = "In Progress";
@@ -194,7 +194,7 @@ function get_any_timespan_less_than_ext_k_length_cats() {
 
 # timespan categories
 function get_timespan_less_than_ext_k_length_cats() {
-	$ary = [];
+	$ary = array();
 	$ary[1] = "Yes";
 	$ary[2] = "No";
 	$ary[3] = "In Progress";
@@ -202,7 +202,7 @@ function get_timespan_less_than_ext_k_length_cats() {
 }
 
 function get_average_age_at_first_r($data) {
-	$rs = [5, 6];
+	$rs = array(5, 6);
 	$ages = [];
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
@@ -216,14 +216,14 @@ function get_average_age_at_first_r($data) {
 		}
 	}
 	if (!empty($ages)) {
-		$sum = array_sum($ages);
-		return (floor($sum * 10 / count($ages)) / 10);
-	}
+        $sum = array_sum($ages);
+        return (floor($sum * 10 / count($ages)) / 10);
+    }
 	return 0;
 }
 
 function get_average_age_at_first_cda($data) {
-	$ages = [];
+	$ages = array();
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
@@ -234,16 +234,16 @@ function get_average_age_at_first_cda($data) {
 		}
 	}
 	if (!empty($ages)) {
-		$sum = array_sum($ages);
-		return (floor($sum * 10 / count($ages)) / 10);
-	}
+        $sum = array_sum($ages);
+        return (floor($sum * 10 / count($ages)) / 10);
+    }
 	return 0;
 }
 
 # calculates the average age of the group
 # skips over those with no date-of-birth
 function get_average_age($data) {
-	$ages = [];
+	$ages = array();
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
@@ -254,19 +254,19 @@ function get_average_age($data) {
 		}
 	}
 	if (!empty($ages)) {
-		$sum = array_sum($ages);
-		return (floor($sum * 10 / count($ages)) / 10);
-	} else {
-		return 0;
-	}
+        $sum = array_sum($ages);
+        return (floor($sum * 10 / count($ages)) / 10);
+    } else {
+	    return 0;
+    }
 }
 
 # get average conversion time for any K's
 function get_any_k_to_r_conversion_average($data) {
-	$ks = [1, 2, 3, 4];
-	$rs = [5, 6];
-	$diffs = [];
-
+	$ks = array(1, 2, 3, 4);
+	$rs = array(5, 6);
+	$diffs = array();
+	
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
@@ -278,34 +278,35 @@ function get_any_k_to_r_conversion_average($data) {
 							if (!$first_k) {
 								$first_k = $row['summary_award_date_'.$i];
 							}
-						} elseif (in_array($row['summary_award_type_'.$i], $rs)) {
+						}
+						else if (in_array($row['summary_award_type_'.$i], $rs)) {
 							if (!$first_r) {
 								$first_r = $row['summary_award_date_'.$i];
 							}
 						}
 					}
 				}
-
+		
 				if ($first_k && $first_r) {
 					$diffs[] = REDCapManagement::datediff($first_k, $first_r, "y");
 				}
 			}
 
 			if (!empty($diffs)) {
-				$sum = array_sum($diffs);
-				return (floor($sum * 10 / count($diffs)) / 10)." years";
-			}
+                $sum = array_sum($diffs);
+                return (floor($sum * 10 / count($diffs)) / 10)." years";
+            }
 			return 0;
 		}
 	}
 }
-
+		
 # get average conversion percentage for any K's
 function get_any_k_to_r_conversion_rate($data) {
-	$ks = [1, 2, 3, 4];
-	$rs = [5, 6];
-	$diffs = [];
-	$started = [];
+	$ks = array(1, 2, 3, 4);
+	$rs = array(5, 6);
+	$diffs = array();
+	$started = array();
 	$ageThreshold = Application::getSetting("individual_k_length");
 
 	foreach ($data as $recordId => $rows) {
@@ -323,7 +324,8 @@ function get_any_k_to_r_conversion_rate($data) {
 							if (!$first_k) {
 								$first_k = $row['summary_award_date_'.$i];
 							}
-						} elseif (in_array($row['summary_award_type_'.$i], $rs)) {
+						}
+						else if (in_array($row['summary_award_type_'.$i], $rs)) {
 							if (!$first_r) {
 								$first_r = $row['summary_award_date_'.$i];
 							}
@@ -334,25 +336,25 @@ function get_any_k_to_r_conversion_rate($data) {
 				if ($first_k && $first_r) {
 					$diffs[] = REDCapManagement::datediff($first_k, $first_r, "y");
 					$started[] = $first_k;
-				} elseif ($first_k && ($firstCDAAge > $ageThreshold)) {
+				} else if ($first_k && ($firstCDAAge > $ageThreshold)) {
 					$started[] = $first_k;
 				}
 			}
 		}
 	}
-	if (count($started) > 0) {
-		return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
-	} else {
-		return count($diffs);
-	}
+    if (count($started) > 0) {
+        return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
+    } else {
+        return count($diffs);
+    }
 }
 
 # get average conversion time for external K's
 function get_external_k_to_r_conversion_average($data) {
-	$ks = [3, 4];
-	$rs = [5, 6];
-	$diffs = [];
-
+	$ks = array(3, 4);
+	$rs = array(5, 6);
+	$diffs = array();
+	
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['redcap_repeat_instrument'] == "") {
@@ -364,7 +366,8 @@ function get_external_k_to_r_conversion_average($data) {
 							if (!$first_k) {
 								$first_k = $row['summary_award_date_'.$i];
 							}
-						} elseif (in_array($row['summary_award_type_'.$i], $rs)) {
+						}
+						else if (in_array($row['summary_award_type_'.$i], $rs)) {
 							if (!$first_r) {
 								$first_r = $row['summary_award_date_'.$i];
 							}
@@ -380,19 +383,19 @@ function get_external_k_to_r_conversion_average($data) {
 	}
 
 	$sum = array_sum($diffs);
-	if (count($diffs) > 0) {
-		return (floor($sum * 10 / count($diffs)) / 10)." years";
-	} else {
-		return $sum;
-	}
+    if (count($diffs) > 0) {
+        return (floor($sum * 10 / count($diffs)) / 10)." years";
+    } else {
+        return $sum;
+    }
 }
 
 # get average conversion rate for external K's
 function get_external_k_to_r_conversion_rate($data) {
-	$ks = [3, 4];
-	$rs = [5, 6];
-	$diffs = [];
-	$started = [];
+	$ks = array(3, 4);
+	$rs = array(5, 6);
+	$diffs = array();
+	$started = array();
 
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
@@ -405,7 +408,8 @@ function get_external_k_to_r_conversion_rate($data) {
 							if (!$first_k) {
 								$first_k = $row['summary_award_date_'.$i];
 							}
-						} elseif (in_array($row['summary_award_type_'.$i], $rs)) {
+						}
+						else if (in_array($row['summary_award_type_'.$i], $rs)) {
 							if (!$first_r) {
 								$first_r = $row['summary_award_date_'.$i];
 							}
@@ -422,18 +426,18 @@ function get_external_k_to_r_conversion_rate($data) {
 			}
 		}
 	}
-	if (count($started) > 0) {
-		return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
-	} else {
-		return count($diffs);
-	}
+    if (count($started) > 0) {
+        return count($diffs)." (".(floor(1000 * count($diffs) / count($started)) / 10)."%)";
+    } else {
+        return count($diffs);
+    }
 }
 
 # get percentage who have an internal K
 function get_internal_k($data) {
-	$int_ks = [1];
-	$people = [];
-	$ever = [];
+	$int_ks = array(1);
+	$people = array();
+	$ever = array();
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['identifier_first_name']) {
@@ -450,17 +454,17 @@ function get_internal_k($data) {
 			}
 		}
 	}
-	if (!empty($people)) {
-		return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
-	}
-	return 0;
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # get percentage who have an individual K/equivalent
 function get_individual_k_or_equiv($data) {
-	$ks = [3, 4];
-	$people = [];
-	$ever = [];
+	$ks = array(3, 4);
+	$people = array();
+	$ever = array();
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['identifier_first_name']) {
@@ -477,17 +481,17 @@ function get_individual_k_or_equiv($data) {
 			}
 		}
 	}
-	if (!empty($people)) {
-		return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
-	}
-	return 0;
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # get percentage who have a K12/KL2
 function get_k12_kl2($data) {
-	$k12s = [2];
-	$people = [];
-	$ever = [];
+	$k12s = array(2);
+	$people = array();
+	$ever = array();
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['identifier_first_name']) {
@@ -504,17 +508,17 @@ function get_k12_kl2($data) {
 			}
 		}
 	}
-	if (!empty($people)) {
-		return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
-	}
-	return 0;
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # get percentage who have a R01/equivalent
 function get_r01_or_equiv($data) {
-	$rs = [5, 6];
-	$people = [];
-	$ever = [];
+	$rs = array(5, 6);
+	$people = array();
+	$ever = array();
 	foreach ($data as $recordId => $rows) {
 		foreach ($rows as $row) {
 			if ($row['identifier_first_name']) {
@@ -531,16 +535,16 @@ function get_r01_or_equiv($data) {
 			}
 		}
 	}
-	if (!empty($people)) {
-		return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
-	}
-	return 0;
+    if (!empty($people)) {
+        return count($ever)." (".(floor(count($ever) * 1000 / count($people)) / 10)."%)";
+    }
+    return 0;
 }
 
 # returns the total number of publications in the database
 function get_total_publications($data) {
 	global $token, $server, $metadata;
-	$fields = ["record_id", "citation_include"];
+	$fields = array("record_id", "citation_include");
 	$redcapData = Download::getIndexedRedcapData($token, $server, $fields, REDCapManagement::sanitizeCohort($_GET['cohort']), $metadata);
 	$total = 0;
 	foreach ($redcapData as $recordId => $rows) {
@@ -549,23 +553,23 @@ function get_total_publications($data) {
 				$total++;
 			}
 		}
-	}
+	} 
 	return \Vanderbilt\FlightTrackerExternalModule\pretty($total);
 }
 
 # if $withinAllottedTime == true, counts if have first k within 5 years or first internal k within 3 years
 function get_current_cda($data, $withinAllottedTime = true) {
-	global $pid;
-	$intKLength = Application::getSetting("internal_k_length", $pid);
-	$k12Length = Application::getSetting("k12_kl2_length", $pid);
-	$extKLength = Application::getSetting("individual_k_length", $pid);
-	$ks = [3, 4];
-	$intK = [1];
-	$k12 = [2];
-	$rs = [5, 6];
+    global $pid;
+    $intKLength = Application::getSetting("internal_k_length", $pid);
+    $k12Length = Application::getSetting("k12_kl2_length", $pid);
+    $extKLength = Application::getSetting("individual_k_length", $pid);
+	$ks = array(3, 4);
+    $intK = array(1);
+    $k12 = array(2);
+	$rs = array(5, 6);
 	$today = date("Y-m-d");
-	$people = [];
-	$qualifiers = [];
+	$people = array();
+	$qualifiers = array();
 
 	foreach ($data as $recordId => $rows) {
 		$first_r = "";
@@ -589,7 +593,7 @@ function get_current_cda($data, $withinAllottedTime = true) {
 							if (!$first_k) {
 								if (!$withinAllottedTime) {
 									$qualified = true;
-								} elseif (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= $extKLength) {
+								} else if (REDCapManagement::datediff($row['summary_award_date_'.$i], $today, "y") <= $extKLength) {
 									$qualified = true;
 								}
 								$first_k = $row['summary_award_date_'.$i];
@@ -599,23 +603,23 @@ function get_current_cda($data, $withinAllottedTime = true) {
 					if (!$first_k) {
 						$first_int_k = "";
 						for ($i = 1; $i <= 15; $i++) {
-							if (in_array($row['summary_award_type_'.$i], $intK)) {
-								$kLength = $intKLength;
-							} elseif (in_array($row['summary_award_type_'.$i], $k12)) {
-								$kLength = $k12Length;
-							} else {
-								$kLength = 0;
-							}
-							if (in_array($row['summary_award_type_'.$i], array_merge($intK, $k12))) {
-								if (!$first_int_k) {
-									if (!$withinAllottedTime) {
-										$qualified = true;
-									} elseif (REDCapManagement::datediff($row['summary_award_date_' . $i], $today, "y") <= $kLength) {
-										$qualified = true;
-									}
-									$first_int_k = $row['summary_award_date_' . $i];
-								}
-							}
+                            if (in_array($row['summary_award_type_'.$i], $intK)) {
+                                $kLength = $intKLength;
+                            } else if (in_array($row['summary_award_type_'.$i], $k12)) {
+                                $kLength = $k12Length;
+                            } else {
+                                $kLength = 0;
+                            }
+                            if (in_array($row['summary_award_type_'.$i], array_merge($intK, $k12))) {
+                                if (!$first_int_k) {
+                                    if (!$withinAllottedTime) {
+                                        $qualified = true;
+                                    } else if (REDCapManagement::datediff($row['summary_award_date_' . $i], $today, "y") <= $kLength) {
+                                        $qualified = true;
+                                    }
+                                    $first_int_k = $row['summary_award_date_' . $i];
+                                }
+                            }
 						}
 					}
 				}
@@ -630,24 +634,24 @@ function get_current_cda($data, $withinAllottedTime = true) {
 
 $extKLength = Application::getSetting("individual_k_length", $pid);
 
-$tableRows = ["summary_degrees", "summary_gender", "summary_race_ethnicity", "summary_primary_dept", "summary_award_type_1","summary_ever_external_k_to_r01_equiv", "summary_ever_first_any_k_to_r01_equiv", "summary_ever_last_external_k_to_r01_equiv", "summary_ever_last_any_k_to_r01_equiv", "summary_ever_internal_k","summary_ever_individual_k_or_equiv","summary_ever_k12_kl2","summary_ever_r01_or_equiv","summary_disability","summary_disadvantaged","summary_urm"];
-$summaries = [
-	"Average Age" => ["get_average_age", $nameForAll],
-	"Average Age at First CDA" => ["get_average_age_at_first_cda", $nameForAll],
-	"Average Age at First R" => ["get_average_age_at_first_r", $nameForAll],
-	"Any-K-to-R Conversion Rate<br>(omit within $extKLength years)" => ["get_any_k_to_r_conversion_rate", "All with Any K"],
-	"Any-K-to-R Conversion Average" => ["get_any_k_to_r_conversion_average", "All who Converted"],
-	"External-K-to-R Conversion Rate<br>(omit within $extKLength years)" => ["get_external_k_to_r_conversion_rate", "All with External K"],
-	"External-K-to-R Conversion Average" => ["get_external_k_to_r_conversion_average", "All who Converted"],
-	"Ever Internal K" => ["get_internal_k", $nameForAll],
-	"Ever Individual K or Equivalent" => ["get_individual_k_or_equiv", $nameForAll],
-	"Ever K12/KL2" => ["get_k12_kl2", $nameForAll],
-	"Ever R01 or Equivalent" => ["get_r01_or_equiv", $nameForAll],
-	"Current CDA" => ["get_current_cda", $nameForAll],
-	"Total Finalized Publications" => ["get_total_publications", $nameForAll],
-];
+$tableRows = array("summary_degrees", "summary_gender", "summary_race_ethnicity", "summary_primary_dept", "summary_award_type_1","summary_ever_external_k_to_r01_equiv", "summary_ever_first_any_k_to_r01_equiv", "summary_ever_last_external_k_to_r01_equiv", "summary_ever_last_any_k_to_r01_equiv", "summary_ever_internal_k","summary_ever_individual_k_or_equiv","summary_ever_k12_kl2","summary_ever_r01_or_equiv","summary_disability","summary_disadvantaged","summary_urm");
+$summaries = array(
+	"Average Age" => array("get_average_age", $nameForAll),
+	"Average Age at First CDA" => array("get_average_age_at_first_cda", $nameForAll),
+	"Average Age at First R" => array("get_average_age_at_first_r", $nameForAll),
+	"Any-K-to-R Conversion Rate<br>(omit within $extKLength years)" => array("get_any_k_to_r_conversion_rate", "All with Any K"),
+	"Any-K-to-R Conversion Average" => array("get_any_k_to_r_conversion_average", "All who Converted"),
+	"External-K-to-R Conversion Rate<br>(omit within $extKLength years)" => array("get_external_k_to_r_conversion_rate", "All with External K"),
+	"External-K-to-R Conversion Average" => array("get_external_k_to_r_conversion_average", "All who Converted"),
+	"Ever Internal K" => array("get_internal_k", $nameForAll),
+	"Ever Individual K or Equivalent" => array("get_individual_k_or_equiv", $nameForAll),
+	"Ever K12/KL2" => array("get_k12_kl2", $nameForAll),
+	"Ever R01 or Equivalent" => array("get_r01_or_equiv", $nameForAll),
+	"Current CDA" => array("get_current_cda", $nameForAll),
+	"Total Finalized Publications" => array("get_total_publications", $nameForAll),
+);
 
-$tableChoices = [];
+$tableChoices = array();
 foreach ($tableRows as $tableRow) {
 	$found = false;
 	foreach ($metadata as $row) {
@@ -661,17 +665,17 @@ foreach ($tableRows as $tableRow) {
 				foreach ($tableChoices[$tableRow] as $choice => $value) {
 					if (preg_match("/^Medicine \[.+\]$/", $value)) {
 						$tableChoices[$tableRow]["/^Medicine/"] = "Medicine (All)";
-					} elseif (preg_match("/^Neurology \[.+\]$/", $value)) {
+					} else if (preg_match("/^Neurology \[.+\]$/", $value)) {
 						$tableChoices[$tableRow]["/^Neurology/"] = "Neurology (All)";
-					} elseif (preg_match("/^Pediatrics\/General Pediatrics \[.+\]$/", $value)) {
+					} else if (preg_match("/^Pediatrics\/General Pediatrics \[.+\]$/", $value)) {
 						$tableChoices[$tableRow]["/Pediatrics/"] = "Pediatrics (All)";
-					} elseif (preg_match("/^Psychiatry\/Adult Psychiatry \[.+\]$/", $value)) {
+					} else if (preg_match("/^Psychiatry\/Adult Psychiatry \[.+\]$/", $value)) {
 						$tableChoices[$tableRow]["/^Psychiatry/"] = "Psychiatry (All)";
-					} elseif (preg_match("/^Surgery \[.+\]$/", $value)) {
+					} else if (preg_match("/^Surgery \[.+\]$/", $value)) {
 						$tableChoices[$tableRow]["/Surgery/"] = "Surgery (All)";
-					} elseif (preg_match("/^Otolaryngology/", $value)) {
+					} else if (preg_match("/^Otolaryngology/", $value)) {
 						$tableChoices[$tableRow][$choice] = "Surgery/Otolaryngology [104781]";
-					} elseif (preg_match("/^Orthopaedics/", $value)) {
+					} else if (preg_match("/^Orthopaedics/", $value)) {
 						$tableChoices[$tableRow][$choice] = "Surgery/Orthopaedics and Rehabilitation [104475]";
 					}
 				}
@@ -683,10 +687,10 @@ foreach ($tableRows as $tableRow) {
 		$tableChoices[$tableRow] = $functionName();
 	}
 }
-$tableData = [];
-$cda = ["Total"];
+$tableData = array();
+$cda = array("Total");
 foreach ($tableChoices as $tableChoice => $tableAry) {
-	$tableData[$tableChoice] = [];
+	$tableData[$tableChoice] = array();
 	if (empty($tableAry)) {
 		$tableData[$tableChoice]["TYPE"] = "SINGLE";
 		foreach ($cda as $i => $date) {
@@ -695,8 +699,8 @@ foreach ($tableChoices as $tableChoice => $tableAry) {
 	} else {
 		foreach ($tableAry as $value => $label) {
 			$tableData[$tableChoice]["TYPE"] = "ARRAY";
-			$tableData[$tableChoice]["TOTAL"] = [];
-			$tableData[$tableChoice][$value] = [];
+			$tableData[$tableChoice]["TOTAL"] = array();
+			$tableData[$tableChoice][$value] = array();
 			foreach ($cda as $i => $date) {
 				$tableData[$tableChoice][$value][$i] = 0;
 				$tableData[$tableChoice]["TOTAL"][$i] = 0;
@@ -706,7 +710,7 @@ foreach ($tableChoices as $tableChoice => $tableAry) {
 }
 
 function getDegreeFields($metadata) {
-	$possible = [
+	 $possible = array(
 				"vfrs_graduate_degree",
 				"vfrs_degree2",
 				"vfrs_degree3",
@@ -728,8 +732,8 @@ function getDegreeFields($metadata) {
 				"check_degree3",
 				"check_degree4",
 				"check_degree5",
-				];
-	$included = [];
+				);
+	$included = array();
 	foreach ($metadata as $row) {
 		if (in_array($row['field_name'], $possible)) {
 			array_push($included, $row['field_name']);
@@ -743,9 +747,9 @@ function makeLink($row) {
 	$recordId = $row['record_id'];
 	$name = $row['identifier_first_name']." ".$row['identifier_last_name'];
 
-	$degrees = [];
+	$degrees = array();
 	$fields = getDegreeFields($metadata);
-	$legend = [
+	$legend = array(
 			1 => "MD",
 			2 => "PhD",
 			6 => "Other",
@@ -763,14 +767,14 @@ function makeLink($row) {
 			3 => "MPH",
 			4 => "MSCI",
 			5 => "MS",
-			];
+			);
 	foreach ($fields as $field) {
 		$value = $row[$field];
 		if ($value && !in_array($value, $degrees)) {
 			$degrees[] = $value;
 		}
 	}
-	$degreeLetters = [];
+	$degreeLetters = array();
 	foreach ($degrees as $degree) {
 		$degreeLetters[] = $legend[$degree];
 	}
@@ -784,7 +788,7 @@ function makeLink($row) {
 
 $noDate = [];
 $processed = [];
-foreach ($redcapData as $recordId => $rows) {
+foreach($redcapData as $recordId => $rows) {
 	foreach ($rows as $row) {
 		$categories = [0];
 		if ($row['summary_award_date_1']) {
@@ -802,20 +806,20 @@ foreach ($redcapData as $recordId => $rows) {
 				$categories[] = 4;
 			}
 			// if (in_array("KL2s + Int_Ks", $cohorts)) {
-			// $categories[] = 5;
+				// $categories[] = 5;
 			// }
 		}
 		if ($row['redcap_repeat_instrument'] == "") {
-			$link = makeLink($row);
+		    $link = makeLink($row);
 			if (!$row['summary_award_date_1']) {
 				$noDate[] = $row['record_id'];
 				$link .= "<span style='color: red;'> *no award*</span>";
 			}
 			if (!$row['summary_primary_dept']) {
-				$link .= "<span style='color: red;'> *no department*</span>";
+			    $link .= "<span style='color: red;'> *no department*</span>";
 			}
 			if (!$row['summary_race_ethnicity']) {
-				$link .= "<span style='color: red;'> *no race/ethnicity*</span>";
+			    $link .= "<span style='color: red;'> *no race/ethnicity*</span>";
 			}
 			if (!isset($_GET['CDAOnly']) || !in_array($row['record_id'], $noDate)) {
 				$processed[] = $link;
@@ -823,15 +827,15 @@ foreach ($redcapData as $recordId => $rows) {
 		}
 		if (!isset($_GET['CDAOnly']) || !in_array($row['record_id'], $noDate)) {
 			foreach ($tableRows as $tableRow) {
-				if (!isset($tableData[$tableRow])) {
-					$tableData[$tableRow] = [];
-				}
+                if (!isset($tableData[$tableRow])) {
+                    $tableData[$tableRow] = [];
+                }
 				if ($tableData[$tableRow]["TYPE"] == "SINGLE") {
 					foreach ($categories as $cat) {
 						if ($cat != "TYPE") {
-							if (!isset($tableData[$tableRow][$cat])) {
-								$tableData[$tableRow][$cat] = 0;
-							}
+						    if (!isset($tableData[$tableRow][$cat])) {
+						        $tableData[$tableRow][$cat] = 0;
+                            }
 							$tableData[$tableRow][$cat]++;
 						}
 					}
@@ -842,43 +846,43 @@ foreach ($redcapData as $recordId => $rows) {
 								$functionName = "get_".$tableRow;
 								$value = $functionName($row);
 								if ($value !== "") {
-									if (!isset($tableData[$tableRow][$value])) {
-										$tableData[$tableRow][$value] = [];
-									}
-									if (!isset($tableData[$tableRow]["TOTAL"])) {
-										$tableData[$tableRow]["TOTAL"] = [];
-									}
-									if (!isset($tableData[$tableRow][$value][$cat])) {
-										$tableData[$tableRow][$value][$cat] = 0;
-									}
-									if (!isset($tableData[$tableRow]["TOTAL"][$cat])) {
-										$tableData[$tableRow]["TOTAL"][$cat] = 0;
-									}
-									$previousCatAmount = (int) $tableData[$tableRow][$value][$cat];
-									$previousTotal = (int) $tableData[$tableRow]["TOTAL"][$cat];
-									$tableData[$tableRow][$value][$cat] = $previousCatAmount + 1;
+                                    if (!isset($tableData[$tableRow][$value])) {
+                                        $tableData[$tableRow][$value] = [];
+                                    }
+                                    if (!isset($tableData[$tableRow]["TOTAL"])) {
+                                        $tableData[$tableRow]["TOTAL"] = [];
+                                    }
+                                    if (!isset($tableData[$tableRow][$value][$cat])) {
+                                        $tableData[$tableRow][$value][$cat] = 0;
+                                    }
+                                    if (!isset($tableData[$tableRow]["TOTAL"][$cat])) {
+                                        $tableData[$tableRow]["TOTAL"][$cat] = 0;
+                                    }
+                                    $previousCatAmount = (int) $tableData[$tableRow][$value][$cat];
+                                    $previousTotal = (int) $tableData[$tableRow]["TOTAL"][$cat];
+                                    $tableData[$tableRow][$value][$cat] = $previousCatAmount + 1;
 									$tableData[$tableRow]["TOTAL"][$cat] = $previousTotal + 1;
 								}
 							}
 						}
-					} elseif ($row[$tableRow] !== "") {
+	    				} else if ($row[$tableRow] !== "") {
 						foreach ($categories as $cat) {
-							if (!isset($tableData[$tableRow][$row[$tableRow]])) {
-								$tableData[$tableRow][$row[$tableRow]] = [];
-							}
-							if (!isset($tableData[$tableRow][$row[$tableRow]][$cat])) {
-								$tableData[$tableRow][$row[$tableRow]][$cat] = 0;
-							}
-							if (!isset($tableData[$tableRow]["TOTAL"])) {
-								$tableData[$tableRow]["TOTAL"] = [];
-							}
-							if (!isset($tableData[$tableRow]["TOTAL"][$cat])) {
-								$tableData[$tableRow]["TOTAL"][$cat] = 0;
-							}
-							$previousCatAmount = (int) $tableData[$tableRow][$row[$tableRow]][$cat];
-							$previousTotal = (int) $tableData[$tableRow]["TOTAL"][$cat];
-							$tableData[$tableRow][$row[$tableRow]][$cat] = $previousCatAmount + 1;
-							$tableData[$tableRow]["TOTAL"][$cat] = $previousTotal + 1;
+                            if (!isset($tableData[$tableRow][$row[$tableRow]])) {
+                                $tableData[$tableRow][$row[$tableRow]] = [];
+                            }
+                            if (!isset($tableData[$tableRow][$row[$tableRow]][$cat])) {
+                                $tableData[$tableRow][$row[$tableRow]][$cat] = 0;
+                            }
+                            if (!isset($tableData[$tableRow]["TOTAL"])) {
+                                $tableData[$tableRow]["TOTAL"] = [];
+                            }
+                            if (!isset($tableData[$tableRow]["TOTAL"][$cat])) {
+                                $tableData[$tableRow]["TOTAL"][$cat] = 0;
+                            }
+                            $previousCatAmount = (int) $tableData[$tableRow][$row[$tableRow]][$cat];
+                            $previousTotal = (int) $tableData[$tableRow]["TOTAL"][$cat];
+                            $tableData[$tableRow][$row[$tableRow]][$cat] = $previousCatAmount + 1;
+                            $tableData[$tableRow]["TOTAL"][$cat] = $previousTotal + 1;
 						}
 					}
 				}
@@ -889,9 +893,9 @@ foreach ($redcapData as $recordId => $rows) {
 
 # get label for the table
 function getLabel($field, $metadata) {
-	global $pid;
-	$extKLength = Application::getSetting("individual_k_length", $pid);
-	foreach ($metadata as $row) {
+    global $pid;
+    $extKLength = Application::getSetting("individual_k_length", $pid);
+    foreach ($metadata as $row) {
 		if ($row['field_name'] == $field) {
 			return $row['field_label'];
 		}
@@ -911,10 +915,10 @@ echo "<h1>Grant Demographics</h1>\n";
 $cohortsObj = new Cohorts($token, $server, Application::getModule());
 $cohort = "";
 if ($_GET['cohort']) {
-	$cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
-	if (in_array($cohort, $cohortsObj->getCohortNames())) {
-		echo "<h2>For Cohort $cohort</h2>\n";
-	}
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    if (in_array($cohort, $cohortsObj->getCohortNames())) {
+        echo "<h2>For Cohort $cohort</h2>\n";
+    }
 }
 $js = "var base = \"?page=".urlencode(REDCapManagement::sanitize($_GET['page']))."&prefix=".REDCapManagement::sanitize($_GET['prefix'])."&pid=$pid\"; if ($(this).val()) { window.location.href = base+\"&cohort=\" + $(this).val(); } else { window.location.href = base; }";
 echo "<p class='centered'>Cohort: ".$cohortsObj->makeCohortSelect($cohort, $js)."</p>\n";
@@ -946,7 +950,7 @@ foreach ($summaries as $header => $ary) {
 	echo "<th>".$header."</th>";
 	echo "<td class='pool'>$pool</td>";
 	echo "<td>";
-	$func = "\\Vanderbilt\\FlightTrackerExternalModule\\".$func;
+    $func = "\\Vanderbilt\\FlightTrackerExternalModule\\".$func;
 	echo $func($redcapData);
 	echo "</td>";
 	echo "</tr>";
@@ -1005,12 +1009,12 @@ foreach ($cda as $i => $years) {
 	echo "<th class='border top' $onclick>$years</th>";
 }
 echo "</tr>";
-$headerInfo = [];
-$skip = ["TYPE", "TOTAL"];
+$headerInfo = array();
+$skip = array("TYPE", "TOTAL");
 foreach ($tableData as $tableRow => $ary) {
-	$headerInfo[$tableRow] = [];
+	$headerInfo[$tableRow] = array();
 	foreach ($ary as $value => $cats) {
-		$value = (string) $value;
+		$value = (String) $value;
 		if (!in_array($value, $skip)) {
 			if (isset($tableChoices[$tableRow][$value])) {
 				$headerInfo[$tableRow][$value] = $tableChoices[$tableRow][$value];
@@ -1021,7 +1025,7 @@ foreach ($tableData as $tableRow => $ary) {
 	}
 }
 foreach ($headerInfo as $tableRow => $ary) {
-	asort($headerInfo[$tableRow]);
+    asort($headerInfo[$tableRow]);
 }
 
 foreach ($tableData as $tableRow => $ary) {
@@ -1041,7 +1045,7 @@ foreach ($tableData as $tableRow => $ary) {
 				if (($value !== "TYPE") && ($value !== "TOTAL")) {
 					$printRow = false;
 					if (preg_match("/\(All\)$/", $choiceLabel)) {
-						$total = [];
+						$total = array();
 						# num is invalid because this is a general category
 						foreach ($cats as $i => $num) {
 							$total[$i] = 0;
@@ -1051,7 +1055,7 @@ foreach ($tableData as $tableRow => $ary) {
 								}
 							}
 							if ($total[$i] > 0) {
-								$denom = (int) $ary['TOTAL'][$i];
+							    $denom = (int) $ary['TOTAL'][$i];
 								$cats[$i] = ($denom > 0) ? (floor(1000 * $total[$i] / $denom) / 10)."%<br><span class='smallfont'>({$total[$i]})</span>" : "NaN";
 							} else {
 								$cats[$i] = "0%<br><span class='smallfont'>({$total[$i]})</span>";
@@ -1061,7 +1065,7 @@ foreach ($tableData as $tableRow => $ary) {
 							}
 						}
 						$printRow = true;
-					} elseif ($cats[0] > 0) {
+					} else if ($cats[0] > 0) {
 						foreach ($cats as $i => $num) {
 							if ($ary['TOTAL'][$i] > 0) {
 								$cats[$i] = (floor(1000 * $num / $ary['TOTAL'][$i]) / 10)."%<br><span class='smallfont'>($num)</span>";
@@ -1090,13 +1094,14 @@ foreach ($tableData as $tableRow => $ary) {
 echo "</table>";
 
 foreach ($cohortData as $cohort => $dataForCohort) {
-	if (is_countable($dataForCohort)) {
-		echo "<div class='centered' id='cohort_$cohort' style='display: none; padding-top: 72px; padding-bottom: 16px;'><h4>$cohort Cohort (".count($cohortData).")</h4><div class='normalfont'>";
-		$cohortStrs = [];
-		foreach ($dataForCohort as $cohortRecord => $cohortName) {
-			$cohortStrs[] = Links::makeRecordHomeLink($pid, $cohortRecord, "Record $cohortRecord - $cohortName");
-		}
-		echo implode("<br>", $cohortStrs);
-		echo "</div></div>";
-	}
+    if (is_countable($dataForCohort)) {
+        echo "<div class='centered' id='cohort_$cohort' style='display: none; padding-top: 72px; padding-bottom: 16px;'><h4>$cohort Cohort (".count($cohortData).")</h4><div class='normalfont'>";
+        $cohortStrs = [];
+        foreach ($dataForCohort as $cohortRecord => $cohortName) {
+            $cohortStrs[] = Links::makeRecordHomeLink($pid, $cohortRecord, "Record $cohortRecord - $cohortName");
+        }
+        echo implode("<br>", $cohortStrs);
+        echo "</div></div>";
+    }
 }
+

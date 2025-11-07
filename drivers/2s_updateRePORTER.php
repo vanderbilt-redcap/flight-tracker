@@ -25,6 +25,7 @@ function updateNIHRePORTERByName($token, $server, $pid, $records) {
 }
 
 function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutInstitutions) {
+	Application::log("Calling Update RePORTER for ".count($records)." records", $pid);
 	$metadata = Download::metadata($token, $server);
 	$metadataFields = REDCapManagement::getFieldsFromMetadata($metadata);
 	$allFirstNames = Download::firstnames($token, $server);
@@ -48,6 +49,7 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
 	$excludeList = Download::excludeList($token, $server, "exclude_grants", $metadataFields);
 	$universalInstitutions = array_unique(array_merge(CareerDev::getInstitutions($pid), Application::getHelperInstitutions($pid)));
 	foreach ($records as $recordId) {
+		Application::log("Processing NIHRePorter for Record $recordId", $pid);
 		$redcapData = Download::fieldsForRecords($token, $server, array_unique(array_merge(Application::getCustomFields($metadata), $reporterFields, ["identifier_institution"])), [$recordId]);
 		$existingGrants = [];
 		$maxInstance = 0;
@@ -77,7 +79,9 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
 				$reporter->searchPIAndAddToList($name, $institutions);
 			}
 		}
+		Application::log("Deduplication RePORTER data for Record $recordId", $pid);
 		$reporter->deduplicateData();
+		Application::log("Deduplication complete for Record $recordId", $pid);
 		$rows = $reporter->getUploadRows($maxInstance, $existingGrants);
 		foreach ($rows as $row) {
 			foreach ($row as $field => $value) {
@@ -88,10 +92,14 @@ function updateRePORTER($cat, $token, $server, $pid, $records, $searchWithoutIns
 		if (!empty($upload)) {
 			Application::log("Uploading ". count($upload)." rows from $cat RePORTER for Record $recordId", $pid);
 			Upload::rows($upload, $token, $server);
+		} else {
+			Application::log("Found no data for Record $recordId nothing to upload", $pid);
 		}
 	}
 	RePORTER::updateEndDates($token, $server, $pid, $records, $prefix, $instrument);
+	Application::log("Deduplicating redcap data by Key $applicationField | Prefix $prefix | $instrument", $pid);
 	REDCapManagement::deduplicateByKey($token, $server, $pid, $records, $applicationField, $prefix, $instrument);
+	Application::log("Deduplicating redcap data complete", $pid);
 
 	$today = date("Y-m-d");
 	if (REDCapManagement::dateCompare($today, "<=", "2022-03-01")) {

@@ -10,17 +10,17 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 if (isset($_POST['sectionsToShow'])) {
 	$allSections = MMAHelper::getAllSections();
 	$requestedSections = Sanitizer::sanitizeArray($_POST['sectionsToShow']);
-	$menteeRecordId = Sanitizer::sanitize($_POST['recordId']);
+    $menteeRecordId = Sanitizer::sanitize($_POST['recordId']);
 	$sectionsToShow = [];
 	foreach ($requestedSections as $section) {
 		if (isset($allSections[$section])) {
 			$sectionsToShow[] = $section;
 		}
 	}
-	$session = MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid);
+    $session = MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid);
 	$_SESSION[MMAHelper::STEPS_KEY] = $sectionsToShow;
-	$session[MMAHelper::STEPS_KEY] = $sectionsToShow;
-	MMAHelper::saveCurrentDatabaseSession($menteeRecordId, $pid, $session);
+    $session[MMAHelper::STEPS_KEY] = $sectionsToShow;
+    MMAHelper::saveCurrentDatabaseSession($menteeRecordId, $pid, $session);
 	if (empty($sectionsToShow)) {
 		echo json_encode(["error" => "No validated sections to show!"]);
 	} else {
@@ -122,10 +122,10 @@ $commentJS = MMAHelper::makeCommentJS($userid2, $menteeRecordId, $currInstance, 
 echo MMAHelper::getMenteeHead($hash, $menteeRecordId, $currInstance, $uidString, $userid2, $commentJS, $pid);
 $enqueuedSteps = $_SESSION[MMAHelper::STEPS_KEY] ?: MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid)[MMAHelper::STEPS_KEY] ?: [];
 if (!in_array($step, $enqueuedSteps)) {
-	$_SESSION[MMAHelper::STEPS_KEY] = [];
-	$session = MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid);
-	$session[MMAHelper::STEPS_KEY] = [];
-	MMAHelper::saveCurrentDatabaseSession($menteeRecordId, $pid, $session);
+    $_SESSION[MMAHelper::STEPS_KEY] = [];
+    $session = MMAHelper::getCurrentDatabaseSession($menteeRecordId, $pid);
+    $session[MMAHelper::STEPS_KEY] = [];
+    MMAHelper::saveCurrentDatabaseSession($menteeRecordId, $pid, $session);
 	$step = "initial";
 }
 $thisUrl = Application::link("this").$uidString;

@@ -29,7 +29,7 @@ if (preg_match("/^".MMAHelper::CUSTOM_QUESTIONS_SOURCE_KEY."/", $fieldName)) {
 $currentCustomResponses = MMAHelper::getCustomQuestionData($pid, $recordId, $instance, $adminField);
 
 if (MMAHelper::doesMentoringStartExist($recordId, $instance, $pid)) {
-	$start = "";
+    $start = "";
 }
 
 $recordIds = Download::recordIds($token, $server);
@@ -106,9 +106,9 @@ if ($type == "radio" || $type == "yesno") {
 			} else {
 				$uploadRow[$fieldName] = $value;
 			}
-			if ($start) {
-				$uploadRow["mentoring_start"] = $start;
-			}
+            if ($start) {
+                $uploadRow["mentoring_start"] = $start;
+            }
 			if ($userid) {
 				$uploadRow["mentoring_userid"] = $userid;
 			}
@@ -141,9 +141,9 @@ if ($type == "radio" || $type == "yesno") {
 		} else {
 			$uploadRow[$fieldName] = $value;
 		}
-		if ($start) {
-			$uploadRow["mentoring_start"] = $start;
-		}
+        if ($start) {
+            $uploadRow["mentoring_start"] = $start;
+        }
 		if ($userid) {
 			$uploadRow["mentoring_userid"] = $userid;
 		}
@@ -175,9 +175,9 @@ if ($type == "radio" || $type == "yesno") {
 			"mentoring_last_update" => date("Y-m-d"),
 			"mentoring_agreement_complete" => "2",
 		];
-		if ($start) {
-			$uploadRow["mentoring_start"] = $start;
-		}
+        if ($start) {
+            $uploadRow["mentoring_start"] = $start;
+        }
 	}
 }
 

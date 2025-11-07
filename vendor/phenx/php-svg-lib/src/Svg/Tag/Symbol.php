@@ -1,4 +1,5 @@
 <?php
+
 /**
  * @package php-svg-lib
  * @link    http://github.com/PhenX/php-svg-lib
@@ -12,23 +13,21 @@ use Svg\Style;
 
 class Symbol extends AbstractTag
 {
-    protected function before($attributes)
-    {
-        $surface = $this->document->getSurface();
+	protected function before($attributes) {
+		$surface = $this->document->getSurface();
 
-        $surface->save();
+		$surface->save();
 
-        $style = $this->makeStyle($attributes);
+		$style = $this->makeStyle($attributes);
 
-        $this->setStyle($style);
-        $surface->setStyle($style);
+		$this->setStyle($style);
+		$surface->setStyle($style);
 
-        $this->applyViewbox($attributes);
-        $this->applyTransform($attributes);
-    }
+		$this->applyViewbox($attributes);
+		$this->applyTransform($attributes);
+	}
 
-    protected function after()
-    {
-        $this->document->getSurface()->restore();
-    }
+	protected function after() {
+		$this->document->getSurface()->restore();
+	}
 }

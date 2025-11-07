@@ -4,68 +4,67 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class BarChart extends Chart
-{
-	public function __construct($cols, $labels, $id) {
-		$this->cols = $cols;
-		$this->labels = $labels;
-		$this->id = REDCapManagement::makeHTMLId($id);
-		$this->displayLegend = false;
-		$this->varName = $this->id."_".REDCapManagement::makeHash(8);
-	}
+class BarChart extends Chart {
+    public function __construct($cols, $labels, $id) {
+        $this->cols = $cols;
+        $this->labels = $labels;
+        $this->id = REDCapManagement::makeHTMLId($id);
+        $this->displayLegend = FALSE;
+        $this->varName = $this->id."_".REDCapManagement::makeHash(8);
+    }
 
-	public function setDataLabel($label) {
-		$this->mainDatasetLabel = $label;
-	}
+    public function setDataLabel($label) {
+        $this->mainDatasetLabel = $label;
+    }
 
-	public function isCategoricalData() {
-		$isAllNumeric = true;
-		foreach ($this->labels as $i => $label) {
-			if (!is_numeric($label)) {
-				$isAllNumeric = false;
-			}
-		}
-		return !$isAllNumeric;
-	}
+    public function isCategoricalData() {
+        $isAllNumeric = TRUE;
+        foreach ($this->labels as $i => $label) {
+            if (!is_numeric($label)) {
+                $isAllNumeric = FALSE;
+            }
+        }
+        return !$isAllNumeric;
+    }
 
-	public function showLegend($b) {
-		$this->displayLegend = $b;
-	}
+    public function showLegend($b) {
+        $this->displayLegend = $b;
+    }
 
-	public function setColor($color) {
-		$this->color = Chart::ensureHex($color) ?: $this->color;
-	}
+    public function setColor($color) {
+        $this->color = Chart::ensureHex($color) ?: $this->color;
+    }
 
-	public function setXAxisLabel($str) {
-		$this->xAxisLabel = $str;
-	}
+    public function setXAxisLabel($str) {
+        $this->xAxisLabel = $str;
+    }
 
-	public function setYAxisLabel($str) {
-		$this->yAxisLabel = $str;
-	}
+    public function setYAxisLabel($str) {
+        $this->yAxisLabel = $str;
+    }
 
-	public function getJSLocations() {
-		return [Application::link("js/Chart.min.js")];
-	}
+    public function getJSLocations() {
+        return [Application::link("js/Chart.min.js")];
+    }
 
-	public function getCSSLocations() {
-		return [];
-	}
+    public function getCSSLocations() {
+        return [];
+    }
 
-	public function addDataset($colsWithLabels, $color, $title) {
-		$this->additionalDatasets[] = ["data" => $colsWithLabels, "color" => $color, "title" => $title];
-	}
+    public function addDataset($colsWithLabels, $color, $title) {
+        $this->additionalDatasets[] = ["data" => $colsWithLabels, "color" => $color, "title" => $title];
+    }
 
-	public function getHTML($width, $height, $atBottomOfPage = false) {
-		$displayLegendText = json_encode($this->displayLegend);
-		if (empty($this->labels) || empty($this->cols)) {
-			return "";
-		}
-		$saveDiv = REDCapManagement::makeSaveDiv("canvas", $atBottomOfPage);
-		$html = "";
-		$html .= "<div style='margin: 0 auto; width: {$width}px; height: {$height}px;' class='chartWrapper'>";
-		$html .= "<canvas id='{$this->id}'></canvas>";
-		$html .= "<script>
+    public function getHTML($width, $height, $atBottomOfPage = FALSE) {
+        $displayLegendText = json_encode($this->displayLegend);
+        if (empty($this->labels) || empty($this->cols)) {
+            return "";
+        }
+        $saveDiv = REDCapManagement::makeSaveDiv("canvas", $atBottomOfPage);
+        $html = "";
+        $html .= "<div style='margin: 0 auto; width: {$width}px; height: {$height}px;' class='chartWrapper'>";
+        $html .= "<canvas id='{$this->id}'></canvas>";
+        $html .= "<script>
     const {$this->varName} = document.getElementById('{$this->id}').getContext('2d');
 
 let {$this->varName}_chart = new Chart({$this->varName}, {
@@ -77,39 +76,39 @@ let {$this->varName}_chart = new Chart({$this->varName}, {
         data: ".json_encode($this->cols).",
         backgroundColor: '{$this->color}',
       }";
-		foreach ($this->additionalDatasets as $dataset) {
-			$orderedData = [];
-			foreach ($this->labels as $label) {
-				$value = $dataset['data'][$label];
-				if (!$value) {
-					$value = 0;
-				}
-				$orderedData[] = $value;
-			}
-			$html .= ",
+        foreach ($this->additionalDatasets as $dataset) {
+            $orderedData = [];
+            foreach ($this->labels as $label) {
+                $value = $dataset['data'][$label];
+                if (!$value) {
+                    $value = 0;
+                }
+                $orderedData[] = $value;
+            }
+            $html .= ",
             {
                 label: '{$dataset['title']}',
                 data: ".json_encode($orderedData).",
                 backgroundColor: '{$dataset['color']}',
             }";
-		}
-		$html .= "]
+        }
+        $html .= "]
     },
     options: {
       legend: {
         display: $displayLegendText,
       },
       scales: {";
-		if ($this->xAxisLabel) {
-			$html .= "
+        if ($this->xAxisLabel) {
+            $html .= "
             x: {
               title: {
                 display: true,
                 text: '{$this->xAxisLabel}',
               }
             },";
-		}
-		$html .= "
+        }
+        $html .= "
         y: {
           title: {
             display: true,
@@ -126,18 +125,18 @@ $(document).ready(function() {
     $('#{$this->id}').parent().append(\"$saveDiv\");
 });
 </script>";
-		$html .= "</div>";
-		return $html;
-	}
+        $html .= "</div>";
+        return $html;
+    }
 
-	protected $varName;
-	protected $xAxisLabel = "";
-	protected $yAxisLabel = "";
-	protected $cols = [];
-	protected $labels = [];
-	protected $color = "#d4d4eb";
-	protected $id = "";
-	protected $displayLegend = true;
-	protected $additionalDatasets = [];
-	protected $mainDatasetLabel = "";
+    protected $varName;
+    protected $xAxisLabel = "";
+    protected $yAxisLabel = "";
+    protected $cols = [];
+    protected $labels = [];
+    protected $color = "#d4d4eb";
+    protected $id = "";
+    protected $displayLegend = TRUE;
+    protected $additionalDatasets = [];
+    protected $mainDatasetLabel = "";
 }

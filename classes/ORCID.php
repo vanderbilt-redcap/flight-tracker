@@ -443,7 +443,7 @@ class ORCID
 
 			list($resp, $output) = URLManagement::downloadURL($url);
 			if ($resp == 200) {
-				$xml = simplexml_load_string(mb_convert_encoding($output, 'UTF-8'));
+				$xml = simplexml_load_string(utf8_encode($output));
 			}
 			$i++;
 		} while ((!$xml || ($resp != 200)) && ($numRetries > $i));

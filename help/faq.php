@@ -1,8 +1,8 @@
 <?php
 
-use Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\Links;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDevHelp;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Links;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");

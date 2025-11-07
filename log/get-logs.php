@@ -1,6 +1,6 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
@@ -12,10 +12,10 @@ $limitClause = "limit $limit offset $offset";
 
 $whereClause = "";
 if (isset($_REQUEST['search']['value'])) {
-	$value = Sanitizer::sanitize($_REQUEST['search']['value']);
-	$whereClause = "WHERE message LIKE ?";
-	$params1[] = "%$value%";
-	$params2[] = "%$value%";
+    $value = Sanitizer::sanitize($_REQUEST['search']['value']);
+    $whereClause = "WHERE message LIKE ?";
+    $params1[] = "%$value%";
+    $params2[] = "%$value%";
 }
 
 $columnName = 'count(1)';
@@ -31,9 +31,9 @@ $results = $module->queryLogs("
 ", $params2);
 
 $rows = [];
-while ($row = $results->fetch_assoc()) {
-	$sanitizedRow = Sanitizer::sanitizeArray($row);
-	$sanitizedRow['message'] = html_entity_decode($sanitizedRow['message']);
+while($row = $results->fetch_assoc()){
+    $sanitizedRow = Sanitizer::sanitizeArray($row);
+    $sanitizedRow['message'] = html_entity_decode($sanitizedRow['message']);
 	$rows[] = $sanitizedRow;
 }
 $json = json_encode($rows);

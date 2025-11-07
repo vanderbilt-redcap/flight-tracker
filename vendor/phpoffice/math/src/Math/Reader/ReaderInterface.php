@@ -6,5 +6,5 @@ use PhpOffice\Math\Math;
 
 interface ReaderInterface
 {
-    public function read(string $content): ?Math;
+	public function read(string $content): ?Math;
 }

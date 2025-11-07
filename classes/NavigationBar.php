@@ -4,8 +4,7 @@ namespace Vanderbilt\CareerDevLibrary;
 
 require_once(__DIR__ . '/ClassLoader.php');
 
-class NavigationBar
-{
+class NavigationBar {
 	# $ary is associative array of $menuLabel => $link
 	public function addMenu($title, $ary) {
 		$this->menu[$title] = $ary;
@@ -38,35 +37,35 @@ class NavigationBar
 			$pid = REDCapManagement::sanitize($_GET['pid']);
 		}
 		if (preg_match("/^http/", $link) && !preg_match("/^https:\/\/localhost\//", $link)) {
-			return $link;
-		} elseif ($link == APP_PATH_WEBROOT_FULL."index.php?action=myprojects") {
-			return $link;
-		} elseif (!preg_match("/pid=\d+/", $link)) {
+            return $link;
+        } else if ($link == APP_PATH_WEBROOT_FULL."index.php?action=myprojects") {
+            return $link;
+		} else if (!preg_match("/pid=\d+/", $link)) {
 			if (!preg_match("/\?/", $link)) {
 				$link .= "?pid=".$pid;
-			} elseif (preg_match("/\?\w/", $link)) {
+			} else if (preg_match("/\?\w/", $link)) {
 				$link .= "&pid=".$pid;
 			} else {
 				$link .= "pid=".$pid;
 			}
 		}
 		if (method_exists("\Vanderbilt\CareerDevLibrary\Application", "isRecordPage") && Application::isRecordPage($link) && (isset($_GET['id']) || isset($_GET['record']))) {
-			if (isset($_GET['record'])) {
-				$record = REDCapManagement::sanitize($_GET['record']);
-			} else {
-				$record = REDCapManagement::sanitize($_GET['id']);
-			}
-			$link .= "&record=$record";
-		}
+		    if (isset($_GET['record'])) {
+		        $record = REDCapManagement::sanitize($_GET['record']);
+            } else {
+		        $record = REDCapManagement::sanitize($_GET['id']);
+            }
+		    $link .= "&record=$record";
+        }
 
 		return $link;
 	}
 
 	private static function isJavascript($link) {
 		if (preg_match("/;$/", $link)) {
-			return true;
+			return TRUE;
 		}
-		return false;
+		return FALSE;
 	}
 
 	public function getHTML() {
@@ -77,10 +76,10 @@ class NavigationBar
 				$ary = $item;
 				$html .= "<div class='w3-dropdown-hover w3-mobile'>\n";
 				if (preg_match("/<img/", $title)) {
-					$html .= "<button class='w3-button with-image'>$title</button>\n";
-				} else {
-					$html .= "<button class='w3-button'>$title</button>\n";
-				}
+                    $html .= "<button class='w3-button with-image'>$title</button>\n";
+                } else {
+                    $html .= "<button class='w3-button'>$title</button>\n";
+                }
 				$html .= "<div class='w3-dropdown-content w3-bar-block w3-dark-grey'>\n";
 				foreach ($ary as $menuTitle => $menuLink) {
 					if (self::isJavascript($menuLink)) {
@@ -105,5 +104,5 @@ class NavigationBar
 		return $html;
 	}
 
-	private $menu = [];
+	private $menu = array();
 }

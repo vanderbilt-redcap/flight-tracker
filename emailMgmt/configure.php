@@ -3,47 +3,47 @@
 namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\EmailManager;
+use \Vanderbilt\CareerDevLibrary\EmailManager;
 use Vanderbilt\CareerDevLibrary\Portal;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
 
-$allowFollowups = false;
+$allowFollowups = FALSE;
 $realPost = getRealInput('POST');
 $metadata = Download::metadata($token, $server);  // must load on save and reload after save
-$hasErrors = false;
+$hasErrors = FALSE;
 if (count($_POST) > 0) {
 	# saveSetting evokes a separate $mgr instance; must do first so that save will take effect
-	$mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
+    $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
 	list($message, $settingName, $emailSetting) = translatePostToEmailSetting($realPost);
 	if (($emailSetting == EmailManager::getBlankSetting())) {
 		$html = "Some settings were left unfilled. Please check your configuration again. ".$message;
 		$noteClass = "red";
-		$hasErrors = true;
+		$hasErrors = TRUE;
 	} else {
-		$feedback = $mgr->saveSetting($settingName, $emailSetting);
+	    $feedback = $mgr->saveSetting($settingName, $emailSetting);
 		if (isset($feedback['error'])) {
 			$html = "Error! ".$feedback['error'];
 			$noteClass = "red";
-			$hasErrors = true;
-		} elseif (isset($feedback['errors'])) {
+			$hasErrors = TRUE;
+		} else if (isset($feedback['errors'])) {
 			$html = "Errors! ".implode("; ", $feedback['errors']);
 			$noteClass = "red";
-			$hasErrors = true;
+			$hasErrors = TRUE;
 		} else {
 			$html = "Save successful. You may make modifications or scroll down to the bottom in order to test.";
 			$noteClass = "green";
 		}
 	}
-	if (!isset($_POST['noalert'])) {
-		echo "<div id='note' class='$noteClass centered padded'>$html</div>\n";
-	}
+    if (!isset($_POST['noalert'])) {
+        echo "<div id='note' class='$noteClass centered padded'>$html</div>\n";
+    }
 	$metadata = Download::metadata($token, $server);  // must load on save and reload after save
 }
 
@@ -59,108 +59,77 @@ $messages = $mgr->getMessageHash();
 $currSettingName = "";
 if (isset($_POST['name'])) {
 	$currSettingName = Sanitizer::sanitize($_POST['name']);
-} elseif (isset($_GET[$selectName])) {
+} else if (isset($_GET[$selectName])) {
 	$currSettingName = Sanitizer::sanitize($_GET[$selectName]);
 }
 $currSetting = $mgr->getItem($currSettingName);
 
 $isReadonly = "";
-$isDisabled = "";
+$isDisabled= "";
 if ($currSetting['enabled']) {
 	$isDisabled = " disabled";
 	$isReadonly = " readonly";
 }
 
 # defaults
-$indivs = "$isDisabled";
-$filteredGroup = "checked";
-$cohortGroup = "$isDisabled";
-$all = "checked";
-$some = "$isDisabled";
-$surveyCompleteNo = "$isDisabled";
-$surveyCompleteYes = "$isDisabled";
-$surveyCompleteNoMatter = "checked";
-$lastCompleteMonths = 12;
-$maxEmails = 5;
-$newRecordsSince = 6;
-$maxSpecified = "$isDisabled";
-$newRecordsSinceSpecified = "$isDisabled";
-$r01No = "$isDisabled";
-$r01Yes = "$isDisabled";
-$r01Agnostic = "checked";
+$indivs = "$isDisabled"; $filteredGroup = "checked"; $cohortGroup = "$isDisabled";
+$all = "checked"; $some = "$isDisabled";
+$surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "checked";
+$lastCompleteMonths = 12; $maxEmails = 5; $newRecordsSince = 6;
+$maxSpecified = "$isDisabled"; $newRecordsSinceSpecified = "$isDisabled";
+$r01No = "$isDisabled"; $r01Yes = "$isDisabled"; $r01Agnostic = "checked";
 $traineeClassAlumni = "";
 $traineeClassCurrent = "";
 $traineeClassAll = "";
 
 if (isset($_POST['recipient'])) {
-	if ($_POST['recipient'] == "individuals") {
-		$indivs = "checked";
-		$filteredGroup = "$isDisabled";
-		$cohortGroup = "$isDisabled";
-	} elseif ($_POST['recipient'] == "filtered_group") {
-		if ($_POST['filter'] == "some") {
-			$all = "$isDisabled";
-			$some = "checked";
-			$cohortGroup = "$isDisabled";
-			if ($_POST['survey_complete'] == "yes") {
-				$surveyCompleteNo = "$isDisabled";
-				$surveyCompleteYes = "checked";
-				$surveyCompleteNoMatter = "$isDisabled";
-				if ($_POST['last_complete_months']) {
-					$lastCompleteMonths = REDCapManagement::sanitize($_POST['last_complete_months']);
-				}
-			} elseif ($_POST['survey_complete'] == "no") {
-				$surveyCompleteNo = "checked";
-				$surveyCompleteYes = "$isDisabled";
-				$surveyCompleteNoMatter = "$isDisabled";
-			}
-			if ($_POST['r01_or_equiv'] == "yes") {
-				$r01No = "$isDisabled";
-				$r01Yes = "checked";
-				$r01Agnostic = "$isDisabled";
-			} elseif ($_POST['r01_or_equiv'] == "no") {
-				$r01No = "checked";
-				$r01Yes = "$isDisabled";
-				$r01Agnostic = "$isDisabled";
-			}
-			if ($_POST['trainee_class'] == "alumni") {
-				$traineeClassAlumni = "checked";
-				$traineeClassCurrent = "$isDisabled";
-				$traineeClassAll = "$isDisabled";
-			} elseif ($_POST['trainee_class'] == "current") {
-				$traineeClassAlumni = "$isDisabled";
-				$traineeClassCurrent = "current";
-				$traineeClassAll = "$isDisabled";
-			} else {
-				$traineeClassAlumni = "$isDisabled";
-				$traineeClassCurrent = "$isDisabled";
-				$traineeClassAll = "current";
-			}
-			if ($_POST['max_emails']) {
-				$maxEmails = REDCapManagement::sanitize($_POST['max_emails']);
-				$maxSpecified = "checked";
-			}
-			if (($_POST['newRecords'] == "new") && $_POST['new_records_since']) {
-				$newRecordsSince = REDCapManagement::sanitize($_POST['new_records_since']);
-				$newRecordsSinceSpecified = "checked";
-			}
-		}
-	} elseif ($_POST['recipient'] == "cohort_group") {
-		$indivs = "$isDisabled";
-		$filteredGroup = "$isDisabled";
-		$cohortGroup = "checked";
-	}
+    if ($_POST['recipient'] == "individuals") {
+        $indivs = "checked"; $filteredGroup = "$isDisabled"; $cohortGroup = "$isDisabled";
+    } else if ($_POST['recipient'] == "filtered_group") {
+        if ($_POST['filter'] == "some") {
+            $all = "$isDisabled"; $some = "checked"; $cohortGroup = "$isDisabled";
+            if ($_POST['survey_complete'] == "yes") {
+                $surveyCompleteNo = "$isDisabled"; $surveyCompleteYes = "checked"; $surveyCompleteNoMatter = "$isDisabled";
+                if ($_POST['last_complete_months']) {
+                    $lastCompleteMonths = REDCapManagement::sanitize($_POST['last_complete_months']);
+                }
+            } else if ($_POST['survey_complete'] == "no") {
+                $surveyCompleteNo = "checked"; $surveyCompleteYes = "$isDisabled"; $surveyCompleteNoMatter = "$isDisabled";
+            }
+            if ($_POST['r01_or_equiv'] == "yes") {
+                $r01No = "$isDisabled"; $r01Yes = "checked"; $r01Agnostic = "$isDisabled";
+            } else if ($_POST['r01_or_equiv'] == "no") {
+                $r01No = "checked"; $r01Yes = "$isDisabled"; $r01Agnostic = "$isDisabled";
+            }
+            if ($_POST['trainee_class'] == "alumni") {
+                $traineeClassAlumni = "checked"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "$isDisabled";
+            } else if ($_POST['trainee_class'] == "current") {
+                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "current"; $traineeClassAll = "$isDisabled";
+            } else {
+                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "current";
+            }
+            if ($_POST['max_emails']) {
+                $maxEmails = REDCapManagement::sanitize($_POST['max_emails']);
+                $maxSpecified = "checked";
+            }
+            if (($_POST['newRecords'] == "new") && $_POST['new_records_since']) {
+                $newRecordsSince = REDCapManagement::sanitize($_POST['new_records_since']);
+                $newRecordsSinceSpecified = "checked";
+            }
+        }
+    } else if ($_POST['recipient'] == "cohort_group") {
+        $indivs = "$isDisabled"; $filteredGroup = "$isDisabled"; $cohortGroup = "checked";
+    }
 }
 
 if (isset($currSetting["who"]["individuals"])) {
-	$indivs = "checked";
-	$filteredGroup = "";
+	$indivs = "checked"; $filteredGroup = "";
 	$listOfEmailsToCheck = preg_split("/,/", $currSetting["who"]["individuals"]);
 	foreach ($listOfEmailsToCheck as $email) {
 		$realPost[$email] = "1";
 	}
-} elseif (isset($currSetting["who"]["filter"])) {
-	switch ($currSetting["who"]["filter"]) {
+} else if (isset($currSetting["who"]["filter"])) {
+	switch($currSetting["who"]["filter"]) {
 		case "some":
 			$all = "$isDisabled";
 			$some = "checked";
@@ -173,20 +142,20 @@ if (isset($currSetting["who"]["individuals"])) {
 			# go with POST
 			break;
 	}
-	if ($currSetting["who"]["none_complete"] == "true") {
-		$surveyCompleteNo = "checked";
-		$surveyCompleteYes = "$isDisabled";
-		$surveyCompleteNoMatter = "$isDisabled";
-	} elseif ($currSetting["who"]["none_complete"] == "false") {
-		$surveyCompleteNo = "$isDisabled";
-		$surveyCompleteYes = "checked";
-		$surveyCompleteNoMatter = "$isDisabled";
-		$lastCompleteMonths = $currSetting["who"]["last_complete"];
-	} elseif ($currSetting["who"]["none_complete"] == "nomatter") {
-		$surveyCompleteNo = "$isDisabled";
-		$surveyCompleteYes = "$isDisabled";
-		$surveyCompleteNoMatter = "checked";
-	}
+    if ($currSetting["who"]["none_complete"] == "true") {
+        $surveyCompleteNo = "checked";
+        $surveyCompleteYes = "$isDisabled";
+        $surveyCompleteNoMatter = "$isDisabled";
+    } else if ($currSetting["who"]["none_complete"] == "false") {
+        $surveyCompleteNo = "$isDisabled";
+        $surveyCompleteYes = "checked";
+        $surveyCompleteNoMatter = "$isDisabled";
+        $lastCompleteMonths = $currSetting["who"]["last_complete"];
+    } else if ($currSetting["who"]["none_complete"] == "nomatter") {
+        $surveyCompleteNo = "$isDisabled";
+        $surveyCompleteYes = "$isDisabled";
+        $surveyCompleteNoMatter = "checked";
+    }
 	if ($currSetting["who"]["max_emails"]) {
 		$maxEmails = $currSetting["who"]["max_emails"];
 		$maxSpecified = "checked";
@@ -302,23 +271,17 @@ $(document).ready(function() {
 				<span class='nowrap'><input class='who_to' type='radio' name='recipient' id='individuals' value='individuals' <?= $indivs ?>><label for='individuals'> Individual(s)</label></span>
                 <?= $spacing ?><span class='nowrap'><input type='radio' class='who_to' name='recipient' id='filtered_group' value='filtered_group' <?= $filteredGroup ?>><label for='filtered_group'> Filtered Group</label></span>
                 <?php
-				if (!empty($cohorts->getCohortNames())) {
-					echo "$spacing<span class='nowrap'><input type='radio' class='who_to' name='recipient' id='cohort_group' value='cohort_group' $cohortGroup><label for='cohort_group'> Cohort</label></span>";
-				}
-?>
+                if (!empty($cohorts->getCohortNames())) {
+                    echo "$spacing<span class='nowrap'><input type='radio' class='who_to' name='recipient' id='cohort_group' value='cohort_group' $cohortGroup><label for='cohort_group'> Cohort</label></span>";
+                }
+                ?>
 			</p>
-			<div id='checklist' <?php if ($indivs != "checked") {
-				echo "style='display: none;'";
-			} ?>>
+			<div id='checklist' <?php if ($indivs != "checked") { echo "style='display: none;'"; } ?>>
 				<h4 style='margin-bottom: 0;'>List of Names<span class='namesCount'></span></h4>
 				<p class='namesFiltered'></p>
 			</div>
-			<div id='filter' <?php if (($filteredGroup != "checked") && ($cohortGroup != "checked")) {
-				echo "style='display: none;'";
-			} ?>>
-                <div id='cohort_filter' <?php if ($cohortGroup != "checked") {
-                	echo "style='display: none;'";
-                } ?>>
+			<div id='filter' <?php if (($filteredGroup != "checked") && ($cohortGroup != "checked")) { echo "style='display: none;'"; } ?>>
+                <div id='cohort_filter' <?php if ($cohortGroup != "checked") { echo "style='display: none;'"; } ?>>
                     <p class="centered">Which Cohort?<br/>
                         <?= $cohorts->makeCohortSelect($defaultCohort) ?></p>
                 </div>
@@ -366,35 +329,35 @@ $(document).ready(function() {
 
 <?php
 		$surveySelectId = "survey";
-echo "<h3 class='yellow'>Format Message</h3>\n";
-echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".(isset($_POST['subject']) ? REDCapManagement::sanitize($_POST['subject']) : (isset($currSetting['what']['subject']) ? $currSetting['what']['subject'] : ""))."'></p>\n";
-echo "<div style='text-align: center; margin: 16px 0px;'>\n";
-echo "<div style='display: inline-block;'>".$mgr->getSurveySelect($surveySelectId)."<br>\n";
-echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
-echo "<div style='display: inline-block;'><button $isDisabled onclick='insertName(); return false;'>Insert Name</button></div>\n";
-echo "<div style='display: inline-block;'><button $isDisabled onclick='insertLastName(); return false;'>Insert Last Name</button></div>\n";
-echo "<div style='display: inline-block;'><button $isDisabled onclick='insertFirstName(); return false;'>Insert First Name</button></div>\n";
-if (CareerDev::has("mentoring_agreement")) {
-	echo "<div style='display: inline-block;'><button $isDisabled onclick='insertMentoringLink(); return false;'>Insert Mentoring Agreement Link</button></div>\n";
-}
-if (Portal::isLive()) {
-	echo "<div style='display: inline-block;'><button $isDisabled onclick='insertPortalLink(); return false;'>Insert Scholar Portal Link</button></div>\n";
-}
-echo "</div>\n";
-if (!empty($messages) && !$isDisabled) {
-	echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
-}
-if (isset($_POST['message'])) {
-	$mssg = Sanitizer::sanitizeWithoutStrippingHTML($_POST['message'], false);
-} elseif (isset($currSetting['what']['message'])) {
-	$mssg = $currSetting['what']['message'];
-} else {
-	$mssg = "";
-}
-echo "<div id='message' style='background-color: white; z-index: 1;".($isReadonly ? " padding: 8px; font-size: 12px;" : "")."'>$mssg</div>\n";
-echo "<input type='hidden' name='message' value=''>\n";
+		echo "<h3 class='yellow'>Format Message</h3>\n";
+		echo "<p class='centered'>Subject: <input $isReadonly type='text' id='subject' class='long' name='subject' value='".(isset($_POST['subject']) ? REDCapManagement::sanitize($_POST['subject']) : (isset($currSetting['what']['subject']) ? $currSetting['what']['subject'] : ""))."'></p>\n";
+		echo "<div style='text-align: center; margin: 16px 0px;'>\n";
+		echo "<div style='display: inline-block;'>".$mgr->getSurveySelect($surveySelectId)."<br>\n";
+		echo "<button $isDisabled onclick='insertSurveyLink(\"$surveySelectId\"); return false;'>Insert Survey Link</button></div>\n";
+		echo "<div style='display: inline-block;'><button $isDisabled onclick='insertName(); return false;'>Insert Name</button></div>\n";
+        echo "<div style='display: inline-block;'><button $isDisabled onclick='insertLastName(); return false;'>Insert Last Name</button></div>\n";
+        echo "<div style='display: inline-block;'><button $isDisabled onclick='insertFirstName(); return false;'>Insert First Name</button></div>\n";
+		if (CareerDev::has("mentoring_agreement")) {
+            echo "<div style='display: inline-block;'><button $isDisabled onclick='insertMentoringLink(); return false;'>Insert Mentoring Agreement Link</button></div>\n";
+        }
+        if (Portal::isLive()) {
+            echo "<div style='display: inline-block;'><button $isDisabled onclick='insertPortalLink(); return false;'>Insert Scholar Portal Link</button></div>\n";
+        }
+		echo "</div>\n";
+		if (!empty($messages) && !$isDisabled) {
+			echo "<div style='text-align: center; margin: 16px 0px;'>Load Prior Message:<br>".$mgr->getSelectForExistingNames($messageSelectName)."</div>\n";
+		}
+		if (isset($_POST['message'])) {
+			$mssg = Sanitizer::sanitizeWithoutStrippingHTML($_POST['message'], FALSE);
+		} else if (isset($currSetting['what']['message'])) {
+			$mssg = $currSetting['what']['message'];
+		} else {
+			$mssg = "";
+		}
+		echo "<div id='message' style='background-color: white; z-index: 1;".($isReadonly ? " padding: 8px; font-size: 12px;" : "")."'>$mssg</div>\n";
+		echo "<input type='hidden' name='message' value=''>\n";
 
-$emailWarning = "<p class='centered'>Emails are sent in batches. Times are approximate.</p>";
+		$emailWarning = "<p class='centered'>Emails are sent in batches. Times are approximate.</p>"; 
 
 ?>
 	</td>
@@ -412,52 +375,52 @@ $emailWarning = "<p class='centered'>Emails are sent in batches. Times are appro
 			echo makeDateTime("followup_time", $currSetting['when'], $isReadonly)."\n";
 		}
 
-$intro = "";
-if (($currSetting != EmailManager::getBlankSetting()) && !$currSetting['enabled']) {
-	$testStyle = "";
-	$intro = "Re-";
-} else {
-	$testStyle = " display: none;";
-}
-if ($hasErrors) {
-	$testStyle = " display: none;";
-}
-echo "<div style='margin-top: 50px;' id='status' class='blue padded'>";
-if (isset($currSetting['enabled']) && $currSetting['enabled']) {
-	echo "<h2 class='blue'>Current Status: Activated</h2>";
-	echo "<input type='hidden' id='is_activated' value='1' />";
-	echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
-	$stageText = "Update &amp; Re-Stage to Test";
-	$stageStyle = " display: none;";
-} else {
-	echo "<h2 class='blue'>Current Status: Not Activated</h2>";
-	echo "<input type='hidden' id='is_activated' value='0' />";
-	$stageText = $intro."Stage to Test";
-	$sendTime = $currSetting['when']["initial_time"] ?? "";
-	if ($sendTime !== "") {
-		$stageStyle = "";
-	} else {
-		$stageStyle = " display: none;";
-	}
-}
-echo "</div>";
-echo "<input type='hidden' id='button_pressed' value='0' />";
-echo "<div style='margin-top: 50px;$stageStyle' id='save' class='blue padded'>";
-echo "<h2 class='blue'>Advance Process</h2>";
-echo "<input type='hidden' name='enabled' value='".($currSetting['enabled'] ? "true" : "false")."'>";
-echo "<h3 class='blue'>Step 1 of 3</h3>";
-echo "<p class='centered'><button onclick='$(\"#button_pressed\").val(\"1\");'>$stageText</button></p>";
-echo "<div class='padded' style='$testStyle' id='test'>";
-echo "<h3 class='blue'>Step 2 of 3</h3>";
-echo "<p class='centered'>You will receive one email per every recipient. Please note that the links are real links, so any surveys you submit will be added to a scholar's record.</p>";
-echo "<p class='centered'>Your Email Address: <input type='text' id='test_to'></p>";
-echo "<p class='centered'><button onclick='$(\"#button_pressed\").val(\"1\"); sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); $(\"#button_pressed\").val(\"0\"); return false;'>Test Email Setting</button></p>";
-echo "</div>";
-echo "<div id='enableEmail' style='display: none;' class='padded'>";
-echo "<h3 class='blue'>Step 3 of 3</h3>";
-echo "<p class='centered'><button class='red' onclick='$(\"#button_pressed\").val(\"1\"); enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>";    // should resubmit entire page
-echo "</div>";
-echo "</div>";
+		$intro = "";
+		if (($currSetting != EmailManager::getBlankSetting()) && !$currSetting['enabled']) {
+			$testStyle = "";
+			$intro = "Re-";
+		} else {
+			$testStyle = " display: none;";
+		}
+		if ($hasErrors) {
+			$testStyle = " display: none;";
+		}
+		echo "<div style='margin-top: 50px;' id='status' class='blue padded'>";
+		if (isset($currSetting['enabled']) && $currSetting['enabled']) {
+			echo "<h2 class='blue'>Current Status: Activated</h2>";
+            echo "<input type='hidden' id='is_activated' value='1' />";
+			echo "<p class='centered'><button onclick='disableEmailSetting(); return true;'>Modify Email</button></p>\n";   // button should resubmit entire page
+			$stageText = "Update &amp; Re-Stage to Test";
+			$stageStyle = " display: none;";
+		} else {
+			echo "<h2 class='blue'>Current Status: Not Activated</h2>";
+            echo "<input type='hidden' id='is_activated' value='0' />";
+			$stageText = $intro."Stage to Test";
+            $sendTime = $currSetting['when']["initial_time"] ?? "";
+            if ($sendTime !== "") {
+                $stageStyle = "";
+            } else {
+                $stageStyle = " display: none;";
+            }
+		}
+		echo "</div>";
+        echo "<input type='hidden' id='button_pressed' value='0' />";
+		echo "<div style='margin-top: 50px;$stageStyle' id='save' class='blue padded'>";
+		echo "<h2 class='blue'>Advance Process</h2>";
+		echo "<input type='hidden' name='enabled' value='".($currSetting['enabled'] ? "true" : "false")."'>";
+		echo "<h3 class='blue'>Step 1 of 3</h3>";
+		echo "<p class='centered'><button onclick='$(\"#button_pressed\").val(\"1\");'>$stageText</button></p>";
+		echo "<div class='padded' style='$testStyle' id='test'>";
+		echo "<h3 class='blue'>Step 2 of 3</h3>";
+		echo "<p class='centered'>You will receive one email per every recipient. Please note that the links are real links, so any surveys you submit will be added to a scholar's record.</p>";
+		echo "<p class='centered'>Your Email Address: <input type='text' id='test_to'></p>";
+		echo "<p class='centered'><button onclick='$(\"#button_pressed\").val(\"1\"); sendTestEmails(\"$pid\", \"$selectName\", \"$currSettingName\"); $(\"#button_pressed\").val(\"0\"); return false;'>Test Email Setting</button></p>";
+		echo "</div>";
+		echo "<div id='enableEmail' style='display: none;' class='padded'>";
+		echo "<h3 class='blue'>Step 3 of 3</h3>";
+		echo "<p class='centered'><button class='red' onclick='$(\"#button_pressed\").val(\"1\"); enableEmailSetting(); return true;'>Activate Emails &amp; Enqueue to Send</button></p>";    // should resubmit entire page
+		echo "</div>";
+		echo "</div>";
 ?>
 	</td>
 	</tr>
@@ -471,31 +434,31 @@ if (!$isDisabled) {
 }
 
 function decodeEmail($str) {
-	return str_replace("_at_", "@", $str);
+    return str_replace("_at_", "@", $str);
 }
 
 function translatePostToEmailSetting($post) {
-	if (!is_array($post)) {
-		return ["", "", []];
-	}
+    if (!is_array($post)) {
+        return ["", "", []];
+    }
 	$emailSetting = EmailManager::getBlankSetting();
 
 	$settingName = $post['name'] ?: "";
-	if (!$settingName) {
+    if (!$settingName) {
 		return ["A name for the setting was not specified", "", EmailManager::getBlankSetting()];
 	}
 
 	if (isset($post['enabled']) && ($post['enabled'] == "true")) {
-		$emailSetting["enabled"] = true;
+		$emailSetting["enabled"] = TRUE;
 	}
 
 	# WHO
 	if (isset($post['recipient'])) {
 		if ($post['recipient'] == 'individuals') {
-			$checkedEmails = [];
+			$checkedEmails = array();
 			foreach ($post as $key => $value) {
-				$key = decodeEmail($key);
-				if ($value && EmailManager::isEmailAddress($key)) {
+                $key = decodeEmail($key);
+                if ($value && EmailManager::isEmailAddress($key)) {
 					$checkedEmails[] = $key;
 				}
 			}
@@ -516,12 +479,12 @@ function translatePostToEmailSetting($post) {
 		}
 		if (isset($post["survey_complete"])) {
 			if (isset($post["last_complete_months"]) && ($post["survey_complete"] == "yes")) {
-				$emailSetting["who"]["none_complete"] = "false";
+                $emailSetting["who"]["none_complete"] = "false";
 				$emailSetting["who"]["last_complete"] = $post["last_complete_months"];
-			} elseif ($post["survey_complete"] == "no") {
-				$emailSetting["who"]["none_complete"] = "true";
-			} elseif ($post["survey_complete"] == "nomatter") {
-				$emailSetting["who"]["none_complete"] = "nomatter";
+            } else if ($post["survey_complete"] == "no") {
+                $emailSetting["who"]["none_complete"] = "true";
+            } else if ($post["survey_complete"] == "nomatter" ) {
+                $emailSetting["who"]["none_complete"] = "nomatter";
 			} else {
 				# only happens if the months are not specified; returns blank setting; better than throwing an exception
 				return ["The Months were not specified", "", EmailManager::getBlankSetting()];
@@ -530,26 +493,26 @@ function translatePostToEmailSetting($post) {
 		if (isset($post["max_emails"])) {
 			$emailSetting["who"]["max_emails"] = $post["max_emails"];
 		}
-		if (isset($post['newRecords']) && ($post['newRecords'] == "new") && isset($post['new_records_since'])) {
-			$emailSetting["who"]["new_records_since"] = $post["new_records_since"];
-		}
+        if (isset($post['newRecords']) && ($post['newRecords'] == "new") && isset($post['new_records_since'])) {
+            $emailSetting["who"]["new_records_since"] = $post["new_records_since"];
+        }
 		if (isset($post["r01_or_equiv"])) {
 			$emailSetting["who"]["converted"] = $post["r01_or_equiv"];
 		}
-		if (isset($post['trainee_class'])) {
-			$emailSetting["who"]["trainee_class"] = $post['trainee_class'];
-		}
-	} elseif (isset($post['recipient']) && ($post['recipient'] == "cohort_group")) {
-		$cohort = Sanitizer::sanitizeCohort($post['cohort']);
-		if ($cohort) {
-			$emailSetting["who"]["filter"] = "cohort_group";
-			$emailSetting["who"]["cohort"] = $cohort;
-		} else {
-			$emailSetting["who"]["filter"] = "all";
-		}
-	}
+        if (isset($post['trainee_class'])) {
+		    $emailSetting["who"]["trainee_class"] = $post['trainee_class'];
+        }
+    } else if (isset($post['recipient']) && ($post['recipient'] == "cohort_group")) {
+        $cohort = Sanitizer::sanitizeCohort($post['cohort']);
+        if ($cohort) {
+            $emailSetting["who"]["filter"] = "cohort_group";
+            $emailSetting["who"]["cohort"] = $cohort;
+        } else {
+            $emailSetting["who"]["filter"] = "all";
+        }
+    }
 	if (isset($post["from"])) {
-		$emailSetting["who"]["from"] = $post["from"];
+        $emailSetting["who"]["from"] = $post["from"];
 	} else {
 		return ["From address is not specified", "", EmailManager::getBlankSetting()];
 	}
@@ -579,7 +542,7 @@ function makeDateTime($field, $when, $isReadonly = "") {
 	$value = "";
 	if (isset($_POST[$field])) {
 		$value = REDCapManagement::sanitize($_POST[$field]);
-	} elseif (isset($when[$field])) {
+	} else if (isset($when[$field])) {
 		$value = $when[$field];
 	}
 
@@ -591,15 +554,15 @@ function makeDateTime($field, $when, $isReadonly = "") {
 
 function getRealInput($source) {
 	$pairs = explode("&", $source == 'POST' ? file_get_contents("php://input") : $_SERVER['QUERY_STRING'] ?? "");
-	$vars = [];
+	$vars = array();
 	foreach ($pairs as $pair) {
 		$nv = explode("=", $pair);
 		$name = urldecode($nv[0]);
 		if (isset($nv[1])) {
-			$value = urldecode($nv[1]);
-		} else {
-			$value = "";
-		}
+            $value = urldecode($nv[1]);
+        } else {
+		    $value = "";
+        }
 		$vars[$name] = $value;
 	}
 	return $vars;

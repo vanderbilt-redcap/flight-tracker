@@ -9,48 +9,47 @@ use PhpOffice\PhpWord\Shared\XMLReader;
 
 class Comments extends AbstractPart
 {
-    /**
-     * Collection name comments.
-     *
-     * @var string
-     */
-    protected $collection = 'comments';
+	/**
+	 * Collection name comments.
+	 *
+	 * @var string
+	 */
+	protected $collection = 'comments';
 
-    /**
-     * Read settings.xml.
-     */
-    public function read(PhpWord $phpWord): void
-    {
-        $xmlReader = new XMLReader();
-        $xmlReader->getDomFromZip($this->docFile, $this->xmlFile);
+	/**
+	 * Read settings.xml.
+	 */
+	public function read(PhpWord $phpWord): void {
+		$xmlReader = new XMLReader();
+		$xmlReader->getDomFromZip($this->docFile, $this->xmlFile);
 
-        $comments = $phpWord->getComments();
+		$comments = $phpWord->getComments();
 
-        $nodes = $xmlReader->getElements('*');
+		$nodes = $xmlReader->getElements('*');
 
-        foreach ($nodes as $node) {
-            $name = str_replace('w:', '', $node->nodeName);
+		foreach ($nodes as $node) {
+			$name = str_replace('w:', '', $node->nodeName);
 
-            $author = $xmlReader->getAttribute('w:author', $node);
-            $date = $xmlReader->getAttribute('w:date', $node);
-            $initials = $xmlReader->getAttribute('w:initials', $node);
+			$author = $xmlReader->getAttribute('w:author', $node);
+			$date = $xmlReader->getAttribute('w:date', $node);
+			$initials = $xmlReader->getAttribute('w:initials', $node);
 
-            $element = new Comment($author, new DateTime($date), $initials);
+			$element = new Comment($author, new DateTime($date), $initials);
 
-            $range = $this->getCommentReference($xmlReader->getAttribute('w:id', $node));
-            if ($range['start']) {
-                $range['start']->setCommentRangeStart($element);
-            }
-            if ($range['end']) {
-                $range['end']->setCommentRangeEnd($element);
-            }
+			$range = $this->getCommentReference($xmlReader->getAttribute('w:id', $node));
+			if ($range['start']) {
+				$range['start']->setCommentRangeStart($element);
+			}
+			if ($range['end']) {
+				$range['end']->setCommentRangeEnd($element);
+			}
 
-            $pNodes = $xmlReader->getElements('w:p/w:r', $node);
-            foreach ($pNodes as $pNode) {
-                $this->readRun($xmlReader, $pNode, $element, $this->collection);
-            }
+			$pNodes = $xmlReader->getElements('w:p/w:r', $node);
+			foreach ($pNodes as $pNode) {
+				$this->readRun($xmlReader, $pNode, $element, $this->collection);
+			}
 
-            $phpWord->getComments()->addItem($element);
-        }
-    }
+			$phpWord->getComments()->addItem($element);
+		}
+	}
 }

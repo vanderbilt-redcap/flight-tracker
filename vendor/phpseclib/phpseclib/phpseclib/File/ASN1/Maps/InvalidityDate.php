@@ -22,5 +22,5 @@ use phpseclib3\File\ASN1;
  */
 abstract class InvalidityDate
 {
-    const MAP = ['type' => ASN1::TYPE_GENERALIZED_TIME];
+	public const MAP = ['type' => ASN1::TYPE_GENERALIZED_TIME];
 }

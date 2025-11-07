@@ -22,13 +22,13 @@ use phpseclib3\File\ASN1;
  */
 abstract class OtherPrimeInfo
 {
-    // version must be multi if otherPrimeInfos present
-    const MAP = [
-        'type' => ASN1::TYPE_SEQUENCE,
-        'children' => [
-            'prime' => ['type' => ASN1::TYPE_INTEGER],      // ri
-            'exponent' => ['type' => ASN1::TYPE_INTEGER],   // di
-            'coefficient' => ['type' => ASN1::TYPE_INTEGER] // ti
-        ]
-    ];
+	// version must be multi if otherPrimeInfos present
+	public const MAP = [
+		'type' => ASN1::TYPE_SEQUENCE,
+		'children' => [
+			'prime' => ['type' => ASN1::TYPE_INTEGER],      // ri
+			'exponent' => ['type' => ASN1::TYPE_INTEGER],   // di
+			'coefficient' => ['type' => ASN1::TYPE_INTEGER] // ti
+		]
+	];
 }

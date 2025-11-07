@@ -1,13 +1,14 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Publications;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\ObservedMeasurement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\Dashboard;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\ObservedMeasurement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -20,17 +21,17 @@ $measurements = [];
 
 $headers[] = "Publications by Publication Type<br>(Confirmed Original Research Only)";
 if (isset($_GET['cohort'])) {
-	$cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
-	$headers[] = "For Cohort " . $cohort;
+    $cohort = Sanitizer::sanitizeCohort($_GET['cohort']);
+    $headers[] = "For Cohort " . $cohort;
 } else {
-	$cohort = "";
+    $cohort = "";
 }
 $headers[] = Publications::makeLimitButton();
 
 $thresholdTs = -100000;
 if (isset($_GET['limitPubs'])) {
-	$thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-	$thresholdTs = strtotime("$thresholdYear-01-01");
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
 }
 
 $indexedRedcapData = Download::getIndexedRedcapData($token, $server, DataDictionaryManagement::filterOutInvalidFields([], array_unique(array_merge(CareerDev::$smallCitationFields, ["citation_pub_types", "citation_ts"]))), $cohort, Application::getModule());
@@ -44,19 +45,19 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->getTimestamp() >= $thresholdTs) {
-				$numConfirmedPubs++;
-				if ($citation->isResearchArticle()) {
-					$pubTypes = $citation->getPubTypes();
-					foreach ($pubTypes as $pubType) {
-						if (!isset($numForPubType[$pubType])) {
-							$numForPubType[$pubType] = 0;
-						}
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numConfirmedPubs++;
+                if ($citation->isResearchArticle()) {
+                    $pubTypes = $citation->getPubTypes();
+                    foreach ($pubTypes as $pubType) {
+                        if (!isset($numForPubType[$pubType])) {
+                            $numForPubType[$pubType] = 0;
+                        }
 
-						$numForPubType[$pubType]++;
-					}
-				}
-			}
+                        $numForPubType[$pubType]++;
+                    }
+                }
+            }
 		}
 	}
 }

@@ -20,27 +20,26 @@ namespace phpseclib3\Crypt\Common\Traits;
  */
 trait PasswordProtected
 {
-    /**
-     * Password
-     *
-     * @var string|bool
-     */
-    private $password = false;
+	/**
+	 * Password
+	 *
+	 * @var string|bool
+	 */
+	private $password = false;
 
-    /**
-     * Sets the password
-     *
-     * Private keys can be encrypted with a password.  To unset the password, pass in the empty string or false.
-     * Or rather, pass in $password such that empty($password) && !is_string($password) is true.
-     *
-     * @see self::createKey()
-     * @see self::load()
-     * @param string|bool $password
-     */
-    public function withPassword($password = false)
-    {
-        $new = clone $this;
-        $new->password = $password;
-        return $new;
-    }
+	/**
+	 * Sets the password
+	 *
+	 * Private keys can be encrypted with a password.  To unset the password, pass in the empty string or false.
+	 * Or rather, pass in $password such that empty($password) && !is_string($password) is true.
+	 *
+	 * @see self::createKey()
+	 * @see self::load()
+	 * @param string|bool $password
+	 */
+	public function withPassword($password = false) {
+		$new = clone $this;
+		$new->password = $password;
+		return $new;
+	}
 }

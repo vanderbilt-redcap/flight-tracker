@@ -9,10 +9,9 @@ use PHPUnit\Framework\TestCase;
 
 class IdentifierTest extends TestCase
 {
-    public function testConstruct(): void
-    {
-        $operator = new Identifier('x');
+	public function testConstruct(): void {
+		$operator = new Identifier('x');
 
-        $this->assertEquals('x', $operator->getValue());
-    }
+		$this->assertEquals('x', $operator->getValue());
+	}
 }

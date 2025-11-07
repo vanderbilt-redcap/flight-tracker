@@ -98,9 +98,6 @@ foreach ($pids as $currPid) {
 	$resourcesDates = Download::fastField($currPid, "resources_date");
 	$resourcesUsed = Download::fastField($currPid, "resources_resource");
 	$projectTitle = Download::shortProjectTitle($currPid);
-	if (isset($_GET['test'])) {
-		echo "$currPid: $projectTitle<br>";
-	}
 
 	$projects[$currPid] = $projectTitle;
 	$names[$currPid] = [];

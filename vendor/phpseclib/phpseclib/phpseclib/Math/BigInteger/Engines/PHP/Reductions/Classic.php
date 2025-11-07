@@ -22,21 +22,20 @@ use phpseclib3\Math\BigInteger\Engines\PHP\Base;
  */
 abstract class Classic extends Base
 {
-    /**
-     * Regular Division
-     *
-     * @param array $x
-     * @param array $n
-     * @param string $class
-     * @return array
-     */
-    protected static function reduce(array $x, array $n, $class)
-    {
-        $lhs = new $class();
-        $lhs->value = $x;
-        $rhs = new $class();
-        $rhs->value = $n;
-        list(, $temp) = $lhs->divide($rhs);
-        return $temp->value;
-    }
+	/**
+	 * Regular Division
+	 *
+	 * @param array $x
+	 * @param array $n
+	 * @param string $class
+	 * @return array
+	 */
+	protected static function reduce(array $x, array $n, $class) {
+		$lhs = new $class();
+		$lhs->value = $x;
+		$rhs = new $class();
+		$rhs->value = $n;
+		list(, $temp) = $lhs->divide($rhs);
+		return $temp->value;
+	}
 }

@@ -1,14 +1,14 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Grants;
-use Vanderbilt\CareerDevLibrary\MoneyMeasurement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\Dashboard;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\LineGraph;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Grants;
+use \Vanderbilt\CareerDevLibrary\MoneyMeasurement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\LineGraph;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -22,18 +22,18 @@ $headers = [];
 $measurements = [];
 
 if (Grants::areFlagsOn($pid)) {
-	$metadata = Download::metadataByPid($pid);
-	$fields = REDCapManagement::getAllGrantFields($metadata);
-} elseif ($grantType == "prior") {
-	$fields = CareerDev::$summaryFields;
+    $metadata = Download::metadataByPid($pid);
+    $fields = REDCapManagement::getAllGrantFields($metadata);
+} else if ($grantType == "prior") {
+    $fields = CareerDev::$summaryFields;
 } else {
-	$metadata = Download::metadataByPid($pid);
-	$fields = REDCapManagement::getAllGrantFields($metadata);
+    $metadata = Download::metadataByPid($pid);
+    $fields = REDCapManagement::getAllGrantFields($metadata);
 }
 if ($cohort) {
-	$records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
+    $records = Download::cohortRecordIds($token, $server, Application::getModule(), $cohort);
 } else {
-	$records = Download::recordIdsByPid($pid);
+    $records = Download::recordIdsByPid($pid);
 }
 
 $yearTotals = [];
@@ -43,11 +43,11 @@ for ($year = date("Y"); $year >= 2001; $year--) {
 $totalBudget = 0;
 $totals = [];
 foreach ($records as $recordId) {
-	$rows = Download::fieldsForRecordsByPid($pid, $fields, [$recordId]);
+    $rows = Download::fieldsForRecordsByPid($pid, $fields, [$recordId]);
 	$grants = new Grants($token, $server, "empty");
 	$grants->setRows($rows);
-	$grants->compileGrants();
-	$grantAry = Grants::areFlagsOn($pid) ? $grants->getGrants("flagged") : $grants->getGrants($grantType);
+    $grants->compileGrants();
+    $grantAry = Grants::areFlagsOn($pid) ? $grants->getGrants("flagged") : $grants->getGrants($grantType);
 	foreach ($grantAry as $grant) {
 		$type = $grant->getVariable("type");
 		if (!isset($totals[$type])) {
@@ -64,18 +64,18 @@ foreach ($records as $recordId) {
 }
 
 if (Grants::areFlagsOn($pid)) {
-	$headers[] = "Yearly Budgets for Flagged Grants";
-} elseif ($grantType == "prior") {
-	$headers[] = "Yearly Budgets for Career-Defining Grants";
-} elseif ($grantType == "deduped") {
-	$headers[] = "Yearly Budgets for All Grants";
-} elseif ($grantType == "all_pis") {
-	$headers[] = "Yearly Budgets for PI/Co-PI Grants";
+    $headers[] = "Yearly Budgets for Flagged Grants";
+} else if ($grantType == "prior") {
+    $headers[] = "Yearly Budgets for Career-Defining Grants";
+} else if ($grantType == "deduped") {
+    $headers[] = "Yearly Budgets for All Grants";
+} else if ($grantType == "all_pis") {
+    $headers[] = "Yearly Budgets for PI/Co-PI Grants";
 } else {
-	$headers[] = "Yearly Budgets for Grants";
+    $headers[] = "Yearly Budgets for Grants";
 }
 if ($cohort) {
-	$headers[] = "For Cohort " . $cohort;
+    $headers[] = "For Cohort " . $cohort;
 }
 
 $measurements["Total Budget"] = new MoneyMeasurement($totalBudget);
@@ -90,4 +90,4 @@ $graph->setYAxisLabel("Dollars per Year");
 
 echo $dashboard->makeHTML($headers, $measurements, [], $cohort, 4, $grantType);
 echo $graph->getImportHTML();
-echo $graph->getHTML(800, 600, true);
+echo $graph->getHTML(800, 600, TRUE);

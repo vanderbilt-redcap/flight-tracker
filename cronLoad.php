@@ -28,15 +28,15 @@ function loadMainCronsHelper(&$manager, $token, $server) {
 		$records = $switches->downloadRecordIdsToBeProcessed($allRecords);
 		$securityTestMode = Application::getSetting("security_test_mode", $pid);
 
-		if (in_array('nih_reporter', $forms)) {
-			$manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 100);
-		}
-		//if (in_array("ies_grant", $forms)) {
-		//    $manager->addCron("drivers/24_getIES.php", "getIES", "Thursday", $allRecords, 10000);
-		//}
-		if (!$securityTestMode) {
-			$manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
-		}
+        if (in_array('nih_reporter', $forms)) {
+            $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 100);
+        }
+        //if (in_array("ies_grant", $forms)) {
+        //    $manager->addCron("drivers/24_getIES.php", "getIES", "Thursday", $allRecords, 10000);
+        //}
+        if (!$securityTestMode) {
+            $manager->addCron("drivers/13_pullOrcid.php", "pullORCIDs", "Thursday", $allRecords, 100);
+        }
 
 		if (in_array('patent', $forms) && !$securityTestMode) {
 			$manager->addCron("drivers/18_getPatents.php", "getPatents", "Thursday", $records, 100);
@@ -307,9 +307,9 @@ function loadInitialCrons(&$manager, $specialOnly = false, $token = "", $server 
 			if (in_array("eric", $forms)) {
 				$manager->addCron("drivers/23_getERIC.php", "getERIC", $date, $records, 100);
 			}
-			//if (in_array("ies_grant", $forms)) {
-			//    $manager->addCron("drivers/24_getIES.php", "getIES", $date, $records, 10000);
-			//}
+            //if (in_array("ies_grant", $forms)) {
+            //    $manager->addCron("drivers/24_getIES.php", "getIES", $date, $records, 10000);
+            //}
 
 			if (in_array("nih_reporter", $forms)) {
 				$manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", $date, $records, 100);

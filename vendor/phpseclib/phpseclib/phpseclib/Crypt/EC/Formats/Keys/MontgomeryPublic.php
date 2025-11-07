@@ -25,47 +25,45 @@ use phpseclib3\Math\BigInteger;
  */
 abstract class MontgomeryPublic
 {
-    /**
-     * Is invisible flag
-     *
-     */
-    const IS_INVISIBLE = true;
+	/**
+	 * Is invisible flag
+	 *
+	 */
+	public const IS_INVISIBLE = true;
 
-    /**
-     * Break a public or private key down into its constituent components
-     *
-     * @param string $key
-     * @param string $password optional
-     * @return array
-     */
-    public static function load($key, $password = '')
-    {
-        switch (strlen($key)) {
-            case 32:
-                $curve = new Curve25519();
-                break;
-            case 56:
-                $curve = new Curve448();
-                break;
-            default:
-                throw new \LengthException('The only supported lengths are 32 and 56');
-        }
+	/**
+	 * Break a public or private key down into its constituent components
+	 *
+	 * @param string $key
+	 * @param string $password optional
+	 * @return array
+	 */
+	public static function load($key, $password = '') {
+		switch (strlen($key)) {
+			case 32:
+				$curve = new Curve25519();
+				break;
+			case 56:
+				$curve = new Curve448();
+				break;
+			default:
+				throw new \LengthException('The only supported lengths are 32 and 56');
+		}
 
-        $components = ['curve' => $curve];
-        $components['QA'] = [$components['curve']->convertInteger(new BigInteger(strrev($key), 256))];
+		$components = ['curve' => $curve];
+		$components['QA'] = [$components['curve']->convertInteger(new BigInteger(strrev($key), 256))];
 
-        return $components;
-    }
+		return $components;
+	}
 
-    /**
-     * Convert an EC public key to the appropriate format
-     *
-     * @param MontgomeryCurve $curve
-     * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
-     * @return string
-     */
-    public static function savePublicKey(MontgomeryCurve $curve, array $publicKey)
-    {
-        return strrev($publicKey[0]->toBytes());
-    }
+	/**
+	 * Convert an EC public key to the appropriate format
+	 *
+	 * @param MontgomeryCurve $curve
+	 * @param \phpseclib3\Math\Common\FiniteField\Integer[] $publicKey
+	 * @return string
+	 */
+	public static function savePublicKey(MontgomeryCurve $curve, array $publicKey) {
+		return strrev($publicKey[0]->toBytes());
+	}
 }

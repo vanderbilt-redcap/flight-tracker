@@ -2,16 +2,16 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
-use Vanderbilt\CareerDevLibrary\Citation;
-use Vanderbilt\CareerDevLibrary\Grant;
-use Vanderbilt\CareerDevLibrary\Publications;
-use Vanderbilt\CareerDevLibrary\NameMatcher;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Grant;
+use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\NameMatcher;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -107,120 +107,120 @@ $possibleFields = ["citation_grants", "citation_mesh_terms", "citation_journal,e
 $allCitationFields = Application::$citationFields;
 $metadata = Download::metadata($token, $server, $allCitationFields);
 $authors = makeAuthorArray();
-$subjects = is_array($_GET['terms']) ? $_GET['terms'] : [];
+$subjects = is_array($_GET['terms']) ?  $_GET['terms'] : [];
 if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
-	$fieldsToDisplay = explode(",", Sanitizer::sanitize($_GET['field']));
-	$startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
-	$endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
-	$startTs = $startDate ? strtotime($startDate) : "";
-	$endTs = $endDate ? strtotime($endDate) : "";
+    $fieldsToDisplay = explode(",", Sanitizer::sanitize($_GET['field']));
+    $startDate = Publications::adjudicateStartDate($_GET['limitPubs'] ?? "", $_GET['start'] ?? "");
+    $endDate = Sanitizer::sanitizeDate($_GET['end'] ?? "");
+    $startTs = $startDate ? strtotime($startDate) : "";
+    $endTs = $endDate ? strtotime($endDate) : "";
 
-	$fields = array_merge(["record_id"], $fieldsToDisplay);
-	$includeFields = [];
-	foreach ($fieldsToDisplay as $fieldToDisplay) {
-		$includeField = getIncludeField($fieldToDisplay);
-		if (
-			preg_match("/^citation_/", $fieldToDisplay)
-			&& !in_array($includeField, $includeFields)
-		) {
-			$includeFields[] = $includeField;
-			$includeFields[] = "citation_authors";
-			if (!empty($subjects)) {
-				$includeFields[] = "citation_mesh_terms";
-			}
-			if ($startTs) {
-				$fields[] = "citation_year";
-				$fields[] = "citation_month";
-				$fields[] = "citation_day";
-			}
-		} elseif (
-			preg_match("/^eric_/", $fieldToDisplay)
-			&& !in_array($includeField, $includeFields)
-		) {
-			$includeFields[] = $includeField;
-			$includeFields[] = "eric_author";
-			if (!empty($subjects)) {
-				$includeFields[] = "eric_subject";
-			}
-			if ($startTs) {
-				$fields[] = "eric_sourceid";
-				$fields[] = "eric_publicationdateyear";
-			}
-		}
-	}
+    $fields = array_merge(["record_id"], $fieldsToDisplay);
+    $includeFields = [];
+    foreach ($fieldsToDisplay as $fieldToDisplay) {
+        $includeField = getIncludeField($fieldToDisplay);
+        if (
+            preg_match("/^citation_/", $fieldToDisplay)
+            && !in_array($includeField, $includeFields)
+        ) {
+            $includeFields[] = $includeField;
+            $includeFields[] = "citation_authors";
+            if (!empty($subjects)) {
+                $includeFields[] = "citation_mesh_terms";
+            }
+            if ($startTs) {
+                $fields[] = "citation_year";
+                $fields[] = "citation_month";
+                $fields[] = "citation_day";
+            }
+        } else if (
+            preg_match("/^eric_/", $fieldToDisplay)
+            && !in_array($includeField, $includeFields)
+        ) {
+            $includeFields[] = $includeField;
+            $includeFields[] = "eric_author";
+            if (!empty($subjects)) {
+                $includeFields[] = "eric_subject";
+            }
+            if ($startTs) {
+                $fields[] = "eric_sourceid";
+                $fields[] = "eric_publicationdateyear";
+            }
+        }
+    }
 
-	if (!empty($includeFields)) {
-		$fields = array_unique(array_merge($fields, $includeFields));
-	}
+    if (!empty($includeFields)) {
+        $fields = array_unique(array_merge($fields, $includeFields));
+    }
 
-	if ($_GET['cohort']) {
-		$cohort = $_GET['cohort'];
-		if ($cohort == "all") {
-			$records = Download::recordIds($token, $server);
-		} else {
-			$records = Download::cohortRecordIds($token, $server, CareerDev::getModule(), $cohort);
-		}
-	} else {
-		$records = Download::recordIds($token, $server);
-	}
-	$firstNames = Download::firstnames($token, $server);
-	$lastNames = Download::lastnames($token, $server);
-	$redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
-	$wordData = [];
-	$numPubs = 0;
-	foreach ($redcapData as $row) {
-		$recordId = $row['record_id'];
-		foreach ($fieldsToDisplay as $fieldToDisplay) {
-			$includeField = getIncludeField($fieldToDisplay);
-			if (
-				$row[$fieldToDisplay]
-				&& ($row[$includeField] == '1')
-				&& datesCheckOut($row, $startTs, $endTs)
-				&& authorFiltersApply($row, $authors, $firstNames[$recordId], $lastNames[$recordId])
-				&& subjectTermsApply($row, $subjects)
-			) {
-				$numPubs++;
-				$words = preg_split("/\s*;\s*/", $row[$fieldToDisplay]);
-				if ($fieldToDisplay == "citation_grants") {
-					for ($i = 0; $i < count($words); $i++) {
-						$words[$i] = str_replace(" ", "", $words[$i]);
-					}
-				}
-				foreach ($words as $word) {
-					if ($word) {
-						if (!isset($wordData[$word])) {
-							$wordData[$word] = 0;
-						}
-						$wordData[$word]++;
-					}
-				}
-			}
-		}
-	}
-	arsort($wordData);
+    if ($_GET['cohort']) {
+        $cohort = $_GET['cohort'];
+        if ($cohort == "all") {
+            $records = Download::recordIds($token, $server);
+        } else {
+            $records = Download::cohortRecordIds($token, $server, CareerDev::getModule(), $cohort);
+        }
+    } else {
+        $records = Download::recordIds($token, $server);
+    }
+    $firstNames = Download::firstnames($token, $server);
+    $lastNames = Download::lastnames($token, $server);
+    $redcapData = Download::fieldsForRecords($token, $server, $fields, $records);
+    $wordData = [];
+    $numPubs = 0;
+    foreach ($redcapData as $row) {
+        $recordId = $row['record_id'];
+        foreach ($fieldsToDisplay as $fieldToDisplay) {
+            $includeField = getIncludeField($fieldToDisplay);
+            if (
+                $row[$fieldToDisplay]
+                && ($row[$includeField] == '1')
+                && datesCheckOut($row, $startTs, $endTs)
+                && authorFiltersApply($row, $authors, $firstNames[$recordId], $lastNames[$recordId])
+                && subjectTermsApply($row, $subjects)
+            ) {
+                $numPubs++;
+                $words = preg_split("/\s*;\s*/", $row[$fieldToDisplay]);
+                if ($fieldToDisplay == "citation_grants") {
+                    for ($i = 0; $i < count($words); $i++) {
+                        $words[$i] = str_replace(" ", "", $words[$i]);
+                    }
+                }
+                foreach($words as $word) {
+                    if ($word) {
+                        if (!isset($wordData[$word])) {
+                            $wordData[$word] = 0;
+                        }
+                        $wordData[$word]++;
+                    }
+                }
+            }
+        }
+    }
+    arsort($wordData);
 
-	$numTerms = 200;
-	$barChartTerms = 20;
-	$accuracy = 5;
-	$randomness = 0.1;
-	$rotationThreshold = 1;
-	if (in_array("citation_grants", $fieldsToDisplay)) {
-		$wordData = transformToTitles($wordData);
-	}
+    $numTerms = 200;
+    $barChartTerms = 20;
+    $accuracy = 5;
+    $randomness = 0.1;
+    $rotationThreshold = 1;
+    if (in_array("citation_grants", $fieldsToDisplay)) {
+        $wordData = transformToTitles($wordData);
+    }
 
-	echo makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors, $_GET['cohort'] ?: "", $startDate, $endDate);
-	echo "<br/><br/><br/>";
-	echo "<h2>Frequency Table</h2>";
-	echo "<table class='centered bordered max-width'><thead><tr>";
-	echo "<th style='width: 150px;'>Term</th>";
-	echo "<th>Frequency</th>";
-	echo "</tr></thead><tbody>";
-	foreach ($wordData as $term => $frequency) {
-		echo "<tr><td>$term</td><td>".REDCapManagement::pretty($frequency)."</td></tr>";
-	}
-	echo "</tbody></table>";
-	echo "<br/><br/>";
-	?>
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors, $_GET['cohort'] ?: "", $startDate, $endDate);
+    echo "<br/><br/><br/>";
+    echo "<h2>Frequency Table</h2>";
+    echo "<table class='centered bordered max-width'><thead><tr>";
+    echo "<th style='width: 150px;'>Term</th>";
+    echo "<th>Frequency</th>";
+    echo "</tr></thead><tbody>";
+    foreach ($wordData as $term => $frequency) {
+        echo "<tr><td>$term</td><td>".REDCapManagement::pretty($frequency)."</td></tr>";
+    }
+    echo "</tbody></table>";
+    echo "<br/><br/>";
+    ?>
 
     <script type="text/javascript">
         $(document).ready(() => {
@@ -236,19 +236,19 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
 
             series.data = [
                 <?php
-				$wc = "";
-	$tcount = 0;
-	foreach ($wordData as $key => $value) {
-		$wc .= '{"tag":"'.$key.'","count": '.$value.'},';
-		$tcount++;
-		if ($tcount == 150) {
-			break;
-		}
-	}
-	echo $wc;
-	?>
+                $wc = "";
+                $tcount = 0;
+                foreach ($wordData as $key => $value) {
+                    $wc .= '{"tag":"'.$key.'","count": '.$value.'},';
+                    $tcount++;
+                    if ($tcount == 150){
+                        break;
+                    }
+                }
+                echo $wc;
+                ?>
             ];
-            $('#chartdiv').css({height:'600px', width: '900px'}).append("<?= REDCapManagement::makeSaveDiv("svg", true) ?>");
+            $('#chartdiv').css({height:'600px', width: '900px'}).append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
             const numTerms = <?= $numTerms ?>;
             series.dataFields.word = "tag";
@@ -326,20 +326,20 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
             chartc.data = [
                 <?php
 
-	$wcc = "";
-	$tcountc = 0;
-	foreach ($wordData as $key => $value) {
-		$wcc .= '{"tag":"'.$key.'","count": '.$value.'},';
-		$tcountc++;
-		if ($tcountc == $barChartTerms) {
-			break;
-		}
-	}
-	echo $wcc;
-	?>
+                $wcc = "";
+                $tcountc = 0;
+                foreach ($wordData as $key => $value) {
+                    $wcc .= '{"tag":"'.$key.'","count": '.$value.'},';
+                    $tcountc++;
+                    if ($tcountc == $barChartTerms){
+                        break;
+                    }
+                }
+                echo $wcc;
+                ?>
             ]
 
-            $('#chartdivcol').append("<?= REDCapManagement::makeSaveDiv("svg", true) ?>");
+            $('#chartdivcol').append("<?= REDCapManagement::makeSaveDiv("svg", TRUE) ?>");
 
             $('#chartdiv>div>svg').attr('width', '900').attr('height', '600');
             $('#chartdivcol>div>svg').attr('width', '270').attr('height', '600');
@@ -348,318 +348,318 @@ if ($_GET['field'] && in_array($_GET['field'], $possibleFields)) {
     <?php
 
 } else {
-	echo makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors);
+    echo makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors);
 }
 
 function makeFieldForm($token, $server, $metadata, $possibleFields, $subjects, $authors = ["first", "middle", "last"], $defaultCohort = "", $startDate = "", $endDate = "") {
-	$link = Application::link("publications/wordCloud.php");
-	$linkWithoutGET = explode("?", $link)[0];
-	$metadataLabels = REDCapManagement::getLabels($metadata);
-	$meshTerms = Download::oneFieldWithInstances($token, $server, "citation_mesh_terms");
-	$pubmedIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
-	$ericSubjects = Download::oneFieldWithInstances($token, $server, "eric_subject");
-	$ericIncludes = Download::oneFieldWithInstances($token, $server, "eric_include");
+    $link = Application::link("publications/wordCloud.php");
+    $linkWithoutGET = explode("?", $link)[0];
+    $metadataLabels = REDCapManagement::getLabels($metadata);
+    $meshTerms = Download::oneFieldWithInstances($token, $server, "citation_mesh_terms");
+    $pubmedIncludes = Download::oneFieldWithInstances($token, $server, "citation_include");
+    $ericSubjects = Download::oneFieldWithInstances($token, $server, "eric_subject");
+    $ericIncludes = Download::oneFieldWithInstances($token, $server, "eric_include");
 
-	$html = "";
-	$html .= "<h1>Which Field Do You Want to Count Frequency with Publications?</h1>";
-	if (isset($_GET['field']) && ($_GET['field'] == "")) {
-		$html .= "<h4>Please select a field!</h4>";
-	}
-	$html .= "<form action='$linkWithoutGET' method='GET'>";
-	if (isset($_GET['limitPubs'])) {
-		$limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-		$html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
-	}
-	$html .= REDCapManagement::getParametersAsHiddenInputs($link);
-	if (isset($_GET['limitPubs'])) {
-		$limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-		$html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
-	}
-	$cohorts = new Cohorts($token, $server, CareerDev::getModule());
-	$cohortHTML = $cohorts->makeCohortSelectUI($defaultCohort);
-	$selectHTML = "<label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
-	foreach ($possibleFields as $field) {
-		$nodes = explode(",", $field);
-		if (count($nodes) > 1) {
-			$label = $metadataLabels[$nodes[0]]." (PubMed and ERIC)";
-		} elseif (isset($metadataLabels[$field])) {
-			if (preg_match("/^citation_/", $field)) {
-				$source = " (PubMed)";
-			} elseif (preg_match("/^eric_/", $field)) {
-				$source = " (ERIC)";
-			} else {
-				$source = "";
-			}
-			$label = $metadataLabels[$field].$source;
-		} else {
-			$label = "";
-		}
-		if ($label) {
-			$selected = "";
-			if ($field == $_GET['field']) {
-				$selected = " selected";
-			}
-			$selectHTML .= "<option value='$field'$selected>$label</option>";
-		}
-	}
-	$selectHTML .= "</select>";
-	$datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
+    $html = "";
+    $html .= "<h1>Which Field Do You Want to Count Frequency with Publications?</h1>";
+    if (isset($_GET['field']) && ($_GET['field'] == "")) {
+        $html .= "<h4>Please select a field!</h4>";
+    }
+    $html .= "<form action='$linkWithoutGET' method='GET'>";
+    if (isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
+    }
+    $html .= REDCapManagement::getParametersAsHiddenInputs($link);
+    if (isset($_GET['limitPubs'])) {
+        $limitYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+        $html .= "<input type='hidden' name='limitPubs' value='$limitYear' />";
+    }
+    $cohorts = new Cohorts($token, $server, CareerDev::getModule());
+    $cohortHTML = $cohorts->makeCohortSelectUI($defaultCohort);
+    $selectHTML = "<label for='field'>Field:</label><select name='field' id='field' class='form-control'><option value=''>---SELECT---</option>";
+    foreach ($possibleFields as $field) {
+        $nodes = explode(",", $field);
+        if (count($nodes) > 1) {
+            $label = $metadataLabels[$nodes[0]]." (PubMed and ERIC)";
+        } else if (isset($metadataLabels[$field])) {
+            if (preg_match("/^citation_/", $field)) {
+                $source = " (PubMed)";
+            } else if (preg_match("/^eric_/", $field)) {
+                $source = " (ERIC)";
+            } else {
+                $source = "";
+            }
+            $label = $metadataLabels[$field].$source;
+        } else {
+            $label = "";
+        }
+        if ($label) {
+            $selected = "";
+            if ($field == $_GET['field']) {
+                $selected = " selected";
+            }
+            $selectHTML .= "<option value='$field'$selected>$label</option>";
+        }
+    }
+    $selectHTML .= "</select>";
+    $datesHTML = "<label for='start'>Start Date (optional): </label><input type='date' style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='start' id='start' value='$startDate' /><br/><label for='end'>End Date (optional): </label><input type='date'  style='font-family: europa, Arial, Helvetica, sans-serif !important;' name='end' id='end' value='$endDate' />";
 
-	$html .= "<div class='centered max-width'>";
-	$html .= "<div class='form-group'>$cohortHTML</div>";
-	$html .= "<div class='form-group'>$selectHTML</div>";
-	$html .= "<div class='form-group'>$datesHTML</div>";
-	$html .= "<div class='form-group'>".makeAuthorHTML($authors)."</div>";
-	if (!empty($meshTerms) || !empty($ericSubjects)) {
-		$html .= "<div class='form-group'>".makeTermSelect($meshTerms, $ericSubjects, $pubmedIncludes, $ericIncludes, $subjects)."</div>";
-	}
-	$html .= "<div class='form-group' style='padding-left: 25px; width: 200px;'><button class='tsubmit'>Make Word Cloud</button></div>";
-	$html .= "</div>";
-	$html .= "</form>";
-	$html .= Publications::makeLimitButton("p", "tsubmit");
-	$html .= "<h2 class='mtitle'></h2><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
-	return $html;
+    $html .= "<div class='centered max-width'>";
+    $html .= "<div class='form-group'>$cohortHTML</div>";
+    $html .= "<div class='form-group'>$selectHTML</div>";
+    $html .= "<div class='form-group'>$datesHTML</div>";
+    $html .= "<div class='form-group'>".makeAuthorHTML($authors)."</div>";
+    if (!empty($meshTerms) || !empty($ericSubjects)) {
+        $html .= "<div class='form-group'>".makeTermSelect($meshTerms, $ericSubjects, $pubmedIncludes, $ericIncludes, $subjects)."</div>";
+    }
+    $html .= "<div class='form-group' style='padding-left: 25px; width: 200px;'><button class='tsubmit'>Make Word Cloud</button></div>";
+    $html .= "</div>";
+    $html .= "</form>";
+    $html .= Publications::makeLimitButton("p", "tsubmit");
+    $html .= "<h2 class='mtitle'></h2><div style='width: 1260px; margin: 0 auto;'><div id='chartdivcol'></div><div id='chartdiv'></div>";
+    return $html;
 }
 
 function makeTermSelect($meshTerms, $ericSubjects, $pubMedIncludes, $ericIncludes, $subjects) {
-	$terms = [];
-	$arrays = [
-		"PubMed" => [
-			"terms" => $meshTerms,
-			"includes" => $pubMedIncludes,
-		],
-		"ERIC" => [
-			"terms" => $ericSubjects,
-			"includes" => $ericIncludes,
-		],
-	];
-	foreach ($arrays as $type => $ary) {
-		foreach ($ary['terms'] as $recordId => $instances) {
-			foreach ($instances as $instance => $instanceTermList) {
-				if ($ary['includes'][$recordId][$instance] == "1") {
-					$instanceTerms = preg_split("/\s*[,;]\s*/", $instanceTermList);
-					foreach ($instanceTerms as $term) {
-						if ($term) {
-							if (!isset($terms[$term])) {
-								$terms[$term] = 0;
-							}
-							$terms[$term]++;
-						}
-					}
-				}
-			}
-		}
-	}
-	arsort($terms);
+    $terms = [];
+    $arrays = [
+        "PubMed" => [
+            "terms" => $meshTerms,
+            "includes" => $pubMedIncludes,
+        ],
+        "ERIC" => [
+            "terms" => $ericSubjects,
+            "includes" => $ericIncludes,
+        ],
+    ];
+    foreach ($arrays as $type => $ary) {
+        foreach ($ary['terms'] as $recordId => $instances) {
+            foreach ($instances as $instance => $instanceTermList) {
+                if ($ary['includes'][$recordId][$instance] == "1") {
+                    $instanceTerms = preg_split("/\s*[,;]\s*/", $instanceTermList);
+                    foreach ($instanceTerms as $term) {
+                        if ($term) {
+                            if (!isset($terms[$term])) {
+                                $terms[$term] = 0;
+                            }
+                            $terms[$term]++;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    arsort($terms);
 
-	$html = "<br/>";
-	$html .= "<label for='terms'>MeSH Terms &amp; ERIC Subjects:<br/>(Select multiple; selecting none means all are selected)</label>";
-	$html .= "<select id='terms' name='terms[]' multiple>";
-	foreach ($terms as $term => $cnt) {
-		$selected = in_array($term, $subjects) ? "selected" : "";
-		$html .= "<option value='$term' $selected>$term (".REDCapManagement::pretty($cnt).")</option>";
-	}
-	$html .= "</select>";
-	$html .= "<div class='alignright smallest'><a href='javascript:;' onclick='$(\"#terms option:selected\").attr(\"selected\", false);'>clear</a></div>";
+    $html = "<br/>";
+    $html .= "<label for='terms'>MeSH Terms &amp; ERIC Subjects:<br/>(Select multiple; selecting none means all are selected)</label>";
+    $html .= "<select id='terms' name='terms[]' multiple>";
+    foreach ($terms as $term => $cnt) {
+        $selected = in_array($term, $subjects) ? "selected" : "";
+        $html .= "<option value='$term' $selected>$term (".REDCapManagement::pretty($cnt).")</option>";
+    }
+    $html .= "</select>";
+    $html .= "<div class='alignright smallest'><a href='javascript:;' onclick='$(\"#terms option:selected\").attr(\"selected\", false);'>clear</a></div>";
 
-	return $html;
+    return $html;
 }
 
 function datesCheckOut($row, $startTs, $endTs) {
-	if (!$startTs) {
-		return true;
-	}
-	if (!$row['citation_year']) {
-		return false;
-	}
-	if ($row['redcap_repeat_instrument'] == "citation") {
-		$year = $row['citation_year'];
-		$month = $row['citation_month'] ? $row['citation_month'] : "01";
-		$day = $row['citation_day'] ? $row['citation_day'] : "01";
-		$date = $year."-".$month."-".$day;
-	} elseif ($row['redcap_repeat_instrument'] == "eric") {
-		$date = Citation::getDateFromSourceID($row['eric_sourceid'], $row['eric_publicationdateyear']);
-	} else {
-		return false;
-	}
-	$rowTs = strtotime($date);
-	return (
-		($startTs <= $rowTs)
-		&& (
-			!$endTs
-			|| ($endTs >= $rowTs)
-		)
-	);
+    if (!$startTs) {
+        return TRUE;
+    }
+    if (!$row['citation_year']) {
+        return FALSE;
+    }
+    if ($row['redcap_repeat_instrument'] == "citation") {
+        $year = $row['citation_year'];
+        $month = $row['citation_month'] ? $row['citation_month'] : "01";
+        $day = $row['citation_day'] ? $row['citation_day'] : "01";
+        $date = $year."-".$month."-".$day;
+    } else if ($row['redcap_repeat_instrument'] == "eric") {
+        $date = Citation::getDateFromSourceID($row['eric_sourceid'], $row['eric_publicationdateyear']);
+    } else {
+        return FALSE;
+    }
+    $rowTs = strtotime($date);
+    return (
+        ($startTs <= $rowTs)
+        && (
+            !$endTs
+            || ($endTs >= $rowTs)
+        )
+    );
 }
 
 function getIncludeField($field) {
-	$nodes = explode("_", $field);
-	return $nodes[0]."_include";
+    $nodes = explode("_", $field);
+    return $nodes[0]."_include";
 }
 
 function getMainChunk($field) {
-	$prefixes = ["eric_", "citation_"];
-	$field = str_replace('_terms', '', $field);
-	foreach ($prefixes as $prefix) {
-		$field = str_replace($prefix, "", $field);
-	}
-	return $field;
+    $prefixes = ["eric_", "citation_"];
+    $field = str_replace('_terms','', $field);
+    foreach ($prefixes as $prefix) {
+        $field = str_replace($prefix, "", $field);
+    }
+    return $field;
 }
 
 function transformToTitles($wordData) {
-	$newWordData = [];
-	foreach ($wordData as $awardNo => $cnt) {
-		$activityCode = Grant::getActivityCode($awardNo);
-		$instituteAbbreviation = Grant::getFundingInstituteAbbreviation($awardNo);
-		if ($activityCode && $instituteAbbreviation) {
-			$title = "$instituteAbbreviation $activityCode";
-			if (isset($newWordData[$title])) {
-				$newWordData[$title] += $cnt;
-			} else {
-				$newWordData[$title] = $cnt;
-			}
-		}
-	}
-	arsort($newWordData);
-	return $newWordData;
+    $newWordData = [];
+    foreach ($wordData as $awardNo => $cnt) {
+        $activityCode = Grant::getActivityCode($awardNo);
+        $instituteAbbreviation = Grant::getFundingInstituteAbbreviation($awardNo);
+        if ($activityCode && $instituteAbbreviation) {
+            $title = "$instituteAbbreviation $activityCode";
+            if (isset($newWordData[$title])) {
+                $newWordData[$title] += $cnt;
+            } else {
+                $newWordData[$title] = $cnt;
+            }
+        }
+    }
+    arsort($newWordData);
+    return $newWordData;
 }
 
 function transformToGrantTitles($wordData, $reporter, $numTerms) {
-	$newWordData = [];
-	$i = 0;
-	$firstAwards = [];
-	foreach ($wordData as $awardNo => $cnt) {
-		if ($i < $numTerms * 1.5) {
-			$firstAwards[] = $awardNo;
-		}
-		$i++;
-	}
-	$translate = $reporter->getTitlesOfGrants($firstAwards);
-	foreach ($wordData as $awardNo => $cnt) {
-		if (isset($translate[$awardNo])) {
-			$title = $translate[$awardNo];
-			if (isset($newWordData[$title])) {
-				$newWordData[$title] += $cnt;
-			} else {
-				$newWordData[$title] = $cnt;
-			}
-		}
-	}
-	arsort($newWordData);
+    $newWordData = [];
+    $i = 0;
+    $firstAwards = [];
+    foreach ($wordData as $awardNo => $cnt) {
+        if ($i < $numTerms * 1.5) {
+            $firstAwards[] = $awardNo;
+        }
+        $i++;
+    }
+    $translate = $reporter->getTitlesOfGrants($firstAwards);
+    foreach ($wordData as $awardNo => $cnt) {
+        if (isset($translate[$awardNo])) {
+            $title = $translate[$awardNo];
+            if (isset($newWordData[$title])) {
+                $newWordData[$title] += $cnt;
+            } else {
+                $newWordData[$title] = $cnt;
+            }
+        }
+    }
+    arsort($newWordData);
 
-	$i = 0;
-	foreach ($newWordData as $title => $cnt) {
-		if ($i >= $numTerms) {
-			unset($newWordData[$title]);
-		}
-		$i++;
-	}
+    $i = 0;
+    foreach ($newWordData as $title => $cnt) {
+        if ($i >= $numTerms) {
+            unset($newWordData[$title]);
+        }
+        $i++;
+    }
 
-	return breakTitlesIntoLines($newWordData, 50);
+    return breakTitlesIntoLines($newWordData, 50);
 }
 
 function breakTitlesIntoLines($wordData, $maxCharsPerLine) {
-	$newWordData = [];
-	foreach ($wordData as $title => $cnt) {
-		$newTitle = wordwrap($title, $maxCharsPerLine, "\\n");
-		$newTitle = preg_replace("/\"/", "\\\"", $newTitle);
-		$newTitle = preg_replace("/'/", "\\'", $newTitle);
-		$newWordData[$newTitle] = $cnt;
-	}
-	return $newWordData;
+    $newWordData = [];
+    foreach ($wordData as $title => $cnt) {
+        $newTitle = wordwrap($title, $maxCharsPerLine, "\\n");
+        $newTitle = preg_replace("/\"/", "\\\"", $newTitle);
+        $newTitle = preg_replace("/'/", "\\'", $newTitle);
+        $newWordData[$newTitle] = $cnt;
+    }
+    return $newWordData;
 }
 
 function makeAuthorArray() {
-	$authors = [];
-	if (isset($_GET['first_author']) && ($_GET['first_author'] == "on")) {
-		$authors[] = "first";
-	}
-	if (isset($_GET['middle_author']) && ($_GET['middle_author'] == "on")) {
-		$authors[] = "middle";
-	}
-	if (isset($_GET['last_author']) && ($_GET['last_author'] == "on")) {
-		$authors[] = "last";
-	}
-	if (empty($authors)) {
-		$authors = ["first", "middle", "last"];
-	}
-	return $authors;
+    $authors = [];
+    if (isset($_GET['first_author']) && ($_GET['first_author'] == "on")) {
+        $authors[] = "first";
+    }
+    if (isset($_GET['middle_author']) && ($_GET['middle_author'] == "on")) {
+        $authors[] = "middle";
+    }
+    if (isset($_GET['last_author']) && ($_GET['last_author'] == "on")) {
+        $authors[] = "last";
+    }
+    if (empty($authors)) {
+        $authors = ["first", "middle", "last"];
+    }
+    return $authors;
 }
 
 function makeAuthorHTML($authors) {
-	$spacer = "<br/>";
-	$checked = in_array("first", $authors) ? "checked" : "";
-	$html = "<label>Author Placement:</label><br/>";
-	$html .= "<input type='checkbox' name='first_author' $checked id='first_author' /> <label for='first_author'>First Author</label>";
-	$html .= $spacer;
-	$checked = in_array("middle", $authors) ? "checked" : "";
-	$html .= "<input type='checkbox' name='middle_author' $checked id='middle_author' /> <label for='middle_author'>Middle Author</label>";
-	$html .= $spacer;
-	$checked = in_array("last", $authors) ? "checked" : "";
-	$html .= "<input type='checkbox' name='last_author' $checked id='last_author' /> <label for='last_author'>Last Author</label>";
-	return $html;
+    $spacer = "<br/>";
+    $checked = in_array("first", $authors) ? "checked" : "";
+    $html = "<label>Author Placement:</label><br/>";
+    $html .= "<input type='checkbox' name='first_author' $checked id='first_author' /> <label for='first_author'>First Author</label>";
+    $html .= $spacer;
+    $checked = in_array("middle", $authors) ? "checked" : "";
+    $html .= "<input type='checkbox' name='middle_author' $checked id='middle_author' /> <label for='middle_author'>Middle Author</label>";
+    $html .= $spacer;
+    $checked = in_array("last", $authors) ? "checked" : "";
+    $html .= "<input type='checkbox' name='last_author' $checked id='last_author' /> <label for='last_author'>Last Author</label>";
+    return $html;
 }
 
 function subjectTermsApply($row, $requestedSubjectTerms) {
-	if (empty($requestedSubjectTerms)) {
-		return true;
-	}
-	if ($row['redcap_repeat_instrument'] == "eric") {
-		$subjectList = $row['eric_subject'] ?? "";
-	} elseif ($row['redcap_repeat_instrument'] == "citation") {
-		$subjectList = $row['citation_mesh_terms'] ?? "";
-	} else {
-		return true;
-	}
-	if (!$subjectList) {
-		return false;
-	}
-	$subjects = preg_split("/\s*[,;]\s*/", strtolower(trim($subjectList)));
-	if (empty($subjects) || REDCapManagement::isArrayBlank($subjects)) {
-		return false;
-	}
-	foreach ($requestedSubjectTerms as $requestedTerm) {
-		$requestedTerm = strtolower($requestedTerm);
-		if ($requestedTerm && in_array($requestedTerm, $subjects)) {
-			return true;
-		}
-	}
-	return false;
+    if (empty($requestedSubjectTerms)) {
+        return TRUE;
+    }
+    if ($row['redcap_repeat_instrument'] == "eric") {
+        $subjectList = $row['eric_subject'] ?? "";
+    } else if ($row['redcap_repeat_instrument'] == "citation") {
+        $subjectList = $row['citation_mesh_terms'] ?? "";
+    } else {
+        return TRUE;
+    }
+    if (!$subjectList) {
+        return FALSE;
+    }
+    $subjects = preg_split("/\s*[,;]\s*/", strtolower(trim($subjectList)));
+    if (empty($subjects) || REDCapManagement::isArrayBlank($subjects)) {
+        return FALSE;
+    }
+    foreach ($requestedSubjectTerms as $requestedTerm) {
+        $requestedTerm = strtolower($requestedTerm);
+        if ($requestedTerm && in_array($requestedTerm, $subjects)) {
+            return TRUE;
+        }
+    }
+    return FALSE;
 }
 
 function authorFiltersApply($row, $authorTypes, $nameFirst, $nameLast) {
-	if (empty($authorTypes)) {
-		return false;
-	}
-	if ($row['redcap_repeat_instrument'] == "eric") {
-		$authorList = $row['eric_author'] ?? "";
-	} elseif ($row['redcap_repeat_instrument'] == "citation") {
-		$authorList = $row['citation_authors'] ?? "";
-	} else {
-		return true;
-	}
-	if (!$authorList) {
-		return true;
-	}
+    if (empty($authorTypes)) {
+        return FALSE;
+    }
+    if ($row['redcap_repeat_instrument'] == "eric") {
+        $authorList = $row['eric_author'] ?? "";
+    } else if ($row['redcap_repeat_instrument'] == "citation") {
+        $authorList = $row['citation_authors'] ?? "";
+    } else {
+        return TRUE;
+    }
+    if (!$authorList) {
+        return TRUE;
+    }
 
-	$authors = preg_split("/\s*[,;]\s*/", $authorList);
-	if (empty($authors) || REDCapManagement::isArrayBlank($authors)) {
-		return true;
-	}
-	list($firstAuthorFirst, $firstAuthorLast) = NameMatcher::splitName($authors[0]);
-	$matchesFirstAuthor = NameMatcher::matchByInitials($firstAuthorLast, $firstAuthorFirst, $nameLast, $nameFirst);
-	$lastAuthor = $authors[count($authors) - 1];
-	list($lastAuthorFirst, $lastAuthorLast) = NameMatcher::splitName($lastAuthor);
-	$matchesLastAuthor = NameMatcher::matchByInitials($lastAuthorLast, $lastAuthorFirst, $nameLast, $nameFirst);
-	if (in_array("first", $authorTypes) && $matchesFirstAuthor) {
-		return true;
-	}
-	if (in_array("last", $authorTypes) && $matchesLastAuthor) {
-		return true;
-	}
-	if (in_array("middle", $authorTypes) && !$matchesFirstAuthor && !$matchesLastAuthor) {
-		# we know it matched because it's been included in the record's citations
-		return true;
-	}
-	return false;
+    $authors = preg_split("/\s*[,;]\s*/", $authorList);
+    if (empty($authors) || REDCapManagement::isArrayBlank($authors)) {
+        return TRUE;
+    }
+    list($firstAuthorFirst, $firstAuthorLast) = NameMatcher::splitName($authors[0]);
+    $matchesFirstAuthor = NameMatcher::matchByInitials($firstAuthorLast, $firstAuthorFirst, $nameLast, $nameFirst);
+    $lastAuthor = $authors[count($authors) - 1];
+    list($lastAuthorFirst, $lastAuthorLast) = NameMatcher::splitName($lastAuthor);
+    $matchesLastAuthor = NameMatcher::matchByInitials($lastAuthorLast, $lastAuthorFirst, $nameLast, $nameFirst);
+    if (in_array("first", $authorTypes) && $matchesFirstAuthor) {
+        return TRUE;
+    }
+    if (in_array("last", $authorTypes) && $matchesLastAuthor) {
+        return TRUE;
+    }
+    if (in_array("middle", $authorTypes) && !$matchesFirstAuthor && !$matchesLastAuthor) {
+        # we know it matched because it's been included in the record's citations
+        return TRUE;
+    }
+    return FALSE;
 }

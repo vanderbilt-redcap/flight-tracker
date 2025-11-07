@@ -1,6 +1,6 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Upload;
+use \Vanderbilt\CareerDevLibrary\Upload;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Upload.php");

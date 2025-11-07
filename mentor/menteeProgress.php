@@ -9,104 +9,104 @@ require_once dirname(__FILE__)."/base.php";
 require_once dirname(__FILE__)."/../small_base.php";
 require_once dirname(__FILE__)."/../classes/Autoload.php";
 
-if (isset($_REQUEST['uid']) && MMAHelper::getMMADebug()) {
-	$username = REDCapManagement::sanitize($_REQUEST['uid']);
-	$uidString = "&uid=$username";
+if(isset($_REQUEST['uid']) && MMAHelper::getMMADebug()){
+    $username = REDCapManagement::sanitize($_REQUEST['uid']);
+    $uidString = "&uid=$username";
 } else {
-	$username = (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") ? NEW_HASH_DESIGNATION : Application::getUsername();
-	$uidString = "";
+    $username = (Application::getProgramName() == "Flight Tracker Mentee-Mentor Agreements") ? NEW_HASH_DESIGNATION : Application::getUsername();
+    $uidString = "";
 }
 
 if ($_POST['action'] == "getMenteeHTML") {
-	$allMentees = [];
-	$pids = Sanitizer::sanitizeArray($_POST['pids'] ?? []);
-	foreach ($pids as $currPid) {
-		$time1 = microtime(true);
-		$currToken = Application::getSetting("token", $currPid);
-		$currServer = Application::getSetting("server", $currPid);
-		if (
-			$currToken && $currServer
-			&& REDCapManagement::isActiveProject($currPid)
-			&& !CareerDev::isCopiedProject($currPid)
-		) {
-			$currMentees = MMAHelper::getMentees("all", $username, $currToken, $currServer);
-			if (!empty($currMentees) && !empty($currMentees["name"])) {
-				$allMentees[$currPid] = $currMentees;
-			}
-		}
-		$time2 = microtime(true);
-		if (isset($_GET['test'])) {
-			echo "Downloading $currPid took ".($time2 - $time1)." seconds<br/>";
-		}
-	}
+    $allMentees = [];
+    $pids = Sanitizer::sanitizeArray($_POST['pids'] ?? []);
+    foreach ($pids as $currPid) {
+        $time1 = microtime(TRUE);
+        $currToken = Application::getSetting("token", $currPid);
+        $currServer = Application::getSetting("server", $currPid);
+        if (
+                $currToken && $currServer
+                && REDCapManagement::isActiveProject($currPid)
+                && !CareerDev::isCopiedProject($currPid)
+        ) {
+            $currMentees = MMAHelper::getMentees("all", $username, $currToken, $currServer);
+            if (!empty($currMentees) && !empty($currMentees["name"])) {
+                $allMentees[$currPid] = $currMentees;
+            }
+        }
+        $time2 = microtime(TRUE);
+        if (isset($_GET['test'])) {
+            echo "Downloading $currPid took ".($time2 - $time1)." seconds<br/>";
+        }
+    }
 
-	$html = "";
-	foreach ($allMentees as $currPid => $projectMentees) {
-		$currToken = Application::getSetting("token", $currPid);
-		$currServer = Application::getSetting("server", $currPid);
-		$projectLink = Application::getMenteeAgreementLink($currPid).$uidString;
-		if ($currToken && $currServer && $projectLink && Application::has("mentoring_agreement", $currPid)) {
-			$projectTitle = Download::projectTitle($currPid);
-			$projectTitle = preg_replace("/^Flight Tracker - /", "", $projectTitle);
-			$menteeEmails = Download::emails($currToken, $currServer);
-			$completes = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_agreement_complete");
-			$completeUserids = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_userid");
-			$completeDates = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_last_update");
-			$referencedProject = "$projectTitle<br/><span class='smaller'>(pid $currPid)</span>";
-			$numRowsForProject = count($projectMentees["name"]);
-			foreach ($projectMentees["name"] as $recordId => $menteeName) {
-				$menteeUserid = $projectMentees["uid"][$recordId] ?? "";
-				if (empty($completes[$recordId])) {
-					$mark = "<span class='red bolded' title='missing'>X</span>";
-				} else {
-					$userInstances = [];
-					$latestTs = 0;
-					foreach ($completes[$recordId] as $instance => $formStatus) {
-						if ($completeUserids[$recordId][$instance] == $menteeUserid) {
-							$userInstances[] = $instance;
-							$instanceTs = $completeDates[$recordId][$instance] ? strtotime($completeDates[$recordId][$instance]) : "";
-							if ($instanceTs && ($instanceTs > $latestTs)) {
-								$latestTs = $instanceTs;
-							}
-						}
-					}
-					$numCompleteByUser = count($userInstances);
-					if ($numCompleteByUser === 0) {
-						$mark = "<span class='red bolded' title='Not completed'>X</span>";
-					} elseif ($latestTs > 0) {
-						$date = date("M d Y", $latestTs);
-						$mdy = date("m-d-Y", $latestTs);
-						$mark = "<span class='green bolded smaller' title='Last entered on $mdy'>$date</span>";
-					} else {
-						$mark = "<span class='red bolded' title='No record'>X</span>";
-					}
-				}
+    $html = "";
+    foreach ($allMentees as $currPid => $projectMentees) {
+        $currToken = Application::getSetting("token", $currPid);
+        $currServer = Application::getSetting("server", $currPid);
+        $projectLink = Application::getMenteeAgreementLink($currPid).$uidString;
+        if ($currToken && $currServer && $projectLink && Application::has("mentoring_agreement", $currPid)) {
+            $projectTitle = Download::projectTitle($currPid);
+            $projectTitle = preg_replace("/^Flight Tracker - /", "", $projectTitle);
+            $menteeEmails = Download::emails($currToken, $currServer);
+            $completes = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_agreement_complete");
+            $completeUserids = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_userid");
+            $completeDates = Download::oneFieldWithInstances($currToken, $currServer, "mentoring_last_update");
+            $referencedProject = "$projectTitle<br/><span class='smaller'>(pid $currPid)</span>";
+            $numRowsForProject = count($projectMentees["name"]);
+            foreach ($projectMentees["name"] as $recordId => $menteeName) {
+                $menteeUserid = $projectMentees["uid"][$recordId] ?? "";
+                if (empty($completes[$recordId])) {
+                    $mark = "<span class='red bolded' title='missing'>X</span>";
+                } else {
+                    $userInstances = [];
+                    $latestTs = 0;
+                    foreach ($completes[$recordId] as $instance => $formStatus) {
+                        if ($completeUserids[$recordId][$instance] == $menteeUserid) {
+                            $userInstances[] = $instance;
+                            $instanceTs = $completeDates[$recordId][$instance] ? strtotime($completeDates[$recordId][$instance]) : "";
+                            if ($instanceTs && ($instanceTs > $latestTs)) {
+                                $latestTs = $instanceTs;
+                            }
+                        }
+                    }
+                    $numCompleteByUser = count($userInstances);
+                    if ($numCompleteByUser === 0) {
+                        $mark = "<span class='red bolded' title='Not completed'>X</span>";
+                    } else if ($latestTs > 0) {
+                        $date = date("M d Y", $latestTs);
+                        $mdy = date("m-d-Y", $latestTs);
+                        $mark = "<span class='green bolded smaller' title='Last entered on $mdy'>$date</span>";
+                    } else {
+                        $mark = "<span class='red bolded' title='No record'>X</span>";
+                    }
+                }
 
-				$isFirstRowForProject = ($recordId == array_keys($projectMentees["name"])[0]);
-				$menteeEmail = $menteeEmails[$recordId] ?? "";
-				$html .= "<tr>";
-				if ($isFirstRowForProject) {
-					$html .= "<td class='grey' rowspan='$numRowsForProject'>$referencedProject</td>";
-				}
-				$html .= "<td class='centered'>$mark</td>";
-				$html .= "<td><strong>$menteeName</strong>";
-				if ($menteeEmail) {
-					$html .= "<span class='smaller'><br/>(<a href='mailto:$menteeEmail?subject=Flight Tracker Mentee-Mentor Agreement'>$menteeEmail</a>)</span>";
-				}
-				$html .= "</td>";
-				if ($isFirstRowForProject) {
-					$id = $currPid."___link";
-					$html .= "<td rowspan='$numRowsForProject'><input id='$id' type='text' style='max-width: 250px; margin-right: 5px; margin-left: 5px;' readonly='readonly' value='$projectLink' onclick='this.select();' /><span class='smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#longurl\"));'>Copy</a></span></td>";
-				}
-				$html .= "</tr>";
-			}
-		} else {
-			$html .= "<tr><td class='centered' colspan='4'>Could not access pid $currPid</td></tr>";
-		}
-	}
+                $isFirstRowForProject = ($recordId == array_keys($projectMentees["name"])[0]);
+                $menteeEmail = $menteeEmails[$recordId] ?? "";
+                $html .= "<tr>";
+                if ($isFirstRowForProject) {
+                    $html .= "<td class='grey' rowspan='$numRowsForProject'>$referencedProject</td>";
+                }
+                $html .= "<td class='centered'>$mark</td>";
+                $html .= "<td><strong>$menteeName</strong>";
+                if ($menteeEmail) {
+                    $html .= "<span class='smaller'><br/>(<a href='mailto:$menteeEmail?subject=Flight Tracker Mentee-Mentor Agreement'>$menteeEmail</a>)</span>";
+                }
+                $html .= "</td>";
+                if ($isFirstRowForProject) {
+                    $id = $currPid."___link";
+                    $html .= "<td rowspan='$numRowsForProject'><input id='$id' type='text' style='max-width: 250px; margin-right: 5px; margin-left: 5px;' readonly='readonly' value='$projectLink' onclick='this.select();' /><span class='smaller'><a href='javascript:;' onclick='copyToClipboard($(\"#longurl\"));'>Copy</a></span></td>";
+                }
+                $html .= "</tr>";
+            }
+        } else {
+            $html .= "<tr><td class='centered' colspan='4'>Could not access pid $currPid</td></tr>";
+        }
+    }
 
-	echo $html;
-	exit;
+    echo $html;
+    exit;
 }
 
 require_once dirname(__FILE__).'/_header.php';

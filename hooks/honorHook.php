@@ -3,9 +3,9 @@
 # for data entry page in REDCap so that admins can add new honors or committees to their institutional list
 # NOT for survey page
 
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/../classes/Autoload.php");
@@ -17,13 +17,13 @@ $choicesBySource = [];
 $destFields = [];
 $prefix = REDCapManagement::getPrefixFromInstrument($instrument);
 foreach ($affectedFields as $sourceField => $destFieldsForSource) {
-	$choicesBySource[$sourceField] = DataDictionaryManagement::getChoicesForField($pid, $destFieldsForSource[0]);
-	foreach ($destFieldsForSource as $destField) {
-		if (preg_match("/^$prefix"."_/", $destField)) {
-			$destFields[$sourceField] = $destField;
-			break;
-		}
-	}
+    $choicesBySource[$sourceField] = DataDictionaryManagement::getChoicesForField($pid, $destFieldsForSource[0]);
+    foreach ($destFieldsForSource as $destField) {
+        if (preg_match("/^$prefix"."_/", $destField)) {
+            $destFields[$sourceField] = $destField;
+            break;
+        }
+    }
 }
 $sourceFieldsJSON = json_encode(array_keys($affectedFields));
 $choicesBySourceJSON = json_encode($choicesBySource);

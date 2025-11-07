@@ -18,14 +18,14 @@ namespace phpseclib3\Crypt\Common;
  */
 interface PrivateKey
 {
-    public function sign($message);
-    //public function decrypt($ciphertext);
-    public function getPublicKey();
-    public function toString($type, array $options = []);
+	public function sign($message);
+	//public function decrypt($ciphertext);
+	public function getPublicKey();
+	public function toString($type, array $options = []);
 
-    /**
-     * @param string|false $password
-     * @return mixed
-     */
-    public function withPassword($password = false);
+	/**
+	 * @param string|false $password
+	 * @return mixed
+	 */
+	public function withPassword($password = false);
 }

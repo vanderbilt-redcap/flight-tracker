@@ -1,14 +1,14 @@
 <?php
 
-use Vanderbilt\CareerDevLibrary\Publications;
-use Vanderbilt\CareerDevLibrary\Citation;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Measurement;
-use Vanderbilt\FlightTrackerExternalModule\CareerDev;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\Dashboard;
-use Vanderbilt\CareerDevLibrary\Sanitizer;
+use \Vanderbilt\CareerDevLibrary\Publications;
+use \Vanderbilt\CareerDevLibrary\Citation;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Measurement;
+use \Vanderbilt\FlightTrackerExternalModule\CareerDev;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\Dashboard;
+use \Vanderbilt\CareerDevLibrary\Sanitizer;
 
 require_once(dirname(__FILE__)."/../small_base.php");
 require_once(dirname(__FILE__)."/base.php");
@@ -21,17 +21,17 @@ $measurements = [];
 
 $headers[] = "Publications by Category";
 if (isset($_GET['cohort'])) {
-	$cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
-	$headers[] = "For Cohort " . $cohort;
+    $cohort = REDCapManagement::sanitizeCohort($_GET['cohort']);
+    $headers[] = "For Cohort " . $cohort;
 } else {
-	$cohort = "";
+    $cohort = "";
 }
 $headers[] = Publications::makeLimitButton();
 
 $thresholdTs = -100000;
 if (isset($_GET['limitPubs'])) {
-	$thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
-	$thresholdTs = strtotime("$thresholdYear-01-01");
+    $thresholdYear = Sanitizer::sanitizeInteger($_GET['limitPubs']);
+    $thresholdTs = strtotime("$thresholdYear-01-01");
 }
 
 $indexedRedcapData = Download::getIndexedRedcapData($token, $server, array_unique(array_merge(CareerDev::$smallCitationFields, ["citation_ts"])), $cohort, Application::getModule());
@@ -48,16 +48,16 @@ foreach ($indexedRedcapData as $recordId => $rows) {
 	$goodCitations = $pubs->getCitationCollection("Included");
 	if ($goodCitations) {
 		foreach ($goodCitations->getCitations() as $citation) {
-			if ($citation->getTimestamp() >= $thresholdTs) {
-				$numConfirmedPubs++;
-				$cat = $citation->getCategory();
+            if ($citation->getTimestamp() >= $thresholdTs) {
+                $numConfirmedPubs++;
+                $cat = $citation->getCategory();
 
-				if (!isset($numForCategory[$cat])) {
-					$numForCategory[$cat] = 0;
-				}
+                if (!isset($numForCategory[$cat])) {
+                    $numForCategory[$cat] = 0;
+                }
 
-				$numForCategory[$cat]++;
-			}
+                $numForCategory[$cat]++;
+            }
 		}
 	}
 

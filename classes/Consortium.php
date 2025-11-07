@@ -2,31 +2,30 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
-class Consortium
-{
-	public static function findNextTroubleshootingMeeting($startTime = null) {
+class Consortium {
+	public static function findNextTroubleshootingMeeting($startTime = NULL) {
 		$ts = self::findNextMeetingTs($startTime, 3);
 		return self::formatLongDate($ts);
 	}
 
-	public static function findNextMeeting($startTime = null) {
+	public static function findNextMeeting($startTime = NULL) {
 		$ts = self::findNextMeetingTs($startTime, 1);
 		return self::formatLongDate($ts);
 	}
 
-	public static function findNextMeetingTs($startTime = null, $weekNum = 1) {
+	public static function findNextMeetingTs($startTime = NULL, $weekNum = 1) {
 		if (!$startTime) {
 			if (date("Y-m") == "2020-02") {
-				# start twice a month in 2020-03
-				$startTime = strtotime("2020-03-01");
-			} elseif (in_array(date("Y-m"), ["2023-06", "2023-07"]) && ($weekNum == 1)) {
-				$startTime = strtotime("2023-08-01");
-			} else {
+                # start twice a month in 2020-03
+                $startTime = strtotime("2020-03-01");
+            } else if (in_array(date("Y-m"), ["2023-06", "2023-07"]) && ($weekNum == 1)) {
+                $startTime = strtotime("2023-08-01");
+            } else {
 				$startTime = time();
 			}
 		}
 		$midnightTs = strtotime(date("Y-m-d 23:59:59", $startTime));
-
+	
 		$wedTs = self::findXthWednesdayTs($weekNum, $startTime);
 		if ($wedTs > $midnightTs) {
 			return $wedTs;

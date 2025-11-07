@@ -22,5 +22,5 @@ use phpseclib3\File\ASN1;
  */
 abstract class KeyIdentifier
 {
-    const MAP = ['type' => ASN1::TYPE_OCTET_STRING];
+	public const MAP = ['type' => ASN1::TYPE_OCTET_STRING];
 }

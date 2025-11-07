@@ -2,11 +2,11 @@
 
 namespace Vanderbilt\FlightTrackerExternalModule;
 
-use Vanderbilt\CareerDevLibrary\Application;
-use Vanderbilt\CareerDevLibrary\NIHTables;
-use Vanderbilt\CareerDevLibrary\Download;
-use Vanderbilt\CareerDevLibrary\Cohorts;
-use Vanderbilt\CareerDevLibrary\REDCapManagement;
+use \Vanderbilt\CareerDevLibrary\Application;
+use \Vanderbilt\CareerDevLibrary\NIHTables;
+use \Vanderbilt\CareerDevLibrary\Download;
+use \Vanderbilt\CareerDevLibrary\Cohorts;
+use \Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\URLManagement;
 
 require_once(dirname(__FILE__)."/../charts/baseWeb.php");
@@ -15,14 +15,14 @@ require_once(dirname(__FILE__)."/../classes/Autoload.php");
 Application::increaseProcessingMax(1);
 
 function makeMonthLink($tableNum) {
-	$tableLink = Application::link("reporting/table.php");
-	if (isset($_GET['cohort']) && $_GET['cohort']) {
-		$tableLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
-	}
-	$basePage = URLManagement::getPage($tableLink);
-	$hiddenHTML = URLManagement::getParametersAsHiddenInputs($tableLink);
-	$title = NIHTables::getTableHeader($tableNum);
-	return "<form action='$basePage' method='GET'>
+    $tableLink = Application::link("reporting/table.php");
+    if (isset($_GET['cohort']) && $_GET['cohort']) {
+        $tableLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
+    }
+    $basePage = URLManagement::getPage($tableLink);
+    $hiddenHTML = URLManagement::getParametersAsHiddenInputs($tableLink);
+    $title = NIHTables::getTableHeader($tableNum);
+    return "<form action='$basePage' method='GET'>
     $hiddenHTML
     <input type='hidden' name='table' id='table' value='$tableNum' />
     <p class='centered'>
@@ -34,15 +34,15 @@ function makeMonthLink($tableNum) {
 }
 
 function makeLink($tableNum) {
-	if ($tableNum == "Common Metrics") {
-		$link = Application::link("reporting/commonMetrics.php");
-		return "<a href='$link'>Common Metrics Table</a>";
-	}
+    if ($tableNum == "Common Metrics") {
+        $link = Application::link("reporting/commonMetrics.php");
+        return "<a href='$link'>Common Metrics Table</a>";
+    }
 	if ($text = NIHTables::getTableHeader($tableNum)) {
 		$baseLink = Application::link("reporting/table.php");
 		if (isset($_GET['cohort']) && $_GET['cohort']) {
-			$baseLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
-		}
+		    $baseLink .= "&cohort=".urlencode(REDCapManagement::sanitizeCohort($_GET['cohort']));
+        }
 		if (formatTableNum($tableNum) == $text) {
 			$htmlText = $text;
 		} else {
@@ -69,14 +69,14 @@ function makeTableHeader($tableNum) {
 	return "";
 }
 
-$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitizeCohort($_GET['cohort']) : "";
+$cohort = isset($_GET['cohort']) ? REDCapManagement::sanitizeCohort($_GET['cohort']) :  "";
 $metadata = Download::metadata($token, $server);
 $tables = new NIHTables($token, $server, $pid, $metadata);
 $predocs = $tables->downloadPredocNames();
 if (isset($_GET['appointments'])) {
-	$postdocs = $tables->downloadPostdocNames("8C-VUMC");
+    $postdocs = $tables->downloadPostdocNames("8C-VUMC");
 } else {
-	$postdocs = $tables->downloadPostdocNames();
+    $postdocs = $tables->downloadPostdocNames();
 }
 
 $predocNames = implode(", ", array_values($predocs));
@@ -92,19 +92,19 @@ $cohorts = new Cohorts($token, $server, Application::getModule());
 <?php
 
 if (($pid == 66635) && (preg_match("/redcap\.vanderbilt\.edu/", $server) || preg_match("/redcap\.vumc\.org/", $server))) {
-	$currentUrl = Application::link("this");
-	if (isset($_GET['appointments'])) {
-		$url = preg_replace("/\&appointments/", "", $currentUrl);
-		echo "<p class='centered'><a href='$url'>View All Post-Docs</a></p>\n";
-	} else {
-		$url = $currentUrl . "&appointments";
-		echo "<p class='centered'><a href='$url'>View Post-Docs by Appointment-Only</a></p>\n";
-	}
+    $currentUrl = Application::link("this");
+    if (isset($_GET['appointments'])) {
+        $url = preg_replace("/\&appointments/", "", $currentUrl);
+        echo "<p class='centered'><a href='$url'>View All Post-Docs</a></p>\n";
+    } else {
+        $url = $currentUrl . "&appointments";
+        echo "<p class='centered'><a href='$url'>View Post-Docs by Appointment-Only</a></p>\n";
+    }
 }
 
 $note = "";
 if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
-	$note = "(You can <a href='".Application::link("customGrants.php")."'>setup these in bulk</a>, too.)";
+    $note = "(You can <a href='".Application::link("customGrants.php")."'>setup these in bulk</a>, too.)";
 }
 
 ?>
@@ -137,19 +137,19 @@ if (file_exists(dirname(__FILE__)."/../customGrants.php")) {
 
 echo makeMonthLink("5A");
 if (isset($_GET['appointments'])) {
-	echo makeMonthLink("5B-VUMC");
+    echo makeMonthLink("5B-VUMC");
 } else {
-	echo makeMonthLink("5B");
+    echo makeMonthLink("5B");
 }
 
 if (Application::isVanderbilt() && Application::isPluginProject($pid) && !Application::isLocalhost()) {
-	echo "<h2>".makeTableHeader("6")."</h2>";
-	echo "<p class='centered max-width'>".makeLink("6AII")."</p>";
-	if (isset($_GET['appointments'])) {
-		echo "<p class='centered max-width'>".makeLink("6BII-VUMC")."</p>";
-	} else {
-		echo "<p class='centered max-width'>".makeLink("6BII")."</p>";
-	}
+    echo "<h2>".makeTableHeader("6")."</h2>";
+    echo "<p class='centered max-width'>".makeLink("6AII")."</p>";
+    if (isset($_GET['appointments'])) {
+        echo "<p class='centered max-width'>".makeLink("6BII-VUMC")."</p>";
+    } else {
+        echo "<p class='centered max-width'>".makeLink("6BII")."</p>";
+    }
 }
 
 $part1Message = "Only scholars whose appointments overlap with the last ".NIHTables::PART_1_YEARS." years are included in this table.";
@@ -162,11 +162,11 @@ $part3Message = "Only scholars whose appointments overlap with the last ".NIHTab
 <p class='centered max-width'><?= makeLink("8AIV") ?></p>
 <?php
 if (isset($_GET['appointments'])) {
-	echo "<p class='centered max-width'>".makeLink("8CI-VUMC")."<br/>$part1Message</p>";
-	echo "<p class='centered max-width'>".makeLink("8CIII-VUMC")."<br/>$part3Message</p>";
+    echo "<p class='centered max-width'>".makeLink("8CI-VUMC")."<br/>$part1Message</p>";
+    echo "<p class='centered max-width'>".makeLink("8CIII-VUMC")."<br/>$part3Message</p>";
 } else {
-	echo "<p class='centered max-width'>".makeLink("8CI")."<br/>$part1Message</p>";
-	echo "<p class='centered max-width'>".makeLink("8CIII")."<br/>$part3Message</p>";
+    echo "<p class='centered max-width'>".makeLink("8CI")."<br/>$part1Message</p>";
+    echo "<p class='centered max-width'>".makeLink("8CIII")."<br/>$part3Message</p>";
 }
 
 ?>
@@ -179,11 +179,11 @@ if (isset($_GET['appointments'])) {
 $bookmarkletJSURL = Application::link("js/xtract.js");
 $cohortParam = "";
 if ($cohort) {
-	$cohortParam = "&cohort=".$cohort;
+    $cohortParam = "&cohort=".$cohort;
 }
 $appointmentParam = "";
 if (isset($_GET['appointments'])) {
-	$appointmentParam = "&appointments";
+    $appointmentParam = "&appointments";
 }
 
 ?>

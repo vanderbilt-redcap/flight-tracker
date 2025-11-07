@@ -192,6 +192,11 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
 	} else {
 		$orcids = [];
 	}
+	if (in_array("identifier_corporate_author", $metadataFields)) {
+		$corporateAuthors = Download::oneFieldByPid($pid, "identifier_corporate_author");
+	} else {
+		$corporateAuthors = [];
+	}
 
 	foreach ($records as $recordId) {
 		$uploadRows = [];
@@ -254,6 +259,14 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
 			}
 		}
 
+		$corporateAuthorPMIDS = [];
+		if ($corporateAuthors[$recordId]) {
+			$corporateAuthorNames = explode(";", $corporateAuthors[$recordId]);
+			foreach ($corporateAuthorNames as $corporateAuthorName) {
+				$corporateAuthorPMIDS = array_unique(array_merge($corporateAuthorPMIDS, Publications::searchPubMedForCorporateAuthor($corporateAuthorName, $pid)));
+			}
+		}
+
 		Application::log("Searching $recLastName $firstName at ".implode(", ", $institutions), $pid);
 		Application::log("Prior Record PMIDs ".count($recordPMIDsWithInstances).": ".json_encode($recordPMIDsWithInstances), $pid);
 		$pubmedPMIDs = Publications::searchPubMedForName($firstName, $middleName, $recLastName, $pid, $institutions);
@@ -269,9 +282,13 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
 		if (!empty($nonOrcidPMIDsToDownload)) {
 			Application::log("$recordId at ".count($nonOrcidPMIDsToDownload)." new PubMed PMIDs ".json_encode($nonOrcidPMIDsToDownload), $pid);
 		}
+		if (!empty($corporateAuthorPMIDS)) {
+			Application::log("$recordId at ".count($corporateAuthorPMIDS)." new Corporate Author PMIDs ".json_encode($corporateAuthorPMIDS), $pid);
+		}
 
 		$pubmedRows = [];
 		$orcidRows = [];
+		$corporateAuthorRows = [];
 		$maxInstance++;
 		if (!empty($nonOrcidPMIDsToDownload)) {
 			$pubmedRows = Publications::getCitationsFromPubMed($nonOrcidPMIDsToDownload, $metadata, "pubmed", $recordId, $maxInstance, $orcidPMIDsToDownload, $pid);
@@ -284,9 +301,14 @@ function processPubMed($token, $server, $pid, $records, $metadata, $searchWithIn
 				$src = "pubmed";
 			}
 			$orcidRows = Publications::getCitationsFromPubMed($orcidPMIDs, $metadata, $src, $recordId, $maxInstance, $orcidPMIDsToDownload, $pid);
+			$maxInstance = REDCapManagement::getMaxInstance($orcidRows, "citation", $recordId) + 1;
 		}
-		Application::log("$recordId: Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows and ".count($uploadRows)." prior rows", $pid);
-		$uploadRows = array_merge($pubmedRows, $orcidRows, $uploadRows);
+		if (!empty($corporateAuthorPMIDS)) {
+			$src = "pubmed";
+			$corporateAuthorRows = Publications::getCitationsFromPubMed($corporateAuthorPMIDS, $metadata, $src, $recordId, $maxInstance, [], $pid);
+		}
+		Application::log("$recordId: Combining ".count($pubmedRows)." PubMed rows with ".count($orcidRows)." ORCID rows and Coporate Author Rows " . count($corporateAuthorRows) . " And ".count($uploadRows)." prior rows", $pid);
+		$uploadRows = array_merge($pubmedRows, $orcidRows, $uploadRows, $corporateAuthorRows);
 		if (!empty($uploadRows)) {
 			$uploadRows = Publications::filterExcludeList($uploadRows, $excludeList, $recordId);
 			$instances = [];

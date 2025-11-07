@@ -133,13 +133,13 @@ list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($men
 $agreementSectionsEnabledStatus = MMAHelper::getAgreementSectionsEnabledStatusForProject($pid);
 $customAdminQuestions = Application::getSetting("adminCustomQuestions_mma", $pid);
 if (empty($menteeCheckboxes)) {
-	$firstHalfMenteeCheckboxes = [];
-	$secondHalfMenteeCheckboxes = [];
-} elseif (count($menteeCheckboxes) == 1) {
-	$firstHalfMenteeCheckboxes = $menteeCheckboxes;
-	$secondHalfMenteeCheckboxes = [];
+    $firstHalfMenteeCheckboxes = [];
+    $secondHalfMenteeCheckboxes = [];
+} else if (count($menteeCheckboxes) == 1) {
+    $firstHalfMenteeCheckboxes = $menteeCheckboxes;
+    $secondHalfMenteeCheckboxes = [];
 } else {
-	list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
+    list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
 }
 
 ?>

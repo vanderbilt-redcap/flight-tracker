@@ -24,11 +24,11 @@ use phpseclib3\File\ASN1;
  */
 abstract class DigestInfo
 {
-    const MAP = [
-        'type' => ASN1::TYPE_SEQUENCE,
-        'children' => [
-            'digestAlgorithm' => AlgorithmIdentifier::MAP,
-            'digest' => ['type' => ASN1::TYPE_OCTET_STRING]
-        ]
-    ];
+	public const MAP = [
+		'type' => ASN1::TYPE_SEQUENCE,
+		'children' => [
+			'digestAlgorithm' => AlgorithmIdentifier::MAP,
+			'digest' => ['type' => ASN1::TYPE_OCTET_STRING]
+		]
+	];
 }

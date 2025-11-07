@@ -4,6 +4,7 @@ namespace Vanderbilt\FlightTrackerExternalModule;
 
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\Application;
+use Vanderbilt\CareerDevLibrary\Sanitizer;
 use Vanderbilt\CareerDevLibrary\Upload;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
@@ -267,8 +268,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
 				} elseif ($nodes[6] == "") {
 					$gender = "";
 				} else {
-					echo "<p>The gender column contains an invalid value ({$nodes[6]}). Import not successful.</p>";
-					throw new \Exception("The gender column contains an invalid value ({$nodes[6]}). Import not successful.");
+					$errorMessage = Sanitizer::sanitize($nodes[6]);
+					echo "<p>The gender column contains an invalid value ({$errorMessage}). Import not successful.</p>";
+					throw new \Exception("The gender column contains an invalid value ({$errorMessage}). Import not successful.", );
 				}
 				if ($nodes[7]) {
 					$dob = importMDY2YMD($nodes[7], "date-of-birth");
@@ -292,8 +294,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
 				} elseif ($nodes[8] == "") {
 					$race = "";
 				} else {
-					echo "<p>The race column contains an invalid value ({$nodes[8]}). Import not successful.</p>";
-					throw new \Exception("The race column contains an invalid value ({$nodes[8]}). Import not successful.");
+					$errorMessage = Sanitizer::sanitize($nodes[8]);
+					echo "<p>The race column contains an invalid value ({$errorMessage}). Import not successful.</p>";
+					throw new \Exception("The race column contains an invalid value ({$errorMessage}). Import not successful.");
 				}
 				if (preg_match("/Non-Hispanic/i", $nodes[9])) {
 					$ethnicity = 2;
@@ -302,8 +305,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
 				} elseif ($nodes[9] == "") {
 					$ethnicity = "";
 				} else {
-					echo "<p>The ethnicity column contains an invalid value ({$nodes[9]}). Import not successful.</p>";
-					throw new \Exception("The ethnicity column contains an invalid value ({$nodes[9]}). Import not successful.");
+					$errorMessage = Sanitizer::sanitize($nodes[9]);
+					echo "<p>The ethnicity column contains an invalid value ({$errorMessage}). Import not successful.</p>";
+					throw new \Exception("The ethnicity column contains an invalid value ({$errorMessage}). Import not successful.");
 				}
 				if (preg_match("/Prefer Not To Answer/i", $nodes[10])) {
 					$disadvantaged = 3;
@@ -314,8 +318,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
 				} elseif ($nodes[10] == "") {
 					$disadvantaged = "";
 				} else {
-					echo "<p>The disadvantaged column contains an invalid value ({$nodes[10]}). Import not successful.</p>";
-					throw new \Exception("The disadvantaged column contains an invalid value ({$nodes[10]}). Import not successful.");
+					$errorMessage = Sanitizer::sanitize($nodes[10]);
+					echo "<p>The disadvantaged column contains an invalid value ({$errorMessage}). Import not successful.</p>";
+					throw new \Exception("The disadvantaged column contains an invalid value ({$errorMessage}). Import not successful.");
 				}
 				if (preg_match("/N/i", $nodes[11])) {
 					$disabled = 2;
@@ -335,8 +340,9 @@ function processLines($lines, $nextRecordId, $token, $server, $mentorUids, $allN
 				} elseif ($nodes[12] == "") {
 					$citizenship = "";
 				} else {
-					echo "<p>The citizenship column contains an invalid value ({$nodes[12]}). Import not successful.</p>";
-					throw new \Exception("The citizenship column contains an invalid value ({$nodes[12]}). Import not successful.");
+					$errorMessage = Sanitizer::sanitize($nodes[12]);
+					echo "<p>The citizenship column contains an invalid value ({$errorMessage}). Import not successful.</p>";
+					throw new \Exception("The citizenship column contains an invalid value ({$errorMessage}). Import not successful.");
 				}
 				if ($nodes[13]) {
 					$mentor = $nodes[13];
@@ -396,8 +402,9 @@ function importMDY2YMD($mdyDate, $col) {
 		}
 		return $nodes[2] . "-" . $nodes[0] . "-" . $nodes[1];
 	} else {
-		echo "<p>The $col column contains an invalid value ($mdyDate). Import not successful.</p>";
-		throw new \Exception("The $col column contains an invalid value ({$mdyDate}). Import not successful.");
+		$errorMessage = Sanitizer::sanitize($mdyDate);
+		echo "<p>The $col column contains an invalid value ({$errorMessage}). Import not successful.</p>";
+		throw new \Exception("The $col column contains an invalid value ({$errorMessage}). Import not successful.");
 	}
 }
 

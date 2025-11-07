@@ -24,35 +24,35 @@ use phpseclib3\File\ASN1;
  */
 abstract class RSASSA_PSS_params
 {
-    const MAP = [
-        'type' => ASN1::TYPE_SEQUENCE,
-        'children' => [
-            'hashAlgorithm' => [
-                'constant' => 0,
-                'optional' => true,
-                'explicit' => true,
-                //'default'  => 'sha1Identifier'
-            ] + HashAlgorithm::MAP,
-            'maskGenAlgorithm' => [
-                'constant' => 1,
-                'optional' => true,
-                'explicit' => true,
-                //'default'  => 'mgf1SHA1Identifier'
-            ] + MaskGenAlgorithm::MAP,
-            'saltLength' => [
-                'type' => ASN1::TYPE_INTEGER,
-                'constant' => 2,
-                'optional' => true,
-                'explicit' => true,
-                'default' => 20
-            ],
-            'trailerField' => [
-                'type' => ASN1::TYPE_INTEGER,
-                'constant' => 3,
-                'optional' => true,
-                'explicit' => true,
-                'default' => 1
-            ]
-        ]
-    ];
+	public const MAP = [
+		'type' => ASN1::TYPE_SEQUENCE,
+		'children' => [
+			'hashAlgorithm' => [
+				'constant' => 0,
+				'optional' => true,
+				'explicit' => true,
+				//'default'  => 'sha1Identifier'
+			] + HashAlgorithm::MAP,
+			'maskGenAlgorithm' => [
+				'constant' => 1,
+				'optional' => true,
+				'explicit' => true,
+				//'default'  => 'mgf1SHA1Identifier'
+			] + MaskGenAlgorithm::MAP,
+			'saltLength' => [
+				'type' => ASN1::TYPE_INTEGER,
+				'constant' => 2,
+				'optional' => true,
+				'explicit' => true,
+				'default' => 20
+			],
+			'trailerField' => [
+				'type' => ASN1::TYPE_INTEGER,
+				'constant' => 3,
+				'optional' => true,
+				'explicit' => true,
+				'default' => 1
+			]
+		]
+	];
 }
