@@ -214,11 +214,7 @@ class Sanitizer
 
 
 		$module = Application::getModule();
-		if (method_exists($module, "escape")) {
-			$str = $module->escape($str);
-		} else {
-			$str = htmlspecialchars($str, ENT_QUOTES);
-		}
+		$str = $module->escape($str);
 		foreach ($quotesInHTML as $encoded => $decoded) {
 			$str = str_replace($encoded, $decoded, $str);
 		}
@@ -230,20 +226,7 @@ class Sanitizer
 	 */
 	public static function decodeHTML($entity) {
 		$module = Application::getModule();
-		if (method_exists($module, "escape")) {
-			return $module->escape($entity);
-		}
-
-		if (is_array($entity)) {
-			foreach ($entity as $key => $value) {
-				$key = self::decodeHTML($key);
-				$value = self::decodeHTML($value);
-				$entity[$key] = $value;
-			}
-			return $entity;
-		} else {
-			return html_entity_decode($entity);
-		}
+		return $module->escape($entity);
 	}
 
 	/**
@@ -331,9 +314,7 @@ class Sanitizer
 		}
 		if ($pid) {
 			$module = Application::getModule();
-			if (method_exists($module, "escape")) {
-				$cohortName = $module->escape($cohortName);
-			}
+			$cohortName = $module->escape($cohortName);
 			return Cohorts::sanitize($cohortName, $pid);
 		} else {
 			return "";
@@ -346,23 +327,10 @@ class Sanitizer
 	public static function sanitize($origStr) {
 		if (REDCapManagement::isValidToken($origStr)) {
 			$module = Application::getModule();
-			if (method_exists($module, "sanitizeAPIToken")) {
-				return $module->sanitizeAPIToken($origStr);
-			}
+			return $module->sanitizeAPIToken($origStr);
 		}
 		$module = Application::getModule();
-		if (method_exists($module, "escape")) {
-			return $module->escape($origStr);
-		}
-		if (is_numeric($origStr)) {
-			$origStr = (string) $origStr;
-		}
-		if (!is_string($origStr)) {
-			return "";
-		}
-		$str = htmlspecialchars($origStr, ENT_QUOTES);
-		$str = htmlentities($str, ENT_QUOTES);
-		return $str;
+		return $module->escape($origStr);
 	}
 
 	# requestedRecord is from GET/POST
