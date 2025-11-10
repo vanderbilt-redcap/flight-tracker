@@ -229,6 +229,11 @@ class Sanitizer
 	 * @psalm-taint-specialize
 	 */
 	public static function decodeHTML($entity) {
+		$module = Application::getModule();
+		if (method_exists($module, "escape")) {
+			return $module->escape($entity);
+		}
+
 		if (is_array($entity)) {
 			foreach ($entity as $key => $value) {
 				$key = self::decodeHTML($key);
@@ -325,6 +330,10 @@ class Sanitizer
 			$pid = self::sanitizePid($_GET['pid'] ?? "");
 		}
 		if ($pid) {
+			$module = Application::getModule();
+			if (method_exists($module, "escape")) {
+				$cohortName = $module->escape($cohortName);
+			}
 			return Cohorts::sanitize($cohortName, $pid);
 		} else {
 			return "";
