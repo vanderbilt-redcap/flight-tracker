@@ -1878,8 +1878,9 @@ class REDCapManagement
 			// HTML right single quote
 			"&rsquo;"      => "'",
 		];
-
-		return strtr(html_entity_decode($text, ENT_QUOTES, "UTF-8"), $quoteMapping);
+		$module = Application::getModule();
+		$text = strtr(html_entity_decode($text, ENT_QUOTES, "UTF-8"), $quoteMapping);
+		return $module->escape($text);
 	}
 
 	public static function clearUnicodeInArray($ary) {

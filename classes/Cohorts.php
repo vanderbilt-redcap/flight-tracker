@@ -29,6 +29,7 @@ class Cohorts
 	}
 
 	public static function sanitize($cohort, $pid) {
+		$module = Application::getModule();
 		if (is_numeric($cohort)) {
 			$cohort = (string) $cohort;
 		}
@@ -39,7 +40,7 @@ class Cohorts
 
 		$possibleCohorts = array_keys(Application::getSetting("configs", $pid) ?: []);
 		if (in_array($cohort, $possibleCohorts)) {
-			return html_entity_decode(htmlentities($cohort));
+			return $module->escape($cohort);
 		} else {
 			return "";
 		}

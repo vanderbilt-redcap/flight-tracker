@@ -313,8 +313,6 @@ class Sanitizer
 			$pid = self::sanitizePid($_GET['pid'] ?? "");
 		}
 		if ($pid) {
-			$module = Application::getModule();
-			$cohortName = $module->escape($cohortName);
 			return Cohorts::sanitize($cohortName, $pid);
 		} else {
 			return "";
