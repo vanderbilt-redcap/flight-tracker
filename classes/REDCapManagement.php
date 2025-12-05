@@ -922,7 +922,7 @@ class REDCapManagement
 					}
 				} elseif ($repeatingInstrument) {
 					if ($repeatingInstrument == $row['redcap_repeat_instrument']) {
-						$values[] = $row[$field];
+						$values[] = $row[$field] ?? "";
 					}
 				} elseif (isset($row[$field]) && self::hasValue($row[$field])) {
 					return $row[$field];

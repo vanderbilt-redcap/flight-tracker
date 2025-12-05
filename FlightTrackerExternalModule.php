@@ -238,20 +238,24 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	private static function allFieldsMatch($fields, $row1, $row2, $choices1, $choices2) {
-		$allMatch = true;
 		foreach ($fields as $testField) {
 			if ($choices1[$testField] && $choices2[$testField]) {
-				$value1 = $choices1[$testField][$row1[$testField]];
-				$value2 = $choices2[$testField][$row2[$testField]];
+				if ((array_key_exists($testField, $row1) && array_key_exists($testField, $row2)) &&
+				$row1[$testField] !== "" && $row2[$testField] !== "") {
+					$value1 = $choices1[$testField][$row1[$testField]];
+					$value2 = $choices2[$testField][$row2[$testField]];
+				} else {
+					return false;
+				}
 			} else {
 				$value1 = $row1[$testField];
 				$value2 = $row2[$testField];
 			}
 			if ($value1 != $value2) {
-				$allMatch = false;
+				return false;
 			}
 		}
-		return $allMatch;
+		return true;
 	}
 
 	private static function fieldBlank($field, $row) {

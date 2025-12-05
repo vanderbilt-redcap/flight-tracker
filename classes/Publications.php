@@ -283,7 +283,7 @@ class Publications
 			$institution = html_entity_decode($institution);
 			$institution = preg_replace("/\s*&\s*/", " ", $institution);
 			$institution = preg_replace("/\s*&\s*/", " ", $institution);
-			$institution = Sanitizer::repetitivelyDecodeHTML(strtolower($institution));
+			$institution = str_replace("'", "", $institution);
 			$institution = str_replace("(", "", $institution);
 			$institution = str_replace(")", "", $institution);
 			$institution = str_replace("•", "", $institution);   // sometimes on user-input fields
@@ -292,8 +292,8 @@ class Publications
 
 			# Derivations of the word "children" as an institution are interpreted as a MeSH term (topic)
 			# by PubMed; thus, they will explode into thousands of incorrect publications
-			if (!in_array($institution, ["children", "children'", "children's"])) {
-				$institutionSearchNodes[] = Sanitizer::repetitivelyDecodeHTML(strtolower($institution)) . "+%5Bad%5D";
+			if (!in_array($institution, ["children", "children'", "children's", "childrens"])) {
+				$institutionSearchNodes[] = Sanitizer::decodeHTML(strtolower($institution)) . "+%5Bad%5D";
 			}
 		}
 
