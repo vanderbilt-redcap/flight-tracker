@@ -103,9 +103,11 @@ $(document).ready(function() {
 	$('#publications_wrangler').html(html);
 	$('#publications_wrangler').show();
 	if ($('#surveyinstructions').length > 0) {
-		$('#surveyinstructions').prepend('<img align="right" src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>"><br/>');
+		$('#surveyinstructions')
+				.prepend('<img align="right" src="<?= Application::getBase64("img/flight_tracker_logo_medium_white_bg_v2.png") ?>" height="80"><br/>');
+			// NOTE: if switching to SVG, add margin-bottom to prevent form line bisecting logo
 	} else {
-		$('#surveytitlelogo').append('<img src="<?= Application::getBase64("img/flight_tracker_logo_small.png") ?>"><br/>');
+		$('#surveytitlelogo').append('<img src="<?= Application::getBase64("img/flight_tracker_logo_medium_white_bg_v2.png") ?>" height="80"><br/>');
 	}
 });
 </script>
