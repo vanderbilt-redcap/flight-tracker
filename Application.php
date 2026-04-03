@@ -169,7 +169,7 @@ class Application
 
 	public static function makeIcon() {
 		$mime = "image/png";
-		$filename = __DIR__."/img/flight_tracker_icon.png";
+		$filename = __DIR__."/img/flight_tracker_icon_v2.png";
 		$base64 = FileManagement::getBase64OfFile($filename, $mime);
 		return "<link rel='icon' type='$mime' href='$base64' />";
 	}
@@ -406,7 +406,16 @@ $horizontalScrollbar
 
 		$str .= "<header class='topHeaderWrapper'>";
 		$str .= "<div class='topHeader'>";
-		$str .= "<div class='topBar' style='float: left; padding-left: 5px;'><a href='https://redcap.vumc.org/plugins/career_dev/consortium/'><img alt='Flight Tracker for Scholars' src='".self::link("/img/flight_tracker_logo_small.png")."'></a></div>";
+
+		$ft_logo_link = self::link("/img/flight_tracker_logo_small_v2.png");
+		$str .= <<<TOPHEADER
+		<div class='topBar' style='float: left; padding-left: 5px;'>
+			<a href='https://redcap.vumc.org/plugins/career_dev/consortium/'>
+				<img alt='Flight Tracker for Scholars' src='{$ft_logo_link}' height='80'>
+			</a>
+		</div>
+		TOPHEADER;
+
 		# logged in and on a record
 		if (Application::getUsername() && (isset($_GET['id']) || isset($_GET['record']))) {
 			$records = Download::records($token, $server);
