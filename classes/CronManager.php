@@ -888,7 +888,7 @@ class CronManager
 			} elseif (is_string($item)) {
 				$setting = $item;
 				$item = Application::getSystemSetting($setting) ?: [];
-				if ($item['pid'] == $pid) {
+				if (($item['pid'] ?? null) == $pid) {
 					return true;
 				}
 			}

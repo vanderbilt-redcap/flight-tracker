@@ -129,100 +129,12 @@ class Upload
 	}
 
 	public static function deleteFormInstances($token, $server, $pid, $prefix, $recordId, $instances) {
-		if (method_exists("\REDCap", "deleteRecord")) {
-			$completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
-			if ($completeField) {
-				$instrument = preg_replace("/_complete$/", "", $completeField);
-				foreach ($instances as $instance) {
-					\REDCap::deleteRecord($pid, $recordId, null, null, $instrument, $instance);
-				}
-			} else {
-				self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
+		$completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
+		if ($completeField) {
+			$instrument = preg_replace("/_complete$/", "", $completeField);
+			foreach ($instances as $instance) {
+				\REDCap::deleteRecord($pid, $recordId, null, null, $instrument, $instance);
 			}
-		} else {
-			self::deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances);
-		}
-	}
-
-	public static function deleteBySQL($token, $server, $pid, $prefix, $recordId, $instances) {
-		$records = Download::recordIds($token, $server);
-		$batchSize = 10;
-		$dataTable = Application::getDataTable($pid);
-		if (Download::isCurrentServer($server)) {
-			if (in_array($recordId, $records)) {
-				if (!preg_match("/_$/", $prefix)) {
-					$prefix .= "_";
-				}
-				$completeField = DataDictionaryManagement::prefix2CompleteField($prefix);
-				$metadataFields = Download::metadataFields($token, $server);
-				$fieldsToDelete = [];
-				foreach ($metadataFields as $field) {
-					if (preg_match("/^$prefix/", $field)) {
-						$fieldsToDelete[] = $field;
-					}
-				}
-				if ($completeField) {
-					$fieldsToDelete[] = $completeField;
-				}
-				$fieldQuestionMarks = [];
-				while (count($fieldsToDelete) > count($fieldQuestionMarks)) {
-					$fieldQuestionMarks[] = "?";
-				}
-				if (!empty($instances) && !empty($fieldsToDelete)) {
-					Application::log("Instances not empty", $pid);
-					$module = Application::getModule();
-					for ($i = 0; $i < count($instances); $i += $batchSize) {
-						$batchInstances = [];
-						for ($j = $i; ($j < $i + $batchSize) && ($j < count($instances)); $j++) {
-							$batchInstances[] = $instances[$j];
-						}
-						$instanceClause = "";
-						$params = array_merge([$pid, $recordId], $fieldsToDelete);
-						if (!empty($batchInstances)) {
-							$addOnInstanceClause =  "";
-							if (in_array(1, $batchInstances) || in_array("", $batchInstances)) {
-								$addOnInstanceClause = " OR instance IS NULL";
-								$filteredInstances = [];
-								foreach ($batchInstances as $instance) {
-									if (!in_array($instance, ["", 1])) {
-										$filteredInstances[] = $instance;
-									}
-								}
-							} else {
-								$filteredInstances = $batchInstances;
-							}
-							$questionMarks = [];
-							while (count($filteredInstances) > count($questionMarks)) {
-								$questionMarks[] = "?";
-							}
-							if (!empty($filteredInstances)) {
-								$instanceClause = " AND (instance IN (".implode(",", $questionMarks).")".$addOnInstanceClause.")";
-								$params = array_merge($params, $filteredInstances);
-							} elseif ($addOnInstanceClause) {
-								$instanceClause = " AND instance IS NULL";
-							}
-						}
-
-						$whereClause = "WHERE project_id = ? AND record = ? AND field_name IN (".implode(",", $fieldQuestionMarks).")".$instanceClause;
-						do {
-
-							$startTs = time();
-							$sql = "DELETE FROM $dataTable ".$whereClause." LIMIT 1000";
-							Application::log("Running SQL $sql with ".json_encode($params));
-							$module->query($sql, $params);
-							$numSecs = time() - $startTs;
-							Application::log("In $numSecs seconds, ran SQL $sql with ".json_encode($params), $pid);
-
-							$sql = "SELECT record FROM $dataTable ".$whereClause." LIMIT 1";
-							$q = $module->query($sql, $params);
-						} while ($q->num_rows > 0);
-					}
-				}
-			} else {
-				throw new \Exception("Could not find record!");
-			}
-		} else {
-			throw new \Exception("Wrong server");
 		}
 	}
 

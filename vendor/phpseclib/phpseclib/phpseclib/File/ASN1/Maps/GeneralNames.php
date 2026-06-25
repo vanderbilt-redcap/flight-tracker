@@ -22,10 +22,10 @@ use phpseclib3\File\ASN1;
  */
 abstract class GeneralNames
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'min' => 1,
-		'max' => -1,
-		'children' => GeneralName::MAP
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'min' => 1,
+        'max' => -1,
+        'children' => GeneralName::MAP
+    ];
 }

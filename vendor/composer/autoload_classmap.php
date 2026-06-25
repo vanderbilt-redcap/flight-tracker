@@ -5,7 +5,8 @@
 $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
-return [
-	'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
-	'Dompdf\\Cpdf' => $vendorDir . '/dompdf/dompdf/lib/Cpdf.php',
-];
+return array(
+    'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
+    'Dompdf\\Cpdf' => $vendorDir . '/dompdf/dompdf/lib/Cpdf.php',
+    'Stringable' => $vendorDir . '/myclabs/php-enum/stubs/Stringable.php',
+);

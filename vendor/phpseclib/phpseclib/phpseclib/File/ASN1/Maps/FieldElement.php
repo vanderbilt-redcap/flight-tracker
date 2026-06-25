@@ -22,5 +22,5 @@ use phpseclib3\File\ASN1;
  */
 abstract class FieldElement
 {
-	public const MAP = ['type' => ASN1::TYPE_OCTET_STRING];
+    const MAP = ['type' => ASN1::TYPE_OCTET_STRING];
 }

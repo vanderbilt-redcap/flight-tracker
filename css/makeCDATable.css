@@ -9,7 +9,7 @@ h3,h4 { margin: 2px; }
 .role { font-size: 12px; text-align: center; font-style: italic; }
 .type { font-size: 16px; font-weight: bold; text-align: center; }
 .awardno { font-size: 11px; text-align: center; }
-.awardno_large { width: 100%; font-size: 13px; text-align: center; }
+.awardno_large { width: 100%; font-size: 13px; text-align: center; white-space: normal}
 .small{ font-size: 11px; }
 .age { font-size: 14px; text-align: center; }
 .description { font-size: 14px; text-align: center; }

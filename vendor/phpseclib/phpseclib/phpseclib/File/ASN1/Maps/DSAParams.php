@@ -22,12 +22,12 @@ use phpseclib3\File\ASN1;
  */
 abstract class DSAParams
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'children' => [
-			'p' => ['type' => ASN1::TYPE_INTEGER],
-			'q' => ['type' => ASN1::TYPE_INTEGER],
-			'g' => ['type' => ASN1::TYPE_INTEGER]
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'children' => [
+            'p' => ['type' => ASN1::TYPE_INTEGER],
+            'q' => ['type' => ASN1::TYPE_INTEGER],
+            'g' => ['type' => ASN1::TYPE_INTEGER]
+        ]
+    ];
 }

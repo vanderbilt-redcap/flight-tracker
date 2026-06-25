@@ -9,6 +9,8 @@ use Vanderbilt\CareerDevLibrary\Application;
 use Vanderbilt\CareerDevLibrary\CronManager;
 use Vanderbilt\CareerDevLibrary\DataDictionaryManagement;
 use Vanderbilt\CareerDevLibrary\EmailManager;
+use Vanderbilt\CareerDevLibrary\FeatureSwitches;
+use Vanderbilt\CareerDevLibrary\ORCID;
 use Vanderbilt\CareerDevLibrary\REDCapManagement;
 use Vanderbilt\CareerDevLibrary\Download;
 use Vanderbilt\CareerDevLibrary\NameMatcher;
@@ -21,6 +23,9 @@ use Vanderbilt\CareerDevLibrary\CelebrationsEmail;
 use Vanderbilt\CareerDevLibrary\MSTP;
 use Vanderbilt\CareerDevLibrary\Grant;
 use Vanderbilt\CareerDevLibrary\REDCapLookupByUserid;
+
+use function Vanderbilt\CareerDevLibrary\flattenORCIDArray;
+use function Vanderbilt\CareerDevLibrary\updateORCIDProfileData;
 
 require_once(__DIR__."/classes/Autoload.php");
 require_once(__DIR__."/cronLoad.php");
@@ -358,13 +363,13 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			"initial_survey" => ["prefix" => "check", "formType" => "single", "test_fields" => ["check_date"], "always_copy" => true, ],
 			"followup" => ["prefix" => "followup", "formType" => "repeating", "test_fields" => ["followup_date"], "debug_field" => "followup_name_last", "always_copy" => true, ],
 			"position_change" => [ "prefix" => "promotion", "formType" => "repeating", "test_fields" => ["promotion_job_title", "promotion_date"], "always_copy" => false, ],
-			"resources" => [ "prefix" => "resources", "formType" => "repeating", "test_fields" => ["resources_date", "resources_resource"], "debug_field" => "resources_resource", "always_copy" => false, ],
+			// "resources" => [ "prefix" => "resources", "formType" => "repeating", "test_fields" => ["resources_date", "resources_resource"], "debug_field" => "resources_resource", "always_copy" => false, ],
 			"old_honors_and_awards" => [ "prefix" => "honor", "formType" => "repeating", "test_fields" => ["honor_name", "honor_date"], "debug_field" => "honor_name", "always_copy" => false, ],
 			"honors_awards_and_activities" => [ "prefix" => "activityhonor", "formType" => "repeating", "test_fields" => ["activityhonor_name", "activityhonor_datetime"], "debug_field" => "activityhonor_name", "always_copy" => true, ],
 			"honors_awards_and_activities_survey" => [ "prefix" => "surveyactivityhonor", "formType" => "repeating", "test_fields" => ["surveyactivityhonor_datetime"], "debug_field" => "surveyactivityhonor_datetime", "always_copy" => true, ],
 		];
 		if (Application::isVanderbilt()) {
-			$ary['resources']['always_copy'] = true;
+			// $ary['resources']['always_copy'] = true;
 			$ary['old_honors_and_awards']['always_copy'] = true;
 			$ary['position_change']['always_copy'] = true;
 		}
@@ -613,7 +618,10 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 			if (!empty(array_intersect($pidsAffected, $destPids))) {
 				$this->copyFormData($completes, $pidsUpdated, $forms, $infoArray, $metadataFields, $choices);
 				$this->copyWranglerData($pidsUpdated, $infoArray);
-				$this->dedupPositionChanges($infoArray, $metadataFields);  // does not update pidsUpdated
+
+				$positionFields = ['promotion_date','promotion_job_title','promotion_in_effect','promotion_institution'];
+				$this->dedupRecordInstances($infoArray, $positionFields, 'position_change');
+				$this->dedupRecordInstances($infoArray, ['followup_date'], 'followup');
 				foreach ($pidsAffected as $currPid) {
 					Application::log("Shared data among ".implode(", ", $matchAry), $currPid);
 				}
@@ -962,24 +970,29 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		}
 	}
 
-	private function dedupPositionChanges($infoArray, $metadataFieldsForPid) {
-		$instrument = "position_change";
-		$prefix = "promotion";
+	private function dedupRecordInstances($infoArray, $fields, $instrument) {
+		$dataFields = array_unique(array_merge(["record_id", $instrument."_complete"], $fields));
 		foreach ($infoArray as $info) {
-			$fields = array_unique(array_merge(["record_id", $instrument."_complete"], DataDictionaryManagement::filterFieldsForPrefix($metadataFieldsForPid[$info['pid']], $prefix)));
-			$redcapData = Download::fieldsForRecordsByPid($info['pid'], $fields, [$info['record']]);
-			$instancesToDelete = [];
+			$redcapData = Download::fieldsForRecordsByPid($info['pid'], $dataFields, [$info['record']]);
 			$seenItems = [];
 			foreach ($redcapData as $row) {
-				$item = $row['promotion_date'].":".$row['promotion_job_title'].":".$row['promotion_in_effect'].":".$row['promotion_institution'];
-				if (($row['redcap_repeat_instrument'] == $instrument) && in_array($item, $seenItems)) {
-					$instancesToDelete[] = $row['redcap_repeat_instance'];
-				} elseif ($row['redcap_repeat_instrument'] == $instrument) {
-					$seenItems[] = $item;
+				$item = "";
+				foreach ($fields as $field) {
+					if ($item != "") {
+						$item .= ":";
+					}
+					$item .= $row[$field];
 				}
-			}
-			if (!empty($instancesToDelete)) {
-				Upload::deleteFormInstances($info['token'], $info['server'], $info['pid'], $prefix, $info['record'], $instancesToDelete);
+				if ($item == "") {
+					continue;
+				}
+				if ($row['redcap_repeat_instrument'] == $instrument) {
+					if (in_array($item, $seenItems)) {
+						\REDCap::deleteRecord($info['pid'], $info['record'], null, null, $instrument, $row['redcap_repeat_instance']);
+					} else {
+						$seenItems[] = $item;
+					}
+				}
 			}
 		}
 	}

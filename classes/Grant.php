@@ -232,7 +232,7 @@ class Grant
 	}
 
 	public function isInternalVanderbiltGrant() {
-		return preg_match("/VUMC\s*\d+/", $this->getNumber());
+		return preg_match(CoeusGrantFactory::SUBPROJECT_REGEX, $this->getNumber() || ($this->getVariable("prime_sponsor_name") != $this->getVariable("direct_sponsor_name")));
 	}
 
 	public function getCurrentYearBudget($rows, $type) {
@@ -498,8 +498,9 @@ class Grant
 	}
 
 	public function isIndustry() {
+		$baseAwardNo = $this->getBaseAwardNumber();
 		$fundingSource = $this->getFundingSource();
-		return preg_match("/Industry/", $fundingSource);
+		return preg_match("/Industry/", $fundingSource) || preg_match(CoeusGrantFactory::SUBPROJECT_OR_CONTRACT_REGEX, $baseAwardNo);
 	}
 
 	public function isFoundation() {
@@ -555,7 +556,7 @@ class Grant
 			} elseif (($type == "sponsor_type") && !$this->specs[$type]) {
 				$type = "sponsor";
 			}
-			$s = $this->specs[$type];
+			$s = $this->specs[$type] ?? "";
 			if (preg_match("/budget/", $type) && is_numeric($s)) {
 				$s = round($s * 100) / 100;
 			}
@@ -777,8 +778,8 @@ class Grant
         <li><strong>Individual K</strong> grants are career development awards by the NIH (only).</li>
         <li><strong>K Equivalent</strong> grants are career development awards not by the NIH and not by your institution. (The VA, the American Cancer Society, and the Doris Duke Charitable Fellowship have awards that would fall into this category.)</li>
         <li><strong>R01</strong> awards use the R01 mechanism from the NIH.</li>
-        <li><strong>R01 Equivalent</strong> awards are large awards that are basically the equivalent of an R01, but does not use the R01 mechanism. We try to use the loose definition of $250,000 per year for 3+ years because this is the current median value of an R01.</li>
-        <li><strong>Research Fellowship</strong> awards are project-based grants that are too small to be R01 Equivalents.</li>
+		<li><strong>R01 Equivalent</strong> awards are large awards that are basically the equivalent of an R01, but does not use the R01 mechanism. We try to use the loose definition of over $1,250,000 total direct budget because the median value of an R01 is $250,000 per year for 5 years.</li>
+		<li><strong>Research Fellowship</strong> awards are project-based grants that are too small to be R01 Equivalents.</li>
         <li><strong>Mentoring/Training Grant Admin</strong> grants are leadership awards for training or mentoring others.</li>
         <li><strong>Bridge Award</strong> grants span more than one category. K99/R00 and T99/K00 awards are the primary two examples.</li>
     </ul>";
@@ -798,11 +799,11 @@ class Grant
 
 	public function setNumber($awardNo) {
 		$this->setVariable("sponsor_award_no", $awardNo);
-		$this->setVariable("base_award_no", self::translateToBaseAwardNumber($awardNo));
 		$ary = self::parseNumber($awardNo);
 		foreach ($ary as $key => $value) {
 			$this->setVariable($key, $value);
 		}
+		$this->setVariable("base_award_no", self::translateToBaseAwardNumber($awardNo));
 	}
 
 	public function toArray() {
@@ -2655,8 +2656,8 @@ class Grant
 			$instituteCode = $ary['institute_code'] ?? "";
 			$serialNumber = $ary['serial_number'] ?? "";
 			return $activityCode.$instituteCode.$serialNumber;
-		} elseif (preg_match("/^VUMC\d+\(.+\)$/", $numWithoutSpaces)) {
-			$numWithoutSpaces = preg_replace("/^VUMC\d+\(/", "", $numWithoutSpaces);
+		} elseif (preg_match(CoeusGrantFactory::SUBPROJECT_REGEX, $numWithoutSpaces)) {
+			$numWithoutSpaces = preg_replace(CoeusGrantFactory::SUBPROJECT_REGEX, "", $numWithoutSpaces);
 			$numWithoutSpaces = preg_replace("/\)$/", "", $numWithoutSpaces);
 			$ary = self::parseNumber($numWithoutSpaces);
 			if (!empty($ary)) {
@@ -2899,12 +2900,11 @@ class Grant
 
 	public static function calculateAwardType($specs, $awardNo) {
 		$coeusSources = self::getCoeusSources();
-		$r01EquivYearlyThreshold = 250000;
-		$r01EquivNumberOfYears = 3;
+		$r01EquivThreshold = 1250000;
 
 		if ($specs['source'] == 'nsf') {
 			if (preg_match("/REU Site/", $specs['title'])) {
-				return "Training Grant Admin";
+				return "Mentoring/Training Grant Admin";
 			} elseif (preg_match("/CAREER/", $specs['title'])) {
 				return "K Equivalent";
 			} else {
@@ -2932,7 +2932,7 @@ class Grant
 			} else {
 				return "K12/KL2";
 			}
-		} elseif (preg_match("/VUMC/", $awardNo)) {
+		} elseif (preg_match(CoeusGrantFactory::SUBPROJECT_REGEX, $awardNo)) {
 			return "N/A";
 		} elseif (preg_match("/Unknown individual/", $awardNo)) {
 			return "K Equivalent";
@@ -2977,21 +2977,15 @@ class Grant
 				}
 				if ($projStart && $projEnd) {
 					$yearspan = ($projEnd - $projStart) / (365 * 24 * 3600);
-					$isR01EquivEligible = ($specs[$budgetField] > $r01EquivYearlyThreshold * $yearspan) && ($specs[$budgetField] >= $r01EquivYearlyThreshold * $r01EquivNumberOfYears);
+					if ($yearspan < 1) {
+						#assume grant is at least for full year when calculating if r01 Equivalent
+						$yearspan = 1;
+					}
+					$isR01EquivEligible = ($specs[$budgetField] * $yearspan >= $r01EquivThreshold) && ($specs[$budgetField] >= $r01EquivThreshold);
 					if (self::getShowDebug()) {
 						Application::log("$awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} / $yearspan years");
 					}
-					if (
-						!$isR01EquivEligible
-						&& isset($specs['num_grants_combined'])
-						&& ($specs['num_grants_combined'] >= 3)
-					) {
-						$isR01EquivEligible = ($specs[$budgetField] / $specs['num_grants_combined'] > $r01EquivYearlyThreshold);
-						if (self::getShowDebug()) {
-							Application::log("Route B: $awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} years");
-						}
-					}
-					if (($yearspan >= $r01EquivNumberOfYears) && $isR01EquivEligible) {
+					if ($isR01EquivEligible) {
 						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
 							if (self::getShowDebug()) {
 								Application::log($awardNo.": Second Pass - R01 Equivalent ".(($projEnd - $projStart) / (365 * 24 * 3600)));
@@ -3051,9 +3045,19 @@ class Grant
 				# after all other special cases for K
 				return "Individual K";
 			}
-		} elseif (isset($specs['sponsor']) && $specs['sponsor'] == "Veterans Administration, Tennessee") {
+		} elseif (
+			isset($specs['sponsor'])
+			&& $specs['sponsor'] == "Veterans Administration, Tennessee"
+			&& !preg_match("/^VUMC", $awardNo)
+		) {
 			return "K Equivalent";
-		} elseif (isset($specs['sponsor_type']) && ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")) {
+		} elseif (
+			isset($specs['sponsor_type'])
+			&& ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")
+			&& !preg_match("/^VUMC", $awardNo)
+			&& ($specs['percent_effort'] >= 50)
+			&& ($specs['direct_budget'] >= 50000)
+		) {
 			if (($specs['percent_effort'] >= 50) && ($specs['direct_budget'] >= 50000)) {
 				return "K Equivalent";
 			}

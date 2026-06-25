@@ -22,11 +22,11 @@ use phpseclib3\File\ASN1;
  */
 abstract class AttributeTypeAndValue
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'children' => [
-			'type' => AttributeType::MAP,
-			'value' => AttributeValue::MAP
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'children' => [
+            'type' => AttributeType::MAP,
+            'value' => AttributeValue::MAP
+        ]
+    ];
 }

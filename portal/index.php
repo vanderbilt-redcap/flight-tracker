@@ -46,6 +46,7 @@ if (isset($_GET['uid'])) {
 }
 
 $loadingUrl = Application::link("img/loading.gif");
+$connectorUrl = Application::link("img/flight-connector_icon.png");
 $driverUrl = Application::link("portal/driver.php").$uidString;
 $surveyString = Application::isVanderbilt() ? "<a href='https://redcap.vumc.org/surveys/?s=PP3T8L8EDHCCECKH'>Request a Scholar Portal Account</a><br>" : "";
 
@@ -55,7 +56,8 @@ echo "<div id='photoDiv'></div>";
 echo "<div class='centered' id='project'></div>";
 echo "<nav></nav>";
 echo "<div class='loading'></div>";
-echo "<div id='welcomeMessage' style='display: none;'><p style='margin-top: 0;'>Administrators and program directors are tracking your career development through the below REDCap-based project(s). These help them with reporting to funding agencies and ensuring excellent service. With the Scholar Portal, you can track these metrics as well.</p><p style='margin-bottom: 0;'>First, select one of the projects listed below. <strong>Your Graphs</strong> and <strong>Your Info</strong> show key metrics related to your professional progress. You can correct any inaccuracies under <strong>Your Info &rarr; Update</strong>. You can also look for colleagues in various research areas by exploring <strong>Your Network</strong>. Please <span class='multiProject'>click to select a project below, </span>explore your data through the menu options<span class='multiProject'>,</span> and build your career!</p></div>";
+echo "<div class='welcome-group' style='display: none'><div class='dropdown'><a class='dropbtn menuItem find_collab_menu' style='text-decoration: none' href='#find_collaborator' onclick='portal.takeAction(\"find_collaborator\", \"Find a Collaborator\"); return false;'><img src='$connectorUrl' style='height: 32px; width: auto; margin-right: 8px;'>Find a Collaborator</a></div></div>";
+echo "<div class='welcome-group' id='welcomeMessage' style='display: none;'><p style='margin-top: 0;'>Administrators and program directors are tracking your career development through the below REDCap-based project(s). These help them with reporting to funding agencies and ensuring excellent service. With the Scholar Portal, you can track these metrics as well.</p><p style='margin-bottom: 0;'>First, select one of the projects listed below. <strong>Your Graphs</strong> and <strong>Your Info</strong> show key metrics related to your professional progress. You can correct any inaccuracies under <strong>Your Info &rarr; Update</strong>. You can also look for colleagues in various research areas by exploring <strong>Your Network</strong>. Please <span class='multiProject'>click to select a project below, </span>explore your data through the menu options<span class='multiProject'>,</span> and build your career!</p></div>";
 echo "<div id='noDataMessage' style='display: none;'>Welcome! You are not currently tracked by Flight Tracker on this REDCap server.<br>
 $surveyString
 <a href='#find_collaborator' onclick='portal.takeAction(\"find_collaborator\", \"Find a Collaborator\"); return false;'>Find a Collaborator</a><br>

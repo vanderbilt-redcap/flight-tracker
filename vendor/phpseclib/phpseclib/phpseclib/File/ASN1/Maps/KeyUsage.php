@@ -22,18 +22,18 @@ use phpseclib3\File\ASN1;
  */
 abstract class KeyUsage
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_BIT_STRING,
-		'mapping' => [
-			'digitalSignature',
-			'nonRepudiation',
-			'keyEncipherment',
-			'dataEncipherment',
-			'keyAgreement',
-			'keyCertSign',
-			'cRLSign',
-			'encipherOnly',
-			'decipherOnly'
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_BIT_STRING,
+        'mapping' => [
+            'digitalSignature',
+            'nonRepudiation',
+            'keyEncipherment',
+            'dataEncipherment',
+            'keyAgreement',
+            'keyCertSign',
+            'cRLSign',
+            'encipherOnly',
+            'decipherOnly'
+        ]
+    ];
 }

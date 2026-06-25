@@ -22,10 +22,10 @@ use phpseclib3\File\ASN1;
  */
 abstract class GeneralSubtrees
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'min' => 1,
-		'max' => -1,
-		'children' => GeneralSubtree::MAP
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'min' => 1,
+        'max' => -1,
+        'children' => GeneralSubtree::MAP
+    ];
 }

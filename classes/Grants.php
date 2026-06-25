@@ -1981,6 +1981,9 @@ class Grants
 		if ((count($grants ?: []) == 0) && !$this->getFlagStatus()) {
 			$grants = $this->getGrants("native");
 		}
+		if ((count($grants ?: []) == 0) && !$this->getFlagStatus()) {
+			$grants = $this->getGrants("prior");
+		}
 		foreach ($grants as $grant) {
 			$t = $grant->getVariable("type");
 			$role = $grant->getVariable("role");

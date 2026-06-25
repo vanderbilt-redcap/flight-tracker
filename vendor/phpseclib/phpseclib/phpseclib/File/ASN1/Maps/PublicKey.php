@@ -22,5 +22,5 @@ use phpseclib3\File\ASN1;
  */
 abstract class PublicKey
 {
-	public const MAP = ['type' => ASN1::TYPE_BIT_STRING];
+    const MAP = ['type' => ASN1::TYPE_BIT_STRING];
 }

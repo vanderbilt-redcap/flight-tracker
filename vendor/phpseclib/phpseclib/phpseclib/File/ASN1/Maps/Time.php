@@ -22,11 +22,11 @@ use phpseclib3\File\ASN1;
  */
 abstract class Time
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_CHOICE,
-		'children' => [
-			'utcTime' => ['type' => ASN1::TYPE_UTC_TIME],
-			'generalTime' => ['type' => ASN1::TYPE_GENERALIZED_TIME]
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_CHOICE,
+        'children' => [
+            'utcTime' => ['type' => ASN1::TYPE_UTC_TIME],
+            'generalTime' => ['type' => ASN1::TYPE_GENERALIZED_TIME]
+        ]
+    ];
 }

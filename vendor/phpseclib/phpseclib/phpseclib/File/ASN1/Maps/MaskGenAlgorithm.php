@@ -20,5 +20,5 @@ namespace phpseclib3\File\ASN1\Maps;
  */
 abstract class MaskGenAlgorithm
 {
-	public const MAP = AlgorithmIdentifier::MAP;
+    const MAP = AlgorithmIdentifier::MAP;
 }

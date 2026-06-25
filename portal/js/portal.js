@@ -358,7 +358,7 @@ class Portal {
                     this.setMatchByLicensePlate(hashAry[1], hashAry[2]);
                 }
             } else {
-                $('#welcomeMessage').show();
+                $('.welcome-group').show();
             }
         }
         if (this.isNoDataHash(window.location.hash)) {
@@ -486,7 +486,7 @@ class Portal {
                     this.rerouteNoDataPage(window.location.hash);
                 }
             } else {
-                $('#welcomeMessage').show();
+                $('.welcome-group').show();
             }
             if (cb) {
                 cb();
@@ -607,7 +607,7 @@ class Portal {
             for (let i=0; i < this.stateData.menu[menuItem].length; i++) {
                 const subMenuItem = this.stateData.menu[menuItem][i];
                 const hash = this.isNoDataHash(subMenuItem['action']) ? subMenuItem['action'] : subMenuItem['action']+":"+this.selectedPid+":"+this.selectedRecord;
-                html += "<a href='#"+hash+"' onclick='portal.takeAction(\""+subMenuItem['action']+"\", \""+subMenuItem['title']+"\"); return false;'>"+subMenuItem['title']+"</a>";
+                html += "<a href='#"+hash+"' onclick='portal.takeAction(\""+subMenuItem['action']+"\", \""+subMenuItem['title']+"\", \""+subMenuItem['payload']+"\"); return false;'>"+subMenuItem['title']+"</a>";
             }
             html += "</div></div>";
         }
@@ -635,8 +635,8 @@ class Portal {
         return "";
     }
 
-    takeAction = function(action, label) {
-        if (action === this.lastAction) {
+    takeAction = function(action, label, payload = "") {
+        if (action === this.lastAction && payload === this.lastPayload) {
             return;
         }
         if ((this.lastAction === 'scholar_collaborations') || (this.lastAction === 'group_collaborations')) {
@@ -648,7 +648,8 @@ class Portal {
             }
         }
         this.lastAction = action;
-        $('#welcomeMessage').hide();
+        this.lastPayload = payload;
+        $('.welcome-group').hide();
         this.clearMainBox();
         this.updateLoadingBox("Loading Data About "+label+"...");
         if (this.isNoDataHash(action)) {
@@ -661,7 +662,7 @@ class Portal {
             for (const pid in this.stateData.matchData.matches) {
                 for (const record in this.stateData.matchData.matches[pid]) {
                     const name = this.stateData.matchData.matches[pid][record];
-                    queries.push({pid: pid, record: record, name: name});
+                    queries.push({pid: pid, record: record, name: name, payload: payload});
                     break;
                 }
                 break;
@@ -672,13 +673,13 @@ class Portal {
             if (menuHTML === '') {
                 $(this.menuDiv).hide();
             }
-            queries.push({pid: '', record: '', name: ''});
+            queries.push({pid: '', record: '', name: '', payload: ''});
         } else if ((this.selectedPid !== '') && (this.selectedRecord !== '')) {
             for (const pid in this.stateData.matchData.matches) {
                 for (const record in this.stateData.matchData.matches[pid]) {
                     if ((this.selectedPid === pid) && (this.selectedRecord === record)) {
                         const name = this.stateData.matchData.matches[pid][record];
-                        queries.push({pid: pid, record: record, name: name});
+                        queries.push({pid: pid, record: record, name: name, payload: payload});
                     }
                 }
             }
@@ -686,7 +687,7 @@ class Portal {
             for (const pid in this.stateData.matchData.matches) {
                 for (const record in this.stateData.matchData.matches[pid]) {
                     const name = this.stateData.matchData.matches[pid][record];
-                    queries.push({pid: pid, record: record, name: name});
+                    queries.push({pid: pid, record: record, name: name, payload: payload});
                 }
             }
         }
@@ -701,6 +702,7 @@ class Portal {
                 pid: query.pid,
                 record: query.record,
                 name: query.name,
+                payload: query.payload,
                 projectTitle: this.stateData.matchData.projectTitles[query.pid]
             };
             console.log(i+": Running "+JSON.stringify(postData));
@@ -934,6 +936,7 @@ class Portal {
         const lastAction = this.lastAction;
         if (lastAction) {
             this.lastAction = "";
+            this.lastPayload = "";
             const lastLabel = this.getMenuTitle(lastAction);
             this.takeAction(lastAction, lastLabel);
         }

@@ -22,11 +22,11 @@ use phpseclib3\File\ASN1;
  */
 abstract class PolicyQualifierInfo
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'children' => [
-			'policyQualifierId' => PolicyQualifierId::MAP,
-			'qualifier' => ['type' => ASN1::TYPE_ANY]
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'children' => [
+            'policyQualifierId' => PolicyQualifierId::MAP,
+            'qualifier' => ['type' => ASN1::TYPE_ANY]
+        ]
+    ];
 }

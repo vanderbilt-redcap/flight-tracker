@@ -5,14 +5,23 @@
 $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
-return [
-	'phpseclib3\\' => [$vendorDir . '/phpseclib/phpseclib/phpseclib'],
-	'Svg\\' => [$vendorDir . '/phenx/php-svg-lib/src/Svg'],
-	'Sabberworm\\CSS\\' => [$vendorDir . '/sabberworm/php-css-parser/src'],
-	'PhpOffice\\PhpWord\\' => [$vendorDir . '/phpoffice/phpword/src/PhpWord'],
-	'PhpOffice\\Math\\' => [$vendorDir . '/phpoffice/math/src/Math'],
-	'ParagonIE\\ConstantTime\\' => [$vendorDir . '/paragonie/constant_time_encoding/src'],
-	'Masterminds\\' => [$vendorDir . '/masterminds/html5/src'],
-	'FontLib\\' => [$vendorDir . '/phenx/php-font-lib/src/FontLib'],
-	'Dompdf\\' => [$vendorDir . '/dompdf/dompdf/src'],
-];
+return array(
+    'phpseclib3\\' => array($vendorDir . '/phpseclib/phpseclib/phpseclib'),
+    'ZipStream\\' => array($vendorDir . '/maennchen/zipstream-php/src'),
+    'Symfony\\Polyfill\\Mbstring\\' => array($vendorDir . '/symfony/polyfill-mbstring'),
+    'Svg\\' => array($vendorDir . '/phenx/php-svg-lib/src/Svg'),
+    'Sabberworm\\CSS\\' => array($vendorDir . '/sabberworm/php-css-parser/src'),
+    'Psr\\SimpleCache\\' => array($vendorDir . '/psr/simple-cache/src'),
+    'Psr\\Http\\Message\\' => array($vendorDir . '/psr/http-message/src'),
+    'PhpOffice\\PhpWord\\' => array($vendorDir . '/phpoffice/phpword/src/PhpWord'),
+    'PhpOffice\\PhpSpreadsheet\\' => array($vendorDir . '/phpoffice/phpspreadsheet/src/PhpSpreadsheet'),
+    'PhpOffice\\Math\\' => array($vendorDir . '/phpoffice/math/src/Math'),
+    'ParagonIE\\ConstantTime\\' => array($vendorDir . '/paragonie/constant_time_encoding/src'),
+    'MyCLabs\\Enum\\' => array($vendorDir . '/myclabs/php-enum/src'),
+    'Matrix\\' => array($vendorDir . '/markbaker/matrix/classes/src'),
+    'Masterminds\\' => array($vendorDir . '/masterminds/html5/src'),
+    'FontLib\\' => array($vendorDir . '/phenx/php-font-lib/src/FontLib'),
+    'Dompdf\\' => array($vendorDir . '/dompdf/dompdf/src'),
+    'Composer\\Pcre\\' => array($vendorDir . '/composer/pcre/src'),
+    'Complex\\' => array($vendorDir . '/markbaker/complex/classes/src'),
+);

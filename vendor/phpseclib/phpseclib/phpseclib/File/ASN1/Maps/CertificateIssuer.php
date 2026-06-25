@@ -20,5 +20,5 @@ namespace phpseclib3\File\ASN1\Maps;
  */
 abstract class CertificateIssuer
 {
-	public const MAP = GeneralNames::MAP;
+    const MAP = GeneralNames::MAP;
 }

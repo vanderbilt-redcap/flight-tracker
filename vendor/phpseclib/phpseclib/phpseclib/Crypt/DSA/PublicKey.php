@@ -14,6 +14,7 @@ namespace phpseclib3\Crypt\DSA;
 use phpseclib3\Crypt\Common;
 use phpseclib3\Crypt\DSA;
 use phpseclib3\Crypt\DSA\Formats\Signature\ASN1 as ASN1Signature;
+use phpseclib3\Exception\BadConfigurationException;
 
 /**
  * DSA Public Key
@@ -22,64 +23,78 @@ use phpseclib3\Crypt\DSA\Formats\Signature\ASN1 as ASN1Signature;
  */
 final class PublicKey extends DSA implements Common\PublicKey
 {
-	use Common\Traits\Fingerprint;
+    use Common\Traits\Fingerprint;
 
-	/**
-	 * Verify a signature
-	 *
-	 * @see self::verify()
-	 * @param string $message
-	 * @param string $signature
-	 * @return mixed
-	 */
-	public function verify($message, $signature) {
-		$format = $this->sigFormat;
+    /**
+     * Verify a signature
+     *
+     * @see self::verify()
+     * @param string $message
+     * @param string $signature
+     * @return mixed
+     */
+    public function verify($message, $signature)
+    {
+        if (self::$forcedEngine === 'libsodium') {
+            throw new BadConfigurationException('Engine libsodium is forced but unsupported for DSA');
+        }
 
-		$params = $format::load($signature);
-		if ($params === false || count($params) != 2) {
-			return false;
-		}
-		$r = $params['r'];
-		$s = $params['s'];
+        if (self::$forcedEngine === 'OpenSSL' && !function_exists('openssl_get_md_methods')) {
+            throw new BadConfigurationException('Engine OpenSSL is forced but unsupported for DSA');
+        }
 
-		if (self::$engines['OpenSSL'] && in_array($this->hash->getHash(), openssl_get_md_methods())) {
-			$sig = $format != 'ASN1' ? ASN1Signature::save($r, $s) : $signature;
+        $format = $this->sigFormat;
 
-			$result = openssl_verify($message, $sig, $this->toString('PKCS8'), $this->hash->getHash());
+        $params = $format::load($signature);
+        if ($params === false || count($params) != 2) {
+            return false;
+        }
+        $r = $params['r'];
+        $s = $params['s'];
 
-			if ($result != -1) {
-				return (bool) $result;
-			}
-		}
+        if (function_exists('openssl_get_md_methods') && self::$forcedEngine !== 'PHP') {
+            if (in_array($this->hash->getHash(), openssl_get_md_methods())) {
+                $sig = $format != 'ASN1' ? ASN1Signature::save($r, $s) : $signature;
 
-		$q_1 = $this->q->subtract(self::$one);
-		if (!$r->between(self::$one, $q_1) || !$s->between(self::$one, $q_1)) {
-			return false;
-		}
+                $result = openssl_verify($message, $sig, $this->toString('PKCS8'), $this->hash->getHash());
 
-		$w = $s->modInverse($this->q);
-		$h = $this->hash->hash($message);
-		$h = $this->bits2int($h);
-		list(, $u1) = $h->multiply($w)->divide($this->q);
-		list(, $u2) = $r->multiply($w)->divide($this->q);
-		$v1 = $this->g->powMod($u1, $this->p);
-		$v2 = $this->y->powMod($u2, $this->p);
-		list(, $v) = $v1->multiply($v2)->divide($this->p);
-		list(, $v) = $v->divide($this->q);
+                if ($result != -1) {
+                    return (bool) $result;
+                }
+            } elseif (self::$forcedEngine === 'OpenSSL') {
+                throw new BadConfigurationException('Engine OpenSSL is forced but unsupported for DSA / ' . $this->hash->getHash());
+            }
+        }
 
-		return $v->equals($r);
-	}
+        $q_1 = $this->q->subtract(self::$one);
+        if (!$r->between(self::$one, $q_1) || !$s->between(self::$one, $q_1)) {
+            return false;
+        }
 
-	/**
-	 * Returns the public key
-	 *
-	 * @param string $type
-	 * @param array $options optional
-	 * @return string
-	 */
-	public function toString($type, array $options = []) {
-		$type = self::validatePlugin('Keys', $type, 'savePublicKey');
+        $w = $s->modInverse($this->q);
+        $h = $this->hash->hash($message);
+        $h = $this->bits2int($h);
+        list(, $u1) = $h->multiply($w)->divide($this->q);
+        list(, $u2) = $r->multiply($w)->divide($this->q);
+        $v1 = $this->g->powMod($u1, $this->p);
+        $v2 = $this->y->powMod($u2, $this->p);
+        list(, $v) = $v1->multiply($v2)->divide($this->p);
+        list(, $v) = $v->divide($this->q);
 
-		return $type::savePublicKey($this->p, $this->q, $this->g, $this->y, $options);
-	}
+        return $v->equals($r);
+    }
+
+    /**
+     * Returns the public key
+     *
+     * @param string $type
+     * @param array $options optional
+     * @return string
+     */
+    public function toString($type, array $options = [])
+    {
+        $type = self::validatePlugin('Keys', $type, 'savePublicKey');
+
+        return $type::savePublicKey($this->p, $this->q, $this->g, $this->y, $options);
+    }
 }

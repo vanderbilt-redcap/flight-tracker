@@ -2,6 +2,7 @@
 
 namespace Vanderbilt\CareerDevLibrary;
 
+use ExternalModules\ExternalModules;
 use Vanderbilt\CareerDevLibrary\MeshTermsLib\MeshScorer;
 use Vanderbilt\FlightTrackerExternalModule\CareerDev;
 use ZipStream\File;
@@ -19,6 +20,9 @@ class Portal
 	public const BOARD_PREFIX = "board_";
 	public const DISASSOCIATE_SUFFIX = "___disassociate";
 	public const NUM_SEARCH_MESH_TERMS = 5;
+	public const STANDARD_SURVEYS = [
+		'initial_survey','followup','mentoring_agreement_evaluations'
+	];
 
 	public function __construct($currPid, $recordId, $name, $projectTitle, $allPids) {
 		$this->pid = $currPid;
@@ -958,6 +962,7 @@ class Portal
 		$menu["Your Info"] = [];
 		$menu["Your Graphs"] = [];
 		$menu["Your Network"] = [];
+		$menu["Your Surveys"] = [];
 
 		$menu["Your Info"][] = [
 			"action" => "view",
@@ -1069,6 +1074,21 @@ class Portal
 			"action" => "board",
 			"title" => "Bulletin Board",
 		];
+
+		$surveyProject = new \Project($this->pid);
+		$surveyNumber = count($surveyProject->surveys);
+		$menu["Your Surveys"][] = [
+			"action" => "survey",
+			"payload" => "default",
+			"title" => "Initial Survey & Followup"
+		];
+		if ($surveyNumber > count(self::STANDARD_SURVEYS)) {
+			$menu["Your Surveys"][] = [
+				"action" => "survey",
+				"payload" => "misc",
+				"title" => "Other Surveys"
+			];
+		}
 		return $menu;
 	}
 
@@ -1854,18 +1874,6 @@ Examples:
 		return "<p class='portalDescription'>$description</p><h4>Survey Not Yet Available</h4>";
 	}
 
-	public function getFlightTrackerSurveys() {
-		if ($this->token && $this->server && $this->recordId) {
-			$html = "<h3>Flight Tracker Surveys for This Project</h3>";
-			$html .= $this->getInitialSurveyHTML();
-			$html .= "<hr/>";
-			$html .= $this->getFollowupHTML();
-			return $html;
-		} else {
-			return "<h3>Not Available</h3>";
-		}
-	}
-
 	public function getPublicationWrangler() {
 		if ($this->recordId) {
 			$fields = array_merge(
@@ -1892,6 +1900,51 @@ Examples:
 		} else {
 			return "";
 		}
+	}
+
+	public function getFlightTrackerSurveys($surveyType) {
+		if ($surveyType != "" && $this->token && $this->server && $this->recordId) {
+			if ($surveyType != "default") {
+				$html = "<h3>Custom Surveys for This Project</h3>";
+				$surveyProject = new \Project($this->pid);
+				$surveys = $surveyProject->surveys;
+				$language = \Language::getLanguage();
+				foreach ($surveys as $survey_id => $survey_info) {
+					if (!in_array($survey_info['form_name'], self::STANDARD_SURVEYS)) {
+						$completionTime = \Survey::getSurveyCompletionTime($this->pid, $this->recordId, $survey_info['form_name'], $surveyProject->firstEventId);
+						$portalDescription = (!str_starts_with($survey_info['instructions'], "<p><strong>".$language['survey_154']) ? ExternalModules::escape(strip_tags($survey_info['instructions'])) : "");
+
+						if ($completionTime == "") {
+							$latestDate = "Never";
+							$text = "Fill out a new survey";
+							$newLink = \REDCap::getSurveyLink($this->recordId, $survey_info['form_name'], $surveyProject->firstEventId, 1, $this->pid);
+							$linkHTML = Links::makeLink($newLink, $text, false, "portalButton");
+						} else {
+							$ymd = $completionTime;
+							$latestDate = DateManagement::YMD2LongDate($ymd);
+							$text = "Update your survey";
+
+							$linkHTML = "<a href='javascript:;' onclick='portal.reopenSurvey(\"{$survey_info['form_name']}\", \"{$this->pid}\", \"{$this->recordId}\");' class='portalButton'>$text</a>";
+						}
+
+						$html .= "<h4>{$survey_info['title']}</h4>";
+						if ($portalDescription != "") {
+							$html .= "<p class='portalDescription'>$portalDescription</p>";
+						}
+						$html .= "<p><strong>Date Completed</strong>: $latestDate<br/>$linkHTML</p>
+						<hr/>";
+					}
+				}
+				return $html;
+			} else {
+				$html = "<h3>Flight Tracker Surveys for This Project</h3>";
+				$html .= $this->getInitialSurveyHTML();
+				$html .= "<hr/>";
+				$html .= $this->getFollowupHTML();
+			}
+			return $html;
+		}
+		return "<h3>Not Available</h3>";
 	}
 
 	private function getInitialSurveyHTML() {

@@ -378,8 +378,8 @@ if (empty($menteeCheckboxes)) {
         const value = $(ob).val();
         if (
             ((field === "mentee_userid") && (allMenteeUserids[recordId] === value))
-            || ((field === "mentor_userid") && (allMentorUserids[recordId].join(", ") === value))
-            || ((field === "mentor_name") && (allMentorNames[recordId].join(", ") === value))
+            || ((field === "mentor_userid") && ((allMentorUserids[recordId] ?? []).join(", ") === value))
+            || ((field === "mentor_name") && ((allMentorNames[recordId] ?? []).join(", ") === value))
         ) {
             // No change
             return;

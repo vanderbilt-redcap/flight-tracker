@@ -35,7 +35,7 @@ class FollowupGrantFactory extends GrantFactory
 				$grant->setVariable("instance", $row["redcap_repeat_instance"] ?: "1");
 				$grant->setVariable("pid", $pid);
 				$grant->setVariable("instrument", $row["redcap_repeat_instrument"] ?: "Normative");
-				$grant->setVariable('person_name', $row['identifier_first_name']." ".$row['identifier_last_name']);
+				$grant->setVariable('person_name', ($row['identifier_first_name'] ?? "")." ".($row['identifier_last_name'] ?? ""));
 				$grant->setVariable('start', $row['followup_grant'.$i.'_start']);
 				$grant->setVariable('end', $row['followup_grant'.$i.'_end']);
 				$grant->setVariable('project_start', $row['followup_grant'.$i.'_start']);

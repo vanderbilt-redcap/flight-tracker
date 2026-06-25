@@ -237,6 +237,7 @@ class Sanitizer
 			$newAry = [];
 			if (REDCapManagement::isAssoc($ary)) {
 				foreach ($ary as $key => $value) {
+					unset($ary[$key]);
 					if ($stripHTML && $encodeQuotes) {
 						$key = self::sanitize($key);
 					} elseif ($stripHTML && !$encodeQuotes) {
@@ -256,7 +257,8 @@ class Sanitizer
 					$newAry[$key] = $value;
 				}
 			} else {
-				foreach ($ary as $value) {
+				foreach ($ary as $key => $value) {
+					unset($ary[$key]);
 					if (is_array($value)) {
 						$value = self::sanitizeArray($value, $stripHTML, $encodeQuotes);
 					} elseif ($stripHTML && $encodeQuotes) {

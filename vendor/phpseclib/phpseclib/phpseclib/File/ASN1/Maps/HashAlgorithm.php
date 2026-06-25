@@ -20,5 +20,5 @@ namespace phpseclib3\File\ASN1\Maps;
  */
 abstract class HashAlgorithm
 {
-	public const MAP = AlgorithmIdentifier::MAP;
+    const MAP = AlgorithmIdentifier::MAP;
 }

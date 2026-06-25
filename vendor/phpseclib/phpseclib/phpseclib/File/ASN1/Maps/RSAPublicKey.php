@@ -22,11 +22,11 @@ use phpseclib3\File\ASN1;
  */
 abstract class RSAPublicKey
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'children' => [
-			'modulus' => ['type' => ASN1::TYPE_INTEGER],
-			'publicExponent' => ['type' => ASN1::TYPE_INTEGER]
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'children' => [
+            'modulus' => ['type' => ASN1::TYPE_INTEGER],
+            'publicExponent' => ['type' => ASN1::TYPE_INTEGER]
+        ]
+    ];
 }

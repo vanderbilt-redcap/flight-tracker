@@ -1976,9 +1976,12 @@ class Scholar
 		$orders["summary_primary_dept"] = [
 			"override_department1" => "manual",
 			"promotion_department" => "manual",
+			"promotion_division" => "manual",
 			"check_primary_dept" => "scholars",
 			"vfrs_department" => "vfrs",
 			"init_import_primary_dept" => "manual",
+			"identifier_left_division" => "manual",
+			"init_import_division" => "manual",
 			"workday_deptid" => "ldap",
 			"workday_descr" => "ldap",
 			"ldapds_departmentnumber" => "ldap",
@@ -2455,20 +2458,33 @@ class Scholar
 						break;
 					}
 				}
-				if (!$found && ($result->getSource() == "ldap")) {
-					# approximate
-					$score = 0;
-					$minimumCharacters = 8;
-					$scoreIdx = false;
-					foreach ($choices[$field] as $idx => $label) {
-						$myScore = similar_text($label, $value);
-						if (($myScore > $minimumCharacters) && ($myScore > $score)) {
-							$score = $myScore;
-							$scoreIdx = $idx;
+				foreach (["ldap", "manual"] as $sourceCandidate) {
+					if (!$found && ($result->getSource() == $sourceCandidate)) {
+						# approximate
+						$score = 0;
+						$minimumCharacters = 8;
+						$minimumNumberCharacters = 4;
+						$scoreIdx = false;
+						foreach ($choices[$field] as $idx => $label) {
+							if (
+								is_numeric($value)
+								&& (strlen($value) >= $minimumNumberCharacters)
+								&& (strpos($label, $value) !== false)
+							) {
+								$score = strlen($value);
+								$scoreIdx = $idx;
+								break;
+							}
+							$myScore = similar_text($label, $value);
+							if (($myScore > $minimumCharacters) && ($myScore > $score)) {
+								$score = $myScore;
+								$scoreIdx = $idx;
+							}
 						}
-					}
-					if (($score > 0) && isset($choices[$field][$scoreIdx])) {
-						$value = $scoreIdx;
+						if (($score > 0) && isset($choices[$field][$scoreIdx])) {
+							$value = $scoreIdx;
+							$found = true;
+						}
 					}
 				}
 			}
@@ -3345,7 +3361,7 @@ class Scholar
 			$currInstance = ($row['redcap_repeat_instance'] ? $row['redcap_repeat_instance'] : "");
 			if (in_array($currInstance, $instances) && $this->matchInstitutionInRow($value, $row)) {
 				foreach ($vars as $origField => $origSource) {
-					if (($source == $origSource) && $row[$origField]) {
+					if (($source == $origSource) && $row[$origField] ?? false) {
 						$result = new ScholarResult($row[$origField], $source, "", "", $this->pid);
 						$result->setField($origField);
 						$result->setInstance($currInstance);
@@ -3812,7 +3828,7 @@ class Scholar
 				$g++;
 				$numCitations = 0;
 				for ($i = 0; $i <= $g; $i++) {
-					$numCitations += $timesCitedValues[$i];
+					$numCitations += $timesCitedValues[$i] ?? 0;
 				}
 			} while (($g < count($timesCitedValues) && ($numCitations >= $g * $g)));
 			if ($numCitations < $g * $g) {

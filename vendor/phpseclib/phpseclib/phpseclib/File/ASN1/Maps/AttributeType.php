@@ -22,5 +22,5 @@ use phpseclib3\File\ASN1;
  */
 abstract class AttributeType
 {
-	public const MAP = ['type' => ASN1::TYPE_OBJECT_IDENTIFIER];
+    const MAP = ['type' => ASN1::TYPE_OBJECT_IDENTIFIER];
 }

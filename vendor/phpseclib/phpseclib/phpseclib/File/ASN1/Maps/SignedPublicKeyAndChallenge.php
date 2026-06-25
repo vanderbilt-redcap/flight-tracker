@@ -22,12 +22,12 @@ use phpseclib3\File\ASN1;
  */
 abstract class SignedPublicKeyAndChallenge
 {
-	public const MAP = [
-		'type' => ASN1::TYPE_SEQUENCE,
-		'children' => [
-			'publicKeyAndChallenge' => PublicKeyAndChallenge::MAP,
-			'signatureAlgorithm' => AlgorithmIdentifier::MAP,
-			'signature' => ['type' => ASN1::TYPE_BIT_STRING]
-		]
-	];
+    const MAP = [
+        'type' => ASN1::TYPE_SEQUENCE,
+        'children' => [
+            'publicKeyAndChallenge' => PublicKeyAndChallenge::MAP,
+            'signatureAlgorithm' => AlgorithmIdentifier::MAP,
+            'signature' => ['type' => ASN1::TYPE_BIT_STRING]
+        ]
+    ];
 }

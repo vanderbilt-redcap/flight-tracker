@@ -4,6 +4,7 @@ footer { height: 40px; position: fixed; top: calc(100% - 40px); width: 100%; col
 .match { cursor: pointer; font-size: 0.8em; float: left; width: 200px; padding: 8px; border-radius: 16px; border: 1px solid black; margin: 16px !important; }
 #matchBox,#mainBox { padding: 16px; text-align: center; }
 #menu { margin: 0 auto; height: 100px; }
+.welcome-group { text-align: center; }
 #welcomeMessage,#noDataMessage,.post { font-size: 1.25em; padding: 8px; margin: 30px auto 0 auto; max-width: 900px; background-color: #fff482; }
 #noDataMessage { text-align: center; }
 #welcomeMessage,#noDataMessage,.portalDescription,nav:not(:empty),iframe,.post { box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2); }
@@ -43,8 +44,8 @@ nav:has(> :last-child:nth-child(2)) {
 nav:has(> :last-child:nth-child(1)) {
     width: calc(140px * 1);
 }
-.dropbtn { width: 140px; height: 60px; font-family: "Museo Sans", Arial, Helvetica, sans-serif; color: black; padding: 16px; font-size: 16px; border: none; cursor: pointer; }
-.dropdown { position: relative; display: inline-block; }
+.dropbtn { display: flex; align-items: center; justify-content: center; width: 140px; height: 60px; font-family: "Museo Sans", Arial, Helvetica, sans-serif; color: black; padding: 0 16px; font-size: 16px; border: none; cursor: pointer; }
+.dropdown { position: relative; display: inline-block; vertical-align: top; }
 .dropdown-content { display: none; position: absolute; background-color: #eeeeee; min-width: 160px; box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2); z-index: 1; }
 .dropdown-content a { font-size: 0.85em; font-family: "Museo Sans", Arial, Helvetica, sans-serif; color: black; padding: 12px 16px; text-decoration: none; display: block; }
 .dropdown-content a:hover { background-color: #d4d4eb; }
@@ -55,7 +56,7 @@ nav:has(> :last-child:nth-child(1)) {
 .dropdown:nth-of-type(3) .menuItem,.dropdown:nth-of-type(8) .menuItem,.dropdown:nth-of-type(13) .menuItem,.dropdown:nth-of-type(18) .menuItem { background-color: #b0d87a; }
 .dropdown:nth-of-type(4) .menuItem,.dropdown:nth-of-type(9) .menuItem,.dropdown:nth-of-type(14) .menuItem,.dropdown:nth-of-type(19) .menuItem { background-color: #f79721; }
 .dropdown:nth-of-type(5) .menuItem,.dropdown:nth-of-type(10) .menuItem,.dropdown:nth-of-type(15) .menuItem,.dropdown:nth-of-type(20) .menuItem { background-color: #f4c3ff; }
-
+.dropbtn.menuItem.find_collab_menu { background-color: #fff482; width: auto; min-width: 140px; }
 
 .responsiveHeader{ width: 150px; }
 img.responsiveHeader,img.efsHeader { height: 64px; }
