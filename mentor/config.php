@@ -133,13 +133,13 @@ list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($men
 $agreementSectionsEnabledStatus = MMAHelper::getAgreementSectionsEnabledStatusForProject($pid);
 $customAdminQuestions = Application::getSetting("adminCustomQuestions_mma", $pid);
 if (empty($menteeCheckboxes)) {
-    $firstHalfMenteeCheckboxes = [];
-    $secondHalfMenteeCheckboxes = [];
-} else if (count($menteeCheckboxes) == 1) {
-    $firstHalfMenteeCheckboxes = $menteeCheckboxes;
-    $secondHalfMenteeCheckboxes = [];
+	$firstHalfMenteeCheckboxes = [];
+	$secondHalfMenteeCheckboxes = [];
+} elseif (count($menteeCheckboxes) == 1) {
+	$firstHalfMenteeCheckboxes = $menteeCheckboxes;
+	$secondHalfMenteeCheckboxes = [];
 } else {
-    list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
+	list($firstHalfMenteeCheckboxes, $secondHalfMenteeCheckboxes) = array_chunk($menteeCheckboxes, intval(ceil(count($menteeCheckboxes) / 2)));
 }
 
 ?>
@@ -151,6 +151,9 @@ if (empty($menteeCheckboxes)) {
 
 
 <h1>Start Mentee-Mentor Agreements</h1>
+<div id="MMAWorkFlowDiv" class="centered">
+    <img src="<?=Application::link("/mentor/img/mmaWorkflow.png")?>" alt="MMA Workflow Image">
+</div>
 <h2>Step 1: Configure Agreements</h2>
 
 <p class="centered max-width"><a id="configureOpen" href="javascript:;" onclick="$('#configForm').slideDown();">Click here to configure</a>.</p>
@@ -277,7 +280,6 @@ if (empty($menteeCheckboxes)) {
     <p class='centered max-width-600' style="margin-bottom: 0;"><label for="progressurl">This link will provide mentors with the ability to track their mentee:</label><br/>
         <input type='text' id='progressurl' value='<?= $menteeProgressLink ?>' onclick='this.select();' readonly='readonly' style='width: 98%; margin-right: 5px; margin-left: 5px;' /></p>
     <p style="margin-top: 0;" class='max-width-600 alignright smaller'><a href='javascript:;' onclick='copyToClipboard($("#progressurl"));'>Copy</a></p>
-    <a href="<?php echo Application::link('mentor/index_mentorcustomquestions.php')?>">Test Link to custom page</a>
 </div>
 
     <script>
@@ -526,16 +528,16 @@ function saveResourceLinks($linkForResources, $linkForIDP, $sanitizedList, $choi
 			$resourcesByIndex[$nextIndex] = $resource;
 			$nextIndex++;
 		}
-		if (empty($resourcesByIndex) && Application::isVanderbilt()) {
-			$resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
-			$resourceStr = DataDictionaryManagement::makeChoiceStr($resourcesByIndex);
-		} elseif (empty($resourcesByIndex) && $savedList) {
+		if (empty($resourcesByIndex) && $savedList) {
 			$savedLabels = preg_split("/[\n\r]+/", $savedList);
 			$pairs = [];
 			foreach ($savedLabels as $i => $label) {
 				$pairs[] = ($i + 1).", $label";
 			}
 			$resourceStr = implode(" | ", $pairs);
+		} elseif (empty($resourcesByIndex) && Application::isVanderbilt()) {
+			$resourcesByIndex = DataDictionaryManagement::getMenteeAgreementVanderbiltResources();
+			$resourceStr = DataDictionaryManagement::makeChoiceStr($resourcesByIndex);
 		} elseif (empty($resourcesByIndex) && !empty($choices[DEFAULT_RESOURCE_FIELD])) {
 			$resourceStr = REDCapManagement::makeChoiceStr($choices[DEFAULT_RESOURCE_FIELD]);
 		} elseif (empty($resourcesByIndex) && !isset($choices[DEFAULT_RESOURCE_FIELD])) {

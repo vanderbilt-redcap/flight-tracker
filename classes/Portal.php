@@ -1907,7 +1907,7 @@ Examples:
 			if ($surveyType != "default") {
 				$html = "<h3>Custom Surveys for This Project</h3>";
 				$surveyProject = new \Project($this->pid);
-				$surveys = $surveyProject->surveys;
+				$surveys = ExternalModules::escape($surveyProject->surveys);
 				$language = \Language::getLanguage();
 				foreach ($surveys as $survey_id => $survey_info) {
 					if (!in_array($survey_info['form_name'], self::STANDARD_SURVEYS)) {

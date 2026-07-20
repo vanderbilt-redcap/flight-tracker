@@ -351,11 +351,11 @@ class DateManagement
 		return $date;
 	}
 
-	public static function isOracleDate($d) {
+	public static function isOrclDate($d) {
 		return preg_match("/^\d\d".self::SEP_REGEX."[A-Z]{3}".self::SEP_REGEX."\d\d$/", $d);
 	}
 
-	public static function oracleDate2YMD($d) {
+	public static function orclDate2YMD($d) {
 		if ($d === "") {
 			return "";
 		}

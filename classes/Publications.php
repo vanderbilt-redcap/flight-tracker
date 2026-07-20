@@ -201,12 +201,20 @@ class Publications
 	private static function makePubMedNameClause($unexplodedFirst, $unexplodedLast, $middle = "") {
 		$suffix = "%5Bau%5D";
 		$nameClauses = [];
+		$itemsToErase = ["'", "&#039;", "&#39;"];
+
 		foreach (NameMatcher::explodeFirstName($unexplodedFirst) as $first) {
+			$first = preg_replace("/\s+/", "+", $first);
+			foreach ($itemsToErase as $item) {
+				$first = str_replace($item, "", $first);
+			}
 			foreach (NameMatcher::explodeLastName($unexplodedLast) as $last) {
 				if ($first && $last) {
-					# quote around entire name is turned off quoting for now because it seems PubMed no longer supports it
-					$first = preg_replace("/\s+/", "+", $first);
 					$last = preg_replace("/\s+/", "+", $last);
+					foreach ($itemsToErase as $item) {
+						$last = str_replace($item, "", $last);
+					}
+					# quote around entire name is turned off quoting for now because it seems PubMed no longer supports it
 					if ($middle !== "") {
 						# In the documentation PubMed only requests a middle initial not a full middle name
 						$middleInitial = $middle[0];

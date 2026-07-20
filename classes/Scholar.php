@@ -2050,6 +2050,7 @@ class Scholar
 			"vfrs_current_degree_institution" => "vfrs",
 			"init_import_institution" => "manual",
 			"init_import_undergrad_institution" => "manual",
+			"orcid_employments_organization_name" => "scholars",
 		];
 		$orders["identifier_left_job_title"] = [
 			"promotion_job_title" => "manual",

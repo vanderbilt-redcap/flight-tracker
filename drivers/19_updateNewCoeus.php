@@ -159,8 +159,8 @@ function updateCoeusGeneric($token, $server, $pid, $records, $instrument, $award
 								$lastUpdateInCOEUS = "";
 								foreach ($dataRow as $dataField => $dataValue) {
 									if ($prefix.strtolower($dataField) == $timestampField) {
-										if (DateManagement::isOracleDate($dataValue)) {
-											$lastUpdateInCOEUS = DateManagement::oracleDate2YMD($dataValue);
+										if (DateManagement::isOrclDate($dataValue)) {
+											$lastUpdateInCOEUS = DateManagement::orclDate2YMD($dataValue);
 										} elseif (DateManagement::isDate($dataValue)) {
 											$lastUpdateInCOEUS = $dataValue;
 										}
@@ -271,9 +271,9 @@ function makeUploadRowForCOEUS($dataRow, $recordId, $instrument, $instance, $pre
 		if ($value) {
 			$field = $prefix.strtolower($dataField);
 			if (in_array($field, $metadataFields)) {
-				if (DateManagement::isOracleDate($value)) {
+				if (DateManagement::isOrclDate($value)) {
 					try {
-						$value = DateManagement::oracleDate2YMD($value);
+						$value = DateManagement::orclDate2YMD($value);
 					} catch (\Exception $e) {
 						// Bad date
 						$value = "";

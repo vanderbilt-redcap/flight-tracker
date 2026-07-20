@@ -1359,8 +1359,8 @@ class REDCapManagement
 		return DataDictionaryManagement::copyMetadataSettingsForField($row, $metadata, $upload, $token, $server);
 	}
 
-	public static function isOracleDate($d) {
-		return DateManagement::isOracleDate($d);
+	public static function isOrclDate($d) {
+		return DateManagement::isOrclDate($d);
 	}
 
 	# includes _complete's
@@ -1377,8 +1377,8 @@ class REDCapManagement
 		return $fieldsWithData;
 	}
 
-	public static function oracleDate2YMD($d) {
-		return DateManagement::oracleDate2YMD($d);
+	public static function orclDate2YMD($d) {
+		return DateManagement::orclDate2YMD($d);
 	}
 
 	public static function YMD2MDY($ymd) {

@@ -1821,9 +1821,7 @@ class DataDictionaryManagement
 			&& self::isInitialSetupForResources($choices[$mentoringResourceField])
 		) {
 			if (in_array($defaultResourceField, $metadataFields)) {
-				if (Application::isVanderbilt()) {
-					$resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
-				} elseif (!self::isInitialSetupForResources($choices[$defaultResourceField])) {
+				if (!self::isInitialSetupForResources($choices[$defaultResourceField])) {
 					$resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
 				} else {
 					$resourceStr = self::getSavedResourceChoiceStr($blankSetup, $pid);

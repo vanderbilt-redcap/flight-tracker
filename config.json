@@ -15,7 +15,12 @@
 			"name": "Andrew Johnson",
 			"email": "datacore@vumc.org",
 			"institution": "Vanderbilt University Medical Center"
-		}
+		},
+      {
+        "name": "Ryan Moore",
+        "email": "datacore@vumc.org",
+        "institution": "Vanderbilt University Medical Center"
+      }
 	],
 
 
