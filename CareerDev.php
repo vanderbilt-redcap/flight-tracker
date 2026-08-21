@@ -18,7 +18,7 @@ class CareerDev
 	public static $passedModule = null;
 
 	public static function getVersion() {
-		return "6.23.3";
+		return "6.23.4";
 	}
 
 	public static function getLocalhostPluginPid() {

@@ -139,7 +139,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 	}
 
 	public function getPids() {
-		return $this->framework->getProjectsWithModuleEnabled();
+		return $this->getProjectsWithModuleEnabled();
 	}
 
 	public function emails() {
@@ -1455,7 +1455,7 @@ class FlightTrackerExternalModule extends AbstractExternalModule
 		if (isset($_GET['pid']) && Application::isVanderbilt()) {
 			$activePids = [Sanitizer::sanitizePid($_GET['pid'])];
 		} else {
-			$activePids = $this->framework->getProjectsWithModuleEnabled();
+			$activePids = $this->getProjectsWithModuleEnabled();
 		}
 		Application::log($this->getName()." running for pids ".json_encode($activePids));
 		foreach ($activePids as $pid) {
