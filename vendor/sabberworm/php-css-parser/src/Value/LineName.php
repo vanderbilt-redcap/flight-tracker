@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\Value;
 
 use Sabberworm\CSS\OutputFormat;
@@ -7,61 +9,57 @@ use Sabberworm\CSS\Parsing\ParserState;
 use Sabberworm\CSS\Parsing\UnexpectedEOFException;
 use Sabberworm\CSS\Parsing\UnexpectedTokenException;
 
+/**
+ * A name for a named CSS grid line.
+ *
+ * @see https://www.w3.org/TR/css-grid-1/#line-name
+ * @see https://developer.mozilla.org/en-US/docs/Web/CSS/Guides/Grid_layout/Named_grid_lines
+ */
 class LineName extends ValueList
 {
-	/**
-	 * @param array<int, RuleValueList|CSSFunction|CSSString|LineName|Size|URL|string> $aComponents
-	 * @param int $iLineNo
-	 */
-	public function __construct(array $aComponents = [], $iLineNo = 0) {
-		parent::__construct($aComponents, ' ', $iLineNo);
-	}
+    /**
+     * @param array<string> $components
+     * @param int<1, max>|null $lineNumber
+     */
+    public function __construct(array $components = [], ?int $lineNumber = null)
+    {
+        parent::__construct($components, ' ', $lineNumber);
+    }
 
-	/**
-	 * @return LineName
-	 *
-	 * @throws UnexpectedTokenException
-	 * @throws UnexpectedEOFException
-	 *
-	 * @internal since V8.8.0
-	 */
-	public static function parse(ParserState $oParserState) {
-		$oParserState->consume('[');
-		$oParserState->consumeWhiteSpace();
-		$aNames = [];
-		do {
-			if ($oParserState->getSettings()->bLenientParsing) {
-				try {
-					$aNames[] = $oParserState->parseIdentifier();
-				} catch (UnexpectedTokenException $e) {
-					if (!$oParserState->comes(']')) {
-						throw $e;
-					}
-				}
-			} else {
-				$aNames[] = $oParserState->parseIdentifier();
-			}
-			$oParserState->consumeWhiteSpace();
-		} while (!$oParserState->comes(']'));
-		$oParserState->consume(']');
-		return new LineName($aNames, $oParserState->currentLine());
-	}
+    /**
+     * @throws UnexpectedTokenException
+     * @throws UnexpectedEOFException
+     *
+     * @internal since V8.8.0
+     */
+    public static function parse(ParserState $parserState): LineName
+    {
+        $parserState->consume('[');
+        $parserState->consumeWhiteSpace();
+        $names = [];
+        do {
+            if ($parserState->getSettings()->usesLenientParsing()) {
+                try {
+                    $names[] = $parserState->parseIdentifier();
+                } catch (UnexpectedTokenException $e) {
+                    if (!$parserState->comes(']')) {
+                        throw $e;
+                    }
+                }
+            } else {
+                $names[] = $parserState->parseIdentifier();
+            }
+            $parserState->consumeWhiteSpace();
+        } while (!$parserState->comes(']'));
+        $parserState->consume(']');
+        return new LineName($names, $parserState->currentLine());
+    }
 
-	/**
-	 * @return string
-	 *
-	 * @deprecated in V8.8.0, will be removed in V9.0.0. Use `render` instead.
-	 */
-	public function __toString() {
-		return $this->render(new OutputFormat());
-	}
-
-	/**
-	 * @param OutputFormat|null $oOutputFormat
-	 *
-	 * @return string
-	 */
-	public function render($oOutputFormat) {
-		return '[' . parent::render(OutputFormat::createCompact()) . ']';
-	}
+    /**
+     * @return non-empty-string
+     */
+    public function render(OutputFormat $outputFormat): string
+    {
+        return '[' . parent::render(OutputFormat::createCompact()) . ']';
+    }
 }

@@ -1,25 +1,17 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS;
 
 interface Renderable
 {
-	/**
-	 * @return string
-	 *
-	 * @deprecated in V8.8.0, will be removed in V9.0.0. Use `render` instead.
-	 */
-	public function __toString();
+    public function render(OutputFormat $outputFormat): string;
 
-	/**
-	 * @param OutputFormat|null $oOutputFormat
-	 *
-	 * @return string
-	 */
-	public function render($oOutputFormat);
-
-	/**
-	 * @return int
-	 */
-	public function getLineNo();
+    /**
+     * @return array<string, bool|int|float|string|array<mixed>|null>
+     *
+     * @internal
+     */
+    public function getArrayRepresentation(): array;
 }

@@ -1,25 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\Comment;
 
+/**
+ * A standard implementation of this interface is available in the `CommentContainer` trait.
+ */
 interface Commentable
 {
-	/**
-	 * @param array<array-key, Comment> $aComments
-	 *
-	 * @return void
-	 */
-	public function addComments(array $aComments);
+    /**
+     * @param list<Comment> $comments
+     */
+    public function addComments(array $comments): void;
 
-	/**
-	 * @return array<array-key, Comment>
-	 */
-	public function getComments();
+    /**
+     * @return list<Comment>
+     */
+    public function getComments(): array;
 
-	/**
-	 * @param array<array-key, Comment> $aComments
-	 *
-	 * @return void
-	 */
-	public function setComments(array $aComments);
+    /**
+     * @param list<Comment> $comments
+     */
+    public function setComments(array $comments): void;
 }

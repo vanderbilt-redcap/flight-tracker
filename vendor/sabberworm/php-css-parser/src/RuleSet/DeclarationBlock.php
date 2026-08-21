@@ -1,22 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\RuleSet;
 
+use Sabberworm\CSS\Comment\Comment;
+use Sabberworm\CSS\Comment\CommentContainer;
+use Sabberworm\CSS\CSSElement;
 use Sabberworm\CSS\CSSList\CSSList;
+use Sabberworm\CSS\CSSList\CSSListItem;
 use Sabberworm\CSS\CSSList\KeyFrame;
 use Sabberworm\CSS\OutputFormat;
 use Sabberworm\CSS\Parsing\OutputException;
 use Sabberworm\CSS\Parsing\ParserState;
 use Sabberworm\CSS\Parsing\UnexpectedEOFException;
 use Sabberworm\CSS\Parsing\UnexpectedTokenException;
+use Sabberworm\CSS\Position\Position;
+use Sabberworm\CSS\Position\Positionable;
+use Sabberworm\CSS\Property\Declaration;
 use Sabberworm\CSS\Property\KeyframeSelector;
 use Sabberworm\CSS\Property\Selector;
-use Sabberworm\CSS\Rule\Rule;
-use Sabberworm\CSS\Value\Color;
-use Sabberworm\CSS\Value\RuleValueList;
-use Sabberworm\CSS\Value\Size;
-use Sabberworm\CSS\Value\URL;
-use Sabberworm\CSS\Value\Value;
+use Sabberworm\CSS\Settings;
 
 /**
  * This class represents a `RuleSet` constrained by a `Selector`.
@@ -25,825 +29,278 @@ use Sabberworm\CSS\Value\Value;
  * matching elements.
  *
  * Declaration blocks usually appear directly inside a `Document` or another `CSSList` (mostly a `MediaQuery`).
+ *
+ * Note that `CSSListItem` extends both `Commentable` and `Renderable`, so those interfaces must also be implemented.
  */
-class DeclarationBlock extends RuleSet
+class DeclarationBlock implements CSSElement, CSSListItem, Positionable, DeclarationList
 {
-	/**
-	 * @var array<int, Selector|string>
-	 */
-	private $aSelectors;
+    use CommentContainer;
+    use LegacyDeclarationListMethods;
+    use Position;
 
-	/**
-	 * @param int $iLineNo
-	 */
-	public function __construct($iLineNo = 0) {
-		parent::__construct($iLineNo);
-		$this->aSelectors = [];
-	}
+    /**
+     * @var list<Selector>
+     */
+    private $selectors = [];
 
-	/**
-	 * @param CSSList|null $oList
-	 *
-	 * @return DeclarationBlock|false
-	 *
-	 * @throws UnexpectedTokenException
-	 * @throws UnexpectedEOFException
-	 *
-	 * @internal since V8.8.0
-	 */
-	public static function parse(ParserState $oParserState, $oList = null) {
-		$aComments = [];
-		$oResult = new DeclarationBlock($oParserState->currentLine());
-		try {
-			$aSelectorParts = [];
-			$sStringWrapperChar = false;
-			do {
-				$aSelectorParts[] = $oParserState->consume(1)
-					. $oParserState->consumeUntil(['{', '}', '\'', '"'], false, false, $aComments);
-				if (in_array($oParserState->peek(), ['\'', '"']) && substr(end($aSelectorParts), -1) != "\\") {
-					if ($sStringWrapperChar === false) {
-						$sStringWrapperChar = $oParserState->peek();
-					} elseif ($sStringWrapperChar == $oParserState->peek()) {
-						$sStringWrapperChar = false;
-					}
-				}
-			} while (!in_array($oParserState->peek(), ['{', '}']) || $sStringWrapperChar !== false);
-			$oResult->setSelectors(implode('', $aSelectorParts), $oList);
-			if ($oParserState->comes('{')) {
-				$oParserState->consume(1);
-			}
-		} catch (UnexpectedTokenException $e) {
-			if ($oParserState->getSettings()->bLenientParsing) {
-				if (!$oParserState->comes('}')) {
-					$oParserState->consumeUntil('}', false, true);
-				}
-				return false;
-			} else {
-				throw $e;
-			}
-		}
-		$oResult->setComments($aComments);
-		RuleSet::parseRuleSet($oParserState, $oResult);
-		return $oResult;
-	}
+    /**
+     * @var RuleSet
+     */
+    private $ruleSet;
 
-	/**
-	 * @param array<int, Selector|string>|string $mSelector
-	 * @param CSSList|null $oList
-	 *
-	 * @throws UnexpectedTokenException
-	 */
-	public function setSelectors($mSelector, $oList = null) {
-		if (is_array($mSelector)) {
-			$this->aSelectors = $mSelector;
-		} else {
-			$this->aSelectors = explode(',', $mSelector);
-		}
-		foreach ($this->aSelectors as $iKey => $mSelector) {
-			if (!($mSelector instanceof Selector)) {
-				if ($oList === null || !($oList instanceof KeyFrame)) {
-					if (!Selector::isValid($mSelector)) {
-						throw new UnexpectedTokenException(
-							"Selector did not match '" . Selector::SELECTOR_VALIDATION_RX . "'.",
-							$mSelector,
-							"custom"
-						);
-					}
-					$this->aSelectors[$iKey] = new Selector($mSelector);
-				} else {
-					if (!KeyframeSelector::isValid($mSelector)) {
-						throw new UnexpectedTokenException(
-							"Selector did not match '" . KeyframeSelector::SELECTOR_VALIDATION_RX . "'.",
-							$mSelector,
-							"custom"
-						);
-					}
-					$this->aSelectors[$iKey] = new KeyframeSelector($mSelector);
-				}
-			}
-		}
-	}
+    /**
+     * @param int<1, max>|null $lineNumber
+     */
+    public function __construct(?int $lineNumber = null)
+    {
+        $this->ruleSet = new RuleSet($lineNumber);
+        $this->setPosition($lineNumber);
+    }
 
-	/**
-	 * Remove one of the selectors of the block.
-	 *
-	 * @param Selector|string $mSelector
-	 *
-	 * @return bool
-	 */
-	public function removeSelector($mSelector) {
-		if ($mSelector instanceof Selector) {
-			$mSelector = $mSelector->getSelector();
-		}
-		foreach ($this->aSelectors as $iKey => $oSelector) {
-			if ($oSelector->getSelector() === $mSelector) {
-				unset($this->aSelectors[$iKey]);
-				return true;
-			}
-		}
-		return false;
-	}
+    /**
+     * @throws UnexpectedTokenException
+     * @throws UnexpectedEOFException
+     *
+     * @internal since V8.8.0
+     */
+    public static function parse(ParserState $parserState, ?CSSList $list = null): ?DeclarationBlock
+    {
+        $comments = [];
+        $result = new DeclarationBlock($parserState->currentLine());
+        try {
+            $selectors = self::parseSelectors($parserState, $list, $comments);
+            $result->setSelectors($selectors, $list);
+            if ($parserState->comes('{')) {
+                $parserState->consume(1);
+            }
+        } catch (UnexpectedTokenException $e) {
+            if ($parserState->getSettings()->usesLenientParsing()) {
+                if (!$parserState->consumeIfComes('}')) {
+                    $parserState->consumeUntil(['}', ParserState::EOF], false, true);
+                }
+                return null;
+            } else {
+                throw $e;
+            }
+        }
+        $result->setComments($comments);
 
-	/**
-	 * @return array<int, Selector|string>
-	 *
-	 * @deprecated will be removed in version 9.0; use `getSelectors()` instead
-	 */
-	public function getSelector() {
-		return $this->getSelectors();
-	}
+        RuleSet::parseRuleSet($parserState, $result->getRuleSet());
 
-	/**
-	 * @param Selector|string $mSelector
-	 * @param CSSList|null $oList
-	 *
-	 * @return void
-	 *
-	 * @deprecated will be removed in version 9.0; use `setSelectors()` instead
-	 */
-	public function setSelector($mSelector, $oList = null) {
-		$this->setSelectors($mSelector, $oList);
-	}
+        return $result;
+    }
 
-	/**
-	 * @return array<int, Selector|string>
-	 */
-	public function getSelectors() {
-		return $this->aSelectors;
-	}
+    /**
+     * @param array<Selector|string>|string $selectors
+     *
+     * @throws UnexpectedTokenException
+     */
+    public function setSelectors($selectors, ?CSSList $list = null): void
+    {
+        if (\is_array($selectors)) {
+            $selectorsToSet = $selectors;
+        } else {
+            // A string of comma-separated selectors requires parsing.
+            try {
+                $parserState = new ParserState($selectors, Settings::create());
+                $selectorsToSet = self::parseSelectors($parserState, $list);
+                if (!$parserState->isEnd()) {
+                    throw new UnexpectedTokenException('EOF', 'more');
+                }
+            } catch (UnexpectedTokenException $exception) {
+                // The exception message from parsing may refer to the faux `{` block start token,
+                // which would be confusing.
+                // Rethrow with a more useful message, that also includes the selector(s) string that was passed.
+                throw new UnexpectedTokenException(
+                    'Selector(s) string is not valid.',
+                    $selectors,
+                    'custom'
+                );
+            }
+        }
 
-	/**
-	 * Splits shorthand declarations (e.g. `margin` or `font`) into their constituent parts.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function expandShorthands() {
-		// border must be expanded before dimensions
-		$this->expandBorderShorthand();
-		$this->expandDimensionsShorthand();
-		$this->expandFontShorthand();
-		$this->expandBackgroundShorthand();
-		$this->expandListStyleShorthand();
-	}
+        // Convert all items to a `Selector` if not already
+        foreach ($selectorsToSet as $key => $selector) {
+            if (!($selector instanceof Selector)) {
+                if ($list === null || !($list instanceof KeyFrame)) {
+                    if (!Selector::isValid($selector)) {
+                        throw new UnexpectedTokenException(
+                            "Selector did not match '" . Selector::SELECTOR_VALIDATION_RX . "'.",
+                            $selector,
+                            'custom'
+                        );
+                    }
+                    $selectorsToSet[$key] = new Selector($selector);
+                } else {
+                    if (!KeyframeSelector::isValid($selector)) {
+                        throw new UnexpectedTokenException(
+                            "Selector did not match '" . KeyframeSelector::SELECTOR_VALIDATION_RX . "'.",
+                            $selector,
+                            'custom'
+                        );
+                    }
+                    $selectorsToSet[$key] = new KeyframeSelector($selector);
+                }
+            }
+        }
 
-	/**
-	 * Creates shorthand declarations (e.g. `margin` or `font`) whenever possible.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createShorthands() {
-		$this->createBackgroundShorthand();
-		$this->createDimensionsShorthand();
-		// border must be shortened after dimensions
-		$this->createBorderShorthand();
-		$this->createFontShorthand();
-		$this->createListStyleShorthand();
-	}
+        // Discard the keys and reindex the array
+        $this->selectors = \array_values($selectorsToSet);
+    }
 
-	/**
-	 * Splits shorthand border declarations (e.g. `border: 1px red;`).
-	 *
-	 * Additional splitting happens in expandDimensionsShorthand.
-	 *
-	 * Multiple borders are not yet supported as of 3.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function expandBorderShorthand() {
-		$aBorderRules = [
-			'border',
-			'border-left',
-			'border-right',
-			'border-top',
-			'border-bottom',
-		];
-		$aBorderSizes = [
-			'thin',
-			'medium',
-			'thick',
-		];
-		$aRules = $this->getRulesAssoc();
-		foreach ($aBorderRules as $sBorderRule) {
-			if (!isset($aRules[$sBorderRule])) {
-				continue;
-			}
-			$oRule = $aRules[$sBorderRule];
-			$mRuleValue = $oRule->getValue();
-			$aValues = [];
-			if (!$mRuleValue instanceof RuleValueList) {
-				$aValues[] = $mRuleValue;
-			} else {
-				$aValues = $mRuleValue->getListComponents();
-			}
-			foreach ($aValues as $mValue) {
-				if ($mValue instanceof Value) {
-					$mNewValue = clone $mValue;
-				} else {
-					$mNewValue = $mValue;
-				}
-				if ($mValue instanceof Size) {
-					$sNewRuleName = $sBorderRule . "-width";
-				} elseif ($mValue instanceof Color) {
-					$sNewRuleName = $sBorderRule . "-color";
-				} else {
-					if (in_array($mValue, $aBorderSizes)) {
-						$sNewRuleName = $sBorderRule . "-width";
-					} else {
-						$sNewRuleName = $sBorderRule . "-style";
-					}
-				}
-				$oNewRule = new Rule($sNewRuleName, $oRule->getLineNo(), $oRule->getColNo());
-				$oNewRule->setIsImportant($oRule->getIsImportant());
-				$oNewRule->addValue([$mNewValue]);
-				$this->addRule($oNewRule);
-			}
-			$this->removeRule($sBorderRule);
-		}
-	}
+    /**
+     * Remove one of the selectors of the block.
+     *
+     * @param Selector|string $selectorToRemove
+     */
+    public function removeSelector($selectorToRemove): bool
+    {
+        if ($selectorToRemove instanceof Selector) {
+            $selectorToRemove = $selectorToRemove->getSelector();
+        }
+        foreach ($this->selectors as $key => $selector) {
+            if ($selector->getSelector() === $selectorToRemove) {
+                unset($this->selectors[$key]);
+                return true;
+            }
+        }
+        return false;
+    }
 
-	/**
-	 * Splits shorthand dimensional declarations (e.g. `margin: 0px auto;`)
-	 * into their constituent parts.
-	 *
-	 * Handles `margin`, `padding`, `border-color`, `border-style` and `border-width`.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function expandDimensionsShorthand() {
-		$aExpansions = [
-			'margin' => 'margin-%s',
-			'padding' => 'padding-%s',
-			'border-color' => 'border-%s-color',
-			'border-style' => 'border-%s-style',
-			'border-width' => 'border-%s-width',
-		];
-		$aRules = $this->getRulesAssoc();
-		foreach ($aExpansions as $sProperty => $sExpanded) {
-			if (!isset($aRules[$sProperty])) {
-				continue;
-			}
-			$oRule = $aRules[$sProperty];
-			$mRuleValue = $oRule->getValue();
-			$aValues = [];
-			if (!$mRuleValue instanceof RuleValueList) {
-				$aValues[] = $mRuleValue;
-			} else {
-				$aValues = $mRuleValue->getListComponents();
-			}
-			$top = $right = $bottom = $left = null;
-			switch (count($aValues)) {
-				case 1:
-					$top = $right = $bottom = $left = $aValues[0];
-					break;
-				case 2:
-					$top = $bottom = $aValues[0];
-					$left = $right = $aValues[1];
-					break;
-				case 3:
-					$top = $aValues[0];
-					$left = $right = $aValues[1];
-					$bottom = $aValues[2];
-					break;
-				case 4:
-					$top = $aValues[0];
-					$right = $aValues[1];
-					$bottom = $aValues[2];
-					$left = $aValues[3];
-					break;
-			}
-			foreach (['top', 'right', 'bottom', 'left'] as $sPosition) {
-				$oNewRule = new Rule(sprintf($sExpanded, $sPosition), $oRule->getLineNo(), $oRule->getColNo());
-				$oNewRule->setIsImportant($oRule->getIsImportant());
-				$oNewRule->addValue(${$sPosition});
-				$this->addRule($oNewRule);
-			}
-			$this->removeRule($sProperty);
-		}
-	}
+    /**
+     * @return list<Selector>
+     */
+    public function getSelectors(): array
+    {
+        return $this->selectors;
+    }
 
-	/**
-	 * Converts shorthand font declarations
-	 * (e.g. `font: 300 italic 11px/14px verdana, helvetica, sans-serif;`)
-	 * into their constituent parts.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function expandFontShorthand() {
-		$aRules = $this->getRulesAssoc();
-		if (!isset($aRules['font'])) {
-			return;
-		}
-		$oRule = $aRules['font'];
-		// reset properties to 'normal' per http://www.w3.org/TR/21/fonts.html#font-shorthand
-		$aFontProperties = [
-			'font-style' => 'normal',
-			'font-variant' => 'normal',
-			'font-weight' => 'normal',
-			'font-size' => 'normal',
-			'line-height' => 'normal',
-		];
-		$mRuleValue = $oRule->getValue();
-		$aValues = [];
-		if (!$mRuleValue instanceof RuleValueList) {
-			$aValues[] = $mRuleValue;
-		} else {
-			$aValues = $mRuleValue->getListComponents();
-		}
-		foreach ($aValues as $mValue) {
-			if (!$mValue instanceof Value) {
-				$mValue = mb_strtolower($mValue);
-			}
-			if (in_array($mValue, ['normal', 'inherit'])) {
-				foreach (['font-style', 'font-weight', 'font-variant'] as $sProperty) {
-					if (!isset($aFontProperties[$sProperty])) {
-						$aFontProperties[$sProperty] = $mValue;
-					}
-				}
-			} elseif (in_array($mValue, ['italic', 'oblique'])) {
-				$aFontProperties['font-style'] = $mValue;
-			} elseif ($mValue == 'small-caps') {
-				$aFontProperties['font-variant'] = $mValue;
-			} elseif (
-				in_array($mValue, ['bold', 'bolder', 'lighter'])
-				|| ($mValue instanceof Size
-					&& in_array($mValue->getSize(), range(100, 900, 100)))
-			) {
-				$aFontProperties['font-weight'] = $mValue;
-			} elseif ($mValue instanceof RuleValueList && $mValue->getListSeparator() == '/') {
-				list($oSize, $oHeight) = $mValue->getListComponents();
-				$aFontProperties['font-size'] = $oSize;
-				$aFontProperties['line-height'] = $oHeight;
-			} elseif ($mValue instanceof Size && $mValue->getUnit() !== null) {
-				$aFontProperties['font-size'] = $mValue;
-			} else {
-				$aFontProperties['font-family'] = $mValue;
-			}
-		}
-		foreach ($aFontProperties as $sProperty => $mValue) {
-			$oNewRule = new Rule($sProperty, $oRule->getLineNo(), $oRule->getColNo());
-			$oNewRule->addValue($mValue);
-			$oNewRule->setIsImportant($oRule->getIsImportant());
-			$this->addRule($oNewRule);
-		}
-		$this->removeRule('font');
-	}
+    public function getRuleSet(): RuleSet
+    {
+        return $this->ruleSet;
+    }
 
-	/**
-	 * Converts shorthand background declarations
-	 * (e.g. `background: url("chess.png") gray 50% repeat fixed;`)
-	 * into their constituent parts.
-	 *
-	 * @see http://www.w3.org/TR/21/colors.html#propdef-background
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function expandBackgroundShorthand() {
-		$aRules = $this->getRulesAssoc();
-		if (!isset($aRules['background'])) {
-			return;
-		}
-		$oRule = $aRules['background'];
-		$aBgProperties = [
-			'background-color' => ['transparent'],
-			'background-image' => ['none'],
-			'background-repeat' => ['repeat'],
-			'background-attachment' => ['scroll'],
-			'background-position' => [
-				new Size(0, '%', false, $this->getLineNo()),
-				new Size(0, '%', false, $this->getLineNo()),
-			],
-		];
-		$mRuleValue = $oRule->getValue();
-		$aValues = [];
-		if (!$mRuleValue instanceof RuleValueList) {
-			$aValues[] = $mRuleValue;
-		} else {
-			$aValues = $mRuleValue->getListComponents();
-		}
-		if (count($aValues) == 1 && $aValues[0] == 'inherit') {
-			foreach ($aBgProperties as $sProperty => $mValue) {
-				$oNewRule = new Rule($sProperty, $oRule->getLineNo(), $oRule->getColNo());
-				$oNewRule->addValue('inherit');
-				$oNewRule->setIsImportant($oRule->getIsImportant());
-				$this->addRule($oNewRule);
-			}
-			$this->removeRule('background');
-			return;
-		}
-		$iNumBgPos = 0;
-		foreach ($aValues as $mValue) {
-			if (!$mValue instanceof Value) {
-				$mValue = mb_strtolower($mValue);
-			}
-			if ($mValue instanceof URL) {
-				$aBgProperties['background-image'] = $mValue;
-			} elseif ($mValue instanceof Color) {
-				$aBgProperties['background-color'] = $mValue;
-			} elseif (in_array($mValue, ['scroll', 'fixed'])) {
-				$aBgProperties['background-attachment'] = $mValue;
-			} elseif (in_array($mValue, ['repeat', 'no-repeat', 'repeat-x', 'repeat-y'])) {
-				$aBgProperties['background-repeat'] = $mValue;
-			} elseif (
-				in_array($mValue, ['left', 'center', 'right', 'top', 'bottom'])
-				|| $mValue instanceof Size
-			) {
-				if ($iNumBgPos == 0) {
-					$aBgProperties['background-position'][0] = $mValue;
-					$aBgProperties['background-position'][1] = 'center';
-				} else {
-					$aBgProperties['background-position'][$iNumBgPos] = $mValue;
-				}
-				$iNumBgPos++;
-			}
-		}
-		foreach ($aBgProperties as $sProperty => $mValue) {
-			$oNewRule = new Rule($sProperty, $oRule->getLineNo(), $oRule->getColNo());
-			$oNewRule->setIsImportant($oRule->getIsImportant());
-			$oNewRule->addValue($mValue);
-			$this->addRule($oNewRule);
-		}
-		$this->removeRule('background');
-	}
+    /**
+     * @see RuleSet::addDeclaration()
+     */
+    public function addDeclaration(Declaration $declarationToAdd, ?Declaration $sibling = null): void
+    {
+        $this->ruleSet->addDeclaration($declarationToAdd, $sibling);
+    }
 
-	/**
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function expandListStyleShorthand() {
-		$aListProperties = [
-			'list-style-type' => 'disc',
-			'list-style-position' => 'outside',
-			'list-style-image' => 'none',
-		];
-		$aListStyleTypes = [
-			'none',
-			'disc',
-			'circle',
-			'square',
-			'decimal-leading-zero',
-			'decimal',
-			'lower-roman',
-			'upper-roman',
-			'lower-greek',
-			'lower-alpha',
-			'lower-latin',
-			'upper-alpha',
-			'upper-latin',
-			'hebrew',
-			'armenian',
-			'georgian',
-			'cjk-ideographic',
-			'hiragana',
-			'hira-gana-iroha',
-			'katakana-iroha',
-			'katakana',
-		];
-		$aListStylePositions = [
-			'inside',
-			'outside',
-		];
-		$aRules = $this->getRulesAssoc();
-		if (!isset($aRules['list-style'])) {
-			return;
-		}
-		$oRule = $aRules['list-style'];
-		$mRuleValue = $oRule->getValue();
-		$aValues = [];
-		if (!$mRuleValue instanceof RuleValueList) {
-			$aValues[] = $mRuleValue;
-		} else {
-			$aValues = $mRuleValue->getListComponents();
-		}
-		if (count($aValues) == 1 && $aValues[0] == 'inherit') {
-			foreach ($aListProperties as $sProperty => $mValue) {
-				$oNewRule = new Rule($sProperty, $oRule->getLineNo(), $oRule->getColNo());
-				$oNewRule->addValue('inherit');
-				$oNewRule->setIsImportant($oRule->getIsImportant());
-				$this->addRule($oNewRule);
-			}
-			$this->removeRule('list-style');
-			return;
-		}
-		foreach ($aValues as $mValue) {
-			if (!$mValue instanceof Value) {
-				$mValue = mb_strtolower($mValue);
-			}
-			if ($mValue instanceof Url) {
-				$aListProperties['list-style-image'] = $mValue;
-			} elseif (in_array($mValue, $aListStyleTypes)) {
-				$aListProperties['list-style-types'] = $mValue;
-			} elseif (in_array($mValue, $aListStylePositions)) {
-				$aListProperties['list-style-position'] = $mValue;
-			}
-		}
-		foreach ($aListProperties as $sProperty => $mValue) {
-			$oNewRule = new Rule($sProperty, $oRule->getLineNo(), $oRule->getColNo());
-			$oNewRule->setIsImportant($oRule->getIsImportant());
-			$oNewRule->addValue($mValue);
-			$this->addRule($oNewRule);
-		}
-		$this->removeRule('list-style');
-	}
+    /**
+     * @return array<int<0, max>, Declaration>
+     *
+     * @see RuleSet::getDeclarations()
+     */
+    public function getDeclarations(?string $searchPattern = null): array
+    {
+        return $this->ruleSet->getDeclarations($searchPattern);
+    }
 
-	/**
-	 * @param array<array-key, string> $aProperties
-	 * @param string $sShorthand
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createShorthandProperties(array $aProperties, $sShorthand) {
-		$aRules = $this->getRulesAssoc();
-		$oRule = null;
-		$aNewValues = [];
-		foreach ($aProperties as $sProperty) {
-			if (!isset($aRules[$sProperty])) {
-				continue;
-			}
-			$oRule = $aRules[$sProperty];
-			if (!$oRule->getIsImportant()) {
-				$mRuleValue = $oRule->getValue();
-				$aValues = [];
-				if (!$mRuleValue instanceof RuleValueList) {
-					$aValues[] = $mRuleValue;
-				} else {
-					$aValues = $mRuleValue->getListComponents();
-				}
-				foreach ($aValues as $mValue) {
-					$aNewValues[] = $mValue;
-				}
-				$this->removeRule($sProperty);
-			}
-		}
-		if ($aNewValues !== [] && $oRule instanceof Rule) {
-			$oNewRule = new Rule($sShorthand, $oRule->getLineNo(), $oRule->getColNo());
-			foreach ($aNewValues as $mValue) {
-				$oNewRule->addValue($mValue);
-			}
-			$this->addRule($oNewRule);
-		}
-	}
+    /**
+     * @param array<Declaration> $declarations
+     *
+     * @see RuleSet::setDeclarations()
+     */
+    public function setDeclarations(array $declarations): void
+    {
+        $this->ruleSet->setDeclarations($declarations);
+    }
 
-	/**
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createBackgroundShorthand() {
-		$aProperties = [
-			'background-color',
-			'background-image',
-			'background-repeat',
-			'background-position',
-			'background-attachment',
-		];
-		$this->createShorthandProperties($aProperties, 'background');
-	}
+    /**
+     * @return array<string, Declaration>
+     *
+     * @see RuleSet::getDeclarationsAssociative()
+     */
+    public function getDeclarationsAssociative(?string $searchPattern = null): array
+    {
+        return $this->ruleSet->getDeclarationsAssociative($searchPattern);
+    }
 
-	/**
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createListStyleShorthand() {
-		$aProperties = [
-			'list-style-type',
-			'list-style-position',
-			'list-style-image',
-		];
-		$this->createShorthandProperties($aProperties, 'list-style');
-	}
+    /**
+     * @see RuleSet::removeDeclaration()
+     */
+    public function removeDeclaration(Declaration $declarationToRemove): void
+    {
+        $this->ruleSet->removeDeclaration($declarationToRemove);
+    }
 
-	/**
-	 * Combines `border-color`, `border-style` and `border-width` into `border`.
-	 *
-	 * Should be run after `create_dimensions_shorthand`!
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createBorderShorthand() {
-		$aProperties = [
-			'border-width',
-			'border-style',
-			'border-color',
-		];
-		$this->createShorthandProperties($aProperties, 'border');
-	}
+    /**
+     * @see RuleSet::removeMatchingDeclarations()
+     */
+    public function removeMatchingDeclarations(string $searchPattern): void
+    {
+        $this->ruleSet->removeMatchingDeclarations($searchPattern);
+    }
 
-	/**
-	 * Looks for long format CSS dimensional properties
-	 * (margin, padding, border-color, border-style and border-width)
-	 * and converts them into shorthand CSS properties.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createDimensionsShorthand() {
-		$aPositions = ['top', 'right', 'bottom', 'left'];
-		$aExpansions = [
-			'margin' => 'margin-%s',
-			'padding' => 'padding-%s',
-			'border-color' => 'border-%s-color',
-			'border-style' => 'border-%s-style',
-			'border-width' => 'border-%s-width',
-		];
-		$aRules = $this->getRulesAssoc();
-		foreach ($aExpansions as $sProperty => $sExpanded) {
-			$aFoldable = [];
-			foreach ($aRules as $sRuleName => $oRule) {
-				foreach ($aPositions as $sPosition) {
-					if ($sRuleName == sprintf($sExpanded, $sPosition)) {
-						$aFoldable[$sRuleName] = $oRule;
-					}
-				}
-			}
-			// All four dimensions must be present
-			if (count($aFoldable) == 4) {
-				$aValues = [];
-				foreach ($aPositions as $sPosition) {
-					$oRule = $aRules[sprintf($sExpanded, $sPosition)];
-					$mRuleValue = $oRule->getValue();
-					$aRuleValues = [];
-					if (!$mRuleValue instanceof RuleValueList) {
-						$aRuleValues[] = $mRuleValue;
-					} else {
-						$aRuleValues = $mRuleValue->getListComponents();
-					}
-					$aValues[$sPosition] = $aRuleValues;
-				}
-				$oNewRule = new Rule($sProperty, $oRule->getLineNo(), $oRule->getColNo());
-				if ((string)$aValues['left'][0] == (string)$aValues['right'][0]) {
-					if ((string)$aValues['top'][0] == (string)$aValues['bottom'][0]) {
-						if ((string)$aValues['top'][0] == (string)$aValues['left'][0]) {
-							// All 4 sides are equal
-							$oNewRule->addValue($aValues['top']);
-						} else {
-							// Top and bottom are equal, left and right are equal
-							$oNewRule->addValue($aValues['top']);
-							$oNewRule->addValue($aValues['left']);
-						}
-					} else {
-						// Only left and right are equal
-						$oNewRule->addValue($aValues['top']);
-						$oNewRule->addValue($aValues['left']);
-						$oNewRule->addValue($aValues['bottom']);
-					}
-				} else {
-					// No sides are equal
-					$oNewRule->addValue($aValues['top']);
-					$oNewRule->addValue($aValues['left']);
-					$oNewRule->addValue($aValues['bottom']);
-					$oNewRule->addValue($aValues['right']);
-				}
-				$this->addRule($oNewRule);
-				foreach ($aPositions as $sPosition) {
-					$this->removeRule(sprintf($sExpanded, $sPosition));
-				}
-			}
-		}
-	}
+    /**
+     * @see RuleSet::removeAllDeclarations()
+     */
+    public function removeAllDeclarations(): void
+    {
+        $this->ruleSet->removeAllDeclarations();
+    }
 
-	/**
-	 * Looks for long format CSS font properties (e.g. `font-weight`) and
-	 * tries to convert them into a shorthand CSS `font` property.
-	 *
-	 * At least `font-size` AND `font-family` must be present in order to create a shorthand declaration.
-	 *
-	 * @return void
-	 *
-	 * @deprecated since 8.7.0, will be removed without substitution in version 9.0 in #511
-	 */
-	public function createFontShorthand() {
-		$aFontProperties = [
-			'font-style',
-			'font-variant',
-			'font-weight',
-			'font-size',
-			'line-height',
-			'font-family',
-		];
-		$aRules = $this->getRulesAssoc();
-		if (!isset($aRules['font-size']) || !isset($aRules['font-family'])) {
-			return;
-		}
-		$oOldRule = isset($aRules['font-size']) ? $aRules['font-size'] : $aRules['font-family'];
-		$oNewRule = new Rule('font', $oOldRule->getLineNo(), $oOldRule->getColNo());
-		unset($oOldRule);
-		foreach (['font-style', 'font-variant', 'font-weight'] as $sProperty) {
-			if (isset($aRules[$sProperty])) {
-				$oRule = $aRules[$sProperty];
-				$mRuleValue = $oRule->getValue();
-				$aValues = [];
-				if (!$mRuleValue instanceof RuleValueList) {
-					$aValues[] = $mRuleValue;
-				} else {
-					$aValues = $mRuleValue->getListComponents();
-				}
-				if ($aValues[0] !== 'normal') {
-					$oNewRule->addValue($aValues[0]);
-				}
-			}
-		}
-		// Get the font-size value
-		$oRule = $aRules['font-size'];
-		$mRuleValue = $oRule->getValue();
-		$aFSValues = [];
-		if (!$mRuleValue instanceof RuleValueList) {
-			$aFSValues[] = $mRuleValue;
-		} else {
-			$aFSValues = $mRuleValue->getListComponents();
-		}
-		// But wait to know if we have line-height to add it
-		if (isset($aRules['line-height'])) {
-			$oRule = $aRules['line-height'];
-			$mRuleValue = $oRule->getValue();
-			$aLHValues = [];
-			if (!$mRuleValue instanceof RuleValueList) {
-				$aLHValues[] = $mRuleValue;
-			} else {
-				$aLHValues = $mRuleValue->getListComponents();
-			}
-			if ($aLHValues[0] !== 'normal') {
-				$val = new RuleValueList('/', $this->getLineNo());
-				$val->addListComponent($aFSValues[0]);
-				$val->addListComponent($aLHValues[0]);
-				$oNewRule->addValue($val);
-			}
-		} else {
-			$oNewRule->addValue($aFSValues[0]);
-		}
-		$oRule = $aRules['font-family'];
-		$mRuleValue = $oRule->getValue();
-		$aFFValues = [];
-		if (!$mRuleValue instanceof RuleValueList) {
-			$aFFValues[] = $mRuleValue;
-		} else {
-			$aFFValues = $mRuleValue->getListComponents();
-		}
-		$oFFValue = new RuleValueList(',', $this->getLineNo());
-		$oFFValue->setListComponents($aFFValues);
-		$oNewRule->addValue($oFFValue);
+    /**
+     * @return non-empty-string
+     *
+     * @throws OutputException
+     */
+    public function render(OutputFormat $outputFormat): string
+    {
+        $formatter = $outputFormat->getFormatter();
+        $result = $formatter->comments($this);
+        if (\count($this->selectors) === 0) {
+            // If all the selectors have been removed, this declaration block becomes invalid
+            throw new OutputException(
+                'Attempt to print declaration block with missing selector',
+                $this->getLineNumber()
+            );
+        }
+        $result .= $outputFormat->getContentBeforeDeclarationBlock();
+        $result .= $formatter->implode(
+            $formatter->spaceBeforeSelectorSeparator() . ',' . $formatter->spaceAfterSelectorSeparator(),
+            $this->selectors
+        );
+        $result .= $outputFormat->getContentAfterDeclarationBlockSelectors();
+        $result .= $formatter->spaceBeforeOpeningBrace() . '{';
+        $result .= $this->ruleSet->render($outputFormat);
+        $result .= '}';
+        $result .= $outputFormat->getContentAfterDeclarationBlock();
 
-		$this->addRule($oNewRule);
-		foreach ($aFontProperties as $sProperty) {
-			$this->removeRule($sProperty);
-		}
-	}
+        return $result;
+    }
 
-	/**
-	 * @return string
-	 *
-	 * @throws OutputException
-	 *
-	 * @deprecated in V8.8.0, will be removed in V9.0.0. Use `render` instead.
-	 */
-	public function __toString() {
-		return $this->render(new OutputFormat());
-	}
+    /**
+     * @return array<string, bool|int|float|string|array<mixed>|null>
+     *
+     * @internal
+     */
+    public function getArrayRepresentation(): array
+    {
+        throw new \BadMethodCallException('`getArrayRepresentation` is not yet implemented for `' . self::class . '`');
+    }
 
-	/**
-	 * @param OutputFormat|null $oOutputFormat
-	 *
-	 * @return string
-	 *
-	 * @throws OutputException
-	 */
-	public function render($oOutputFormat) {
-		$sResult = $oOutputFormat->comments($this);
-		if (count($this->aSelectors) === 0) {
-			// If all the selectors have been removed, this declaration block becomes invalid
-			throw new OutputException(
-				'Attempt to print declaration block with missing selector',
-				$this->getLineNumber()
-			);
-		}
-		$sResult .= $oOutputFormat->sBeforeDeclarationBlock;
-		$sResult .= $oOutputFormat->implode(
-			$oOutputFormat->spaceBeforeSelectorSeparator() . ',' . $oOutputFormat->spaceAfterSelectorSeparator(),
-			$this->aSelectors
-		);
-		$sResult .= $oOutputFormat->sAfterDeclarationBlockSelectors;
-		$sResult .= $oOutputFormat->spaceBeforeOpeningBrace() . '{';
-		$sResult .= $this->renderRules($oOutputFormat);
-		$sResult .= '}';
-		$sResult .= $oOutputFormat->sAfterDeclarationBlock;
-		return $sResult;
-	}
+    /**
+     * @param list<Comment> $comments
+     *
+     * @return list<Selector>
+     *
+     * @throws UnexpectedTokenException
+     */
+    private static function parseSelectors(ParserState $parserState, ?CSSList $list, array &$comments = []): array
+    {
+        $selectorClass = $list instanceof KeyFrame ? KeyFrameSelector::class : Selector::class;
+        $selectors = [];
+
+        while (true) {
+            $selectors[] = $selectorClass::parse($parserState, $comments);
+            if (!$parserState->consumeIfComes(',')) {
+                break;
+            }
+        }
+
+        return $selectors;
+    }
 }

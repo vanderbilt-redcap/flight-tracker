@@ -1,11 +1,9 @@
 <?php
-
 /**
  * @package dompdf
  * @link    https://github.com/dompdf/dompdf
  * @license http://www.gnu.org/copyleft/lesser.html GNU Lesser General Public License
  */
-
 namespace Dompdf\Renderer;
 
 use Dompdf\Helpers;
@@ -21,226 +19,195 @@ use Dompdf\Image\Cache;
  */
 class ListBullet extends AbstractRenderer
 {
-	/**
-	 * @param $type
-	 * @return mixed|string
-	 */
-	public static function get_counter_chars($type) {
-		static $cache = [];
+    /**
+     * @param $type
+     * @return mixed|string
+     * @deprecated
+     */
+    static function get_counter_chars($type)
+    {
+        static $cache = [];
 
-		if (isset($cache[$type])) {
-			return $cache[$type];
-		}
+        if (isset($cache[$type])) {
+            return $cache[$type];
+        }
 
-		$uppercase = false;
-		$text = "";
+        $uppercase = false;
+        $text = "";
 
-		switch ($type) {
-			case "decimal-leading-zero":
-			case "decimal":
-			case "1":
-				return "0123456789";
+        switch ($type) {
+            default:
+            case "decimal":
+            case "decimal-leading-zero":
+                return "0123456789";
 
-			case "upper-alpha":
-			case "upper-latin":
-			case "A":
-				$uppercase = true;
-				// no break
-			case "lower-alpha":
-			case "lower-latin":
-			case "a":
-				$text = "abcdefghijklmnopqrstuvwxyz";
-				break;
+            case "upper-alpha":
+            case "upper-latin":
+                $uppercase = true;
+            case "lower-alpha":
+            case "lower-latin":
+                $text = "abcdefghijklmnopqrstuvwxyz";
+                break;
 
-			case "upper-roman":
-			case "I":
-				$uppercase = true;
-				// no break
-			case "lower-roman":
-			case "i":
-				$text = "ivxlcdm";
-				break;
+            case "upper-roman":
+                $uppercase = true;
+            case "lower-roman":
+                $text = "ivxlcdm";
+                break;
 
-			case "lower-greek":
-				for ($i = 0; $i < 24; $i++) {
-					$text .= Helpers::unichr($i + 944);
-				}
-				break;
-		}
+            case "lower-greek":
+                for ($i = 0; $i < 24; $i++) {
+                    $text .= Helpers::unichr($i + 944);
+                }
+                break;
+        }
 
-		if ($uppercase) {
-			$text = strtoupper($text);
-		}
+        if ($uppercase) {
+            $text = strtoupper($text);
+        }
 
-		return $cache[$type] = "$text.";
-	}
+        return $cache[$type] = "$text.";
+    }
 
-	/**
-	 * @param int $n
-	 * @param string $type
-	 * @param int|null $pad
-	 *
-	 * @return string
-	 */
-	private function make_counter($n, $type, $pad = null) {
-		$n = intval($n);
-		$text = "";
-		$uppercase = false;
+    /**
+     * @param int      $n
+     * @param string   $type
+     * @param int|null $pad
+     *
+     * @return string
+     */
+    private function make_counter(int $n, string $type, ?int $pad = null): string
+    {
+        $text = "";
 
-		switch ($type) {
-			case "decimal-leading-zero":
-			case "decimal":
-			case "1":
-				if ($pad) {
-					$text = str_pad($n, $pad, "0", STR_PAD_LEFT);
-				} else {
-					$text = $n;
-				}
-				break;
+        switch ($type) {
+            default:
+            case "decimal":
+            case "decimal-leading-zero":
+                if ($pad) {
+                    $text = str_pad($n, $pad, "0", STR_PAD_LEFT);
+                } else {
+                    $text = $n;
+                }
+                break;
 
-			case "upper-alpha":
-			case "upper-latin":
-			case "A":
-				$uppercase = true;
-				// no break
-			case "lower-alpha":
-			case "lower-latin":
-			case "a":
-				$text = chr((($n - 1) % 26) + ord('a'));
-				break;
+            case "upper-alpha":
+            case "upper-latin":
+                $text = strtoupper(Helpers::dec2base26($n));
+                break;
 
-			case "upper-roman":
-			case "I":
-				$uppercase = true;
-				// no break
-			case "lower-roman":
-			case "i":
-				$text = Helpers::dec2roman($n);
-				break;
+            case "lower-alpha":
+            case "lower-latin":
+                $text = Helpers::dec2base26($n);
+                break;
 
-			case "lower-greek":
-				$text = Helpers::unichr($n + 944);
-				break;
-		}
+            case "upper-roman":
+                $text = strtoupper(Helpers::dec2roman($n));
+                break;
 
-		if ($uppercase) {
-			$text = strtoupper($text);
-		}
+            case "lower-roman":
+                $text = Helpers::dec2roman($n);
+                break;
 
-		return "$text.";
-	}
+            case "lower-greek":
+                $text = Helpers::unichr($n + 944);
+                break;
+        }
 
-	/**
-	 * @param ListBulletFrameDecorator $frame
-	 */
-	public function render(Frame $frame) {
-		$li = $frame->get_parent();
-		$style = $frame->get_style();
+        return "$text.";
+    }
 
-		$this->_set_opacity($frame->get_opacity($style->opacity));
+    /**
+     * @param ListBulletFrameDecorator $frame
+     */
+    function render(Frame $frame)
+    {
+        $li = $frame->get_parent();
+        $style = $frame->get_style();
 
-		// Don't render bullets twice if the list item was split
-		if ($li->is_split_off) {
-			return;
-		}
+        $this->_set_opacity($frame->get_opacity($style->opacity));
 
-		$font_family = $style->font_family;
-		$font_size = $style->font_size;
-		$baseline = $this->_canvas->get_font_baseline($font_family, $font_size);
+        // Don't render bullets twice if the list item was split
+        if ($li->is_split_off) {
+            return;
+        }
 
-		// Handle list-style-image
-		// If list style image is requested but missing, fall back to predefined types
-		if ($frame instanceof ListBulletImage && !Cache::is_broken($img = $frame->get_image_url())) {
-			[$x, $y] = $frame->get_position();
-			$w = $frame->get_width();
-			$h = $frame->get_height();
-			$y += $baseline - $h;
+        $font_family = $style->font_family;
+        $font_size = $style->font_size;
+        $baseline = $this->_canvas->get_font_baseline($font_family, $font_size);
 
-			$this->_canvas->image($img, $x, $y, $w, $h);
-		} else {
-			$bullet_style = $style->list_style_type;
+        // Handle list-style-image
+        // If list style image is requested but missing, fall back to predefined types
+        if ($frame instanceof ListBulletImage && !Cache::is_broken($img = $frame->get_image_url())) {
+            [$x, $y] = $frame->get_position();
+            $w = $frame->get_width();
+            $h = $frame->get_height();
+            $y += $baseline - $h;
 
-			switch ($bullet_style) {
-				default:
-				case "disc":
-				case "circle":
-					[$x, $y] = $frame->get_position();
-					$offset = $font_size * ListBulletFrameDecorator::BULLET_OFFSET;
-					$r = ($font_size * ListBulletFrameDecorator::BULLET_SIZE) / 2;
-					$x += $r;
-					$y += $baseline - $r - $offset;
-					$o = $font_size * ListBulletFrameDecorator::BULLET_THICKNESS;
-					$this->_canvas->circle($x, $y, $r, $style->color, $o, null, $bullet_style !== "circle");
-					break;
+            $this->_canvas->image($img, $x, $y, $w, $h);
+        } else {
+            $bullet_style = $style->list_style_type;
 
-				case "square":
-					[$x, $y] = $frame->get_position();
-					$offset = $font_size * ListBulletFrameDecorator::BULLET_OFFSET;
-					$w = $font_size * ListBulletFrameDecorator::BULLET_SIZE;
-					$y += $baseline - $w - $offset;
-					$this->_canvas->filled_rectangle($x, $y, $w, $w, $style->color);
-					break;
+            switch ($bullet_style) {
+                case "disc":
+                case "circle":
+                    [$x, $y] = $frame->get_position();
+                    $offset = $font_size * ListBulletFrameDecorator::BULLET_OFFSET;
+                    $r = ($font_size * ListBulletFrameDecorator::BULLET_SIZE) / 2;
+                    $x += $r;
+                    $y += $baseline - $r - $offset;
+                    $o = $font_size * ListBulletFrameDecorator::BULLET_THICKNESS;
+                    $this->_canvas->circle($x, $y, $r, $style->color, $o, null, $bullet_style !== "circle");
+                    break;
 
-				case "decimal-leading-zero":
-				case "decimal":
-				case "lower-alpha":
-				case "lower-latin":
-				case "lower-roman":
-				case "lower-greek":
-				case "upper-alpha":
-				case "upper-latin":
-				case "upper-roman":
-				case "1": // HTML 4.0 compatibility
-				case "a":
-				case "i":
-				case "A":
-				case "I":
-					$pad = null;
-					if ($bullet_style === "decimal-leading-zero") {
-						$pad = strlen($li->get_parent()->get_node()->getAttribute("dompdf-children-count"));
-					}
+                case "square":
+                    [$x, $y] = $frame->get_position();
+                    $offset = $font_size * ListBulletFrameDecorator::BULLET_OFFSET;
+                    $w = $font_size * ListBulletFrameDecorator::BULLET_SIZE;
+                    $y += $baseline - $w - $offset;
+                    $this->_canvas->filled_rectangle($x, $y, $w, $w, $style->color);
+                    break;
 
-					$node = $frame->get_node();
+                default:
+                case "decimal":
+                case "decimal-leading-zero":
+                case "lower-alpha":
+                case "lower-latin":
+                case "lower-roman":
+                case "lower-greek":
+                case "upper-alpha":
+                case "upper-latin":
+                case "upper-roman":
+                    $pad = null;
+                    if ($bullet_style === "decimal-leading-zero") {
+                        $pad = strlen($li->get_parent()->get_node()->getAttribute("dompdf-children-count"));
+                    }
 
-					if (!$node->hasAttribute("dompdf-counter")) {
-						return;
-					}
+                    $node = $frame->get_node();
 
-					$index = $node->getAttribute("dompdf-counter");
-					$text = $this->make_counter($index, $bullet_style, $pad);
+                    if (!$node->hasAttribute("dompdf-counter")) {
+                        return;
+                    }
 
-					if (trim($text) === "") {
-						return;
-					}
+                    $index = (int) $node->getAttribute("dompdf-counter");
+                    $text = $this->make_counter($index, $bullet_style, $pad);
 
-					$word_spacing = $style->word_spacing;
-					$letter_spacing = $style->letter_spacing;
-					$text_width = $this->_dompdf->getFontMetrics()->getTextWidth($text, $font_family, $font_size, $word_spacing, $letter_spacing);
+                    $word_spacing = $style->word_spacing;
+                    $letter_spacing = $style->letter_spacing;
+                    $text_width = $this->_dompdf->getFontMetrics()->getTextWidth($text, $font_family, $font_size, $word_spacing, $letter_spacing);
 
-					[$x, $y] = $frame->get_position();
-					// Correct for static frame width applied by positioner
-					$x += $frame->get_width() - $text_width;
+                    [$x, $y] = $frame->get_position();
+                    // Correct for static frame width applied by positioner
+                    $x += $frame->get_width() - $text_width;
 
-					$this->_canvas->text(
-						$x,
-						$y,
-						$text,
-						$font_family,
-						$font_size,
-						$style->color,
-						$word_spacing,
-						$letter_spacing
-					);
+                    $this->_canvas->text($x, $y, $text,
+                        $font_family, $font_size,
+                        $style->color, $word_spacing, $letter_spacing);
+                    break;
 
-					// no break
-				case "none":
-					break;
-			}
-		}
-
-		$id = $frame->get_node()->getAttribute("id");
-		if (strlen($id) > 0) {
-			$this->_canvas->add_named_dest($id);
-		}
-	}
+                case "none":
+                    break;
+            }
+        }
+    }
 }

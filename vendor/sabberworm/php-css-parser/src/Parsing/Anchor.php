@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\Parsing;
 
 /**
@@ -7,29 +9,27 @@ namespace Sabberworm\CSS\Parsing;
  */
 class Anchor
 {
-	/**
-	 * @var int
-	 */
-	private $iPosition;
+    /**
+     * @var int<0, max>
+     */
+    private $position;
 
-	/**
-	 * @var \Sabberworm\CSS\Parsing\ParserState
-	 */
-	private $oParserState;
+    /**
+     * @var ParserState
+     */
+    private $parserState;
 
-	/**
-	 * @param int $iPosition
-	 * @param \Sabberworm\CSS\Parsing\ParserState $oParserState
-	 */
-	public function __construct($iPosition, ParserState $oParserState) {
-		$this->iPosition = $iPosition;
-		$this->oParserState = $oParserState;
-	}
+    /**
+     * @param int<0, max> $position
+     */
+    public function __construct(int $position, ParserState $parserState)
+    {
+        $this->position = $position;
+        $this->parserState = $parserState;
+    }
 
-	/**
-	 * @return void
-	 */
-	public function backtrack() {
-		$this->oParserState->setPosition($this->iPosition);
-	}
+    public function backtrack(): void
+    {
+        $this->parserState->setPosition($this->position);
+    }
 }

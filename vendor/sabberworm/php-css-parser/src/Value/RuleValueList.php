@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\Value;
 
 /**
@@ -9,11 +11,12 @@ namespace Sabberworm\CSS\Value;
  */
 class RuleValueList extends ValueList
 {
-	/**
-	 * @param string $sSeparator
-	 * @param int $iLineNo
-	 */
-	public function __construct($sSeparator = ',', $iLineNo = 0) {
-		parent::__construct([], $sSeparator, $iLineNo);
-	}
+    /**
+     * @param non-empty-string $separator
+     * @param int<1, max>|null $lineNumber
+     */
+    public function __construct(string $separator = ',', ?int $lineNumber = null)
+    {
+        parent::__construct([], $separator, $lineNumber);
+    }
 }

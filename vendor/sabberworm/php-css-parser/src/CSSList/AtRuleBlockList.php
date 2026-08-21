@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\CSSList;
 
 use Sabberworm\CSS\OutputFormat;
@@ -10,73 +12,61 @@ use Sabberworm\CSS\Property\AtRule;
  */
 class AtRuleBlockList extends CSSBlockList implements AtRule
 {
-	/**
-	 * @var string
-	 */
-	private $sType;
+    /**
+     * @var non-empty-string
+     */
+    private $type;
 
-	/**
-	 * @var string
-	 */
-	private $sArgs;
+    /**
+     * @var string
+     */
+    private $arguments;
 
-	/**
-	 * @param string $sType
-	 * @param string $sArgs
-	 * @param int $iLineNo
-	 */
-	public function __construct($sType, $sArgs = '', $iLineNo = 0) {
-		parent::__construct($iLineNo);
-		$this->sType = $sType;
-		$this->sArgs = $sArgs;
-	}
+    /**
+     * @param non-empty-string $type
+     * @param int<1, max>|null $lineNumber
+     */
+    public function __construct(string $type, string $arguments = '', ?int $lineNumber = null)
+    {
+        parent::__construct($lineNumber);
+        $this->type = $type;
+        $this->arguments = $arguments;
+    }
 
-	/**
-	 * @return string
-	 */
-	public function atRuleName() {
-		return $this->sType;
-	}
+    /**
+     * @return non-empty-string
+     */
+    public function atRuleName(): string
+    {
+        return $this->type;
+    }
 
-	/**
-	 * @return string
-	 */
-	public function atRuleArgs() {
-		return $this->sArgs;
-	}
+    public function atRuleArgs(): string
+    {
+        return $this->arguments;
+    }
 
-	/**
-	 * @return string
-	 *
-	 * @deprecated in V8.8.0, will be removed in V9.0.0. Use `render` instead.
-	 */
-	public function __toString() {
-		return $this->render(new OutputFormat());
-	}
+    /**
+     * @return non-empty-string
+     */
+    public function render(OutputFormat $outputFormat): string
+    {
+        $formatter = $outputFormat->getFormatter();
+        $result = $formatter->comments($this);
+        $result .= $outputFormat->getContentBeforeAtRuleBlock();
+        $arguments = $this->arguments;
+        if ($arguments !== '') {
+            $arguments = ' ' . $arguments;
+        }
+        $result .= "@{$this->type}$arguments{$formatter->spaceBeforeOpeningBrace()}{";
+        $result .= $this->renderListContents($outputFormat);
+        $result .= '}';
+        $result .= $outputFormat->getContentAfterAtRuleBlock();
+        return $result;
+    }
 
-	/**
-	 * @param OutputFormat|null $oOutputFormat
-	 *
-	 * @return string
-	 */
-	public function render($oOutputFormat) {
-		$sResult = $oOutputFormat->comments($this);
-		$sResult .= $oOutputFormat->sBeforeAtRuleBlock;
-		$sArgs = $this->sArgs;
-		if ($sArgs) {
-			$sArgs = ' ' . $sArgs;
-		}
-		$sResult .= "@{$this->sType}$sArgs{$oOutputFormat->spaceBeforeOpeningBrace()}{";
-		$sResult .= $this->renderListContents($oOutputFormat);
-		$sResult .= '}';
-		$sResult .= $oOutputFormat->sAfterAtRuleBlock;
-		return $sResult;
-	}
-
-	/**
-	 * @return bool
-	 */
-	public function isRootList() {
-		return false;
-	}
+    public function isRootList(): bool
+    {
+        return false;
+    }
 }

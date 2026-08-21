@@ -1,144 +1,114 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Sabberworm\CSS\Property;
 
-use Sabberworm\CSS\Comment\Comment;
+use Sabberworm\CSS\Comment\CommentContainer;
 use Sabberworm\CSS\OutputFormat;
 use Sabberworm\CSS\Position\Position;
 use Sabberworm\CSS\Position\Positionable;
+use Sabberworm\CSS\ShortClassNameProvider;
+use Sabberworm\CSS\Value\CSSString;
+use Sabberworm\CSS\Value\URL;
 
 /**
  * `CSSNamespace` represents an `@namespace` rule.
  */
 class CSSNamespace implements AtRule, Positionable
 {
-	use Position;
+    use CommentContainer;
+    use Position;
+    use ShortClassNameProvider;
 
-	/**
-	 * @var string
-	 */
-	private $mUrl;
+    /**
+     * @var CSSString|URL
+     */
+    private $url;
 
-	/**
-	 * @var string
-	 */
-	private $sPrefix;
+    /**
+     * @var string|null
+     */
+    private $prefix;
 
-	/**
-	 * @var int
-	 */
-	private $iLineNo;
+    /**
+     * @param CSSString|URL $url
+     * @param int<1, max>|null $lineNumber
+     */
+    public function __construct($url, ?string $prefix = null, ?int $lineNumber = null)
+    {
+        $this->url = $url;
+        $this->prefix = $prefix;
+        $this->setPosition($lineNumber);
+    }
 
-	/**
-	 * @var array<array-key, Comment>
-	 *
-	 * @internal since 8.8.0
-	 */
-	protected $aComments;
+    /**
+     * @return non-empty-string
+     */
+    public function render(OutputFormat $outputFormat): string
+    {
+        return '@namespace ' . ($this->prefix === null ? '' : $this->prefix . ' ')
+            . $this->url->render($outputFormat) . ';';
+    }
 
-	/**
-	 * @param string $mUrl
-	 * @param string|null $sPrefix
-	 * @param int $iLineNo
-	 */
-	public function __construct($mUrl, $sPrefix = null, $iLineNo = 0) {
-		$this->mUrl = $mUrl;
-		$this->sPrefix = $sPrefix;
-		$this->setPosition($iLineNo);
-		$this->aComments = [];
-	}
+    /**
+     * @return CSSString|URL
+     */
+    public function getUrl()
+    {
+        return $this->url;
+    }
 
-	/**
-	 * @return string
-	 *
-	 * @deprecated in V8.8.0, will be removed in V9.0.0. Use `render` instead.
-	 */
-	public function __toString() {
-		return $this->render(new OutputFormat());
-	}
+    public function getPrefix(): ?string
+    {
+        return $this->prefix;
+    }
 
-	/**
-	 * @param OutputFormat|null $oOutputFormat
-	 *
-	 * @return string
-	 */
-	public function render($oOutputFormat) {
-		return '@namespace ' . ($this->sPrefix === null ? '' : $this->sPrefix . ' ')
-			. $this->mUrl->render($oOutputFormat) . ';';
-	}
+    /**
+     * @param CSSString|URL $url
+     */
+    public function setUrl($url): void
+    {
+        $this->url = $url;
+    }
 
-	/**
-	 * @return string
-	 */
-	public function getUrl() {
-		return $this->mUrl;
-	}
+    public function setPrefix(string $prefix): void
+    {
+        $this->prefix = $prefix;
+    }
 
-	/**
-	 * @return string|null
-	 */
-	public function getPrefix() {
-		return $this->sPrefix;
-	}
+    /**
+     * @return non-empty-string
+     */
+    public function atRuleName(): string
+    {
+        return 'namespace';
+    }
 
-	/**
-	 * @param string $mUrl
-	 *
-	 * @return void
-	 */
-	public function setUrl($mUrl) {
-		$this->mUrl = $mUrl;
-	}
+    /**
+     * @return array{0: CSSString|URL|non-empty-string, 1?: CSSString|URL}
+     */
+    public function atRuleArgs(): array
+    {
+        $result = [$this->url];
+        if (\is_string($this->prefix) && $this->prefix !== '') {
+            \array_unshift($result, $this->prefix);
+        }
+        return $result;
+    }
 
-	/**
-	 * @param string $sPrefix
-	 *
-	 * @return void
-	 */
-	public function setPrefix($sPrefix) {
-		$this->sPrefix = $sPrefix;
-	}
-
-	/**
-	 * @return string
-	 */
-	public function atRuleName() {
-		return 'namespace';
-	}
-
-	/**
-	 * @return array<int, string>
-	 */
-	public function atRuleArgs() {
-		$aResult = [$this->mUrl];
-		if ($this->sPrefix) {
-			array_unshift($aResult, $this->sPrefix);
-		}
-		return $aResult;
-	}
-
-	/**
-	 * @param array<array-key, Comment> $aComments
-	 *
-	 * @return void
-	 */
-	public function addComments(array $aComments) {
-		$this->aComments = array_merge($this->aComments, $aComments);
-	}
-
-	/**
-	 * @return array<array-key, Comment>
-	 */
-	public function getComments() {
-		return $this->aComments;
-	}
-
-	/**
-	 * @param array<array-key, Comment> $aComments
-	 *
-	 * @return void
-	 */
-	public function setComments(array $aComments) {
-		$this->aComments = $aComments;
-	}
+    /**
+     * @return array<string, bool|int|float|string|array<mixed>|null>
+     *
+     * @internal
+     */
+    public function getArrayRepresentation(): array
+    {
+        return [
+            'class' => $this->getShortClassName(),
+            // We're using `uri` here instead of `url` to better match the spec.
+            'uri' => $this->url->getArrayRepresentation(),
+            'prefix' => $this->prefix,
+        ];
+    }
 }
