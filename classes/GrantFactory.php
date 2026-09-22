@@ -50,6 +50,14 @@ abstract class GrantFactory {
             return new NSFGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
         } else if ($row['redcap_repeat_instrument'] == "ies_grant") {
             return new IESGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
+		} else if ($row['redcap_repeat_instrument'] == "muse_grant") {
+			return new UAMSGrantFactory(
+				$name,
+				$lexicalTranslator,
+				$metadata,
+				$token,
+				$server
+				);
         } else if ($row['redcap_repeat_instrument'] === "") {
             $checkGf = new InitialGrantFactory($name, $lexicalTranslator, $metadata, $token, $server);
             $checkGf->setPrefix("check");
@@ -244,4 +252,6 @@ abstract class GrantFactory {
 	protected $server;
 	protected static $defaultRole = "PI/Co-PI";
 }
+
+
 

@@ -141,7 +141,7 @@ class EmailManager
 		self::$turnOffShutdownFunction = false;
 		register_shutdown_function([$this, "reportCronErrors"]);
 		$messages = $this->enqueueRelevantEmails($to, $names, "sendEmail");
-		// Application::log(count($messages)." emails are enqueued to send.", $this->pid);
+        Application::log(count($messages)." emails are enqueued to send.", $this->pid);
 		$this->sendPreparedEmails($messages, ($to !== ""));
 		self::$turnOffShutdownFunction = true;
 	}

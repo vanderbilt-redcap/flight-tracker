@@ -81,6 +81,9 @@ class Application
 		if (CareerDev::isVanderbilt()) {
 			$files[] = __DIR__."/metadata.vanderbilt.json";
 		}
+		if (Application::isUAMS()) {
+			$files[] = __DIR__."/metadata.uams.json";
+		}
 		return $files;
 	}
 
@@ -147,6 +150,11 @@ class Application
 	public static function isVanderbilt() {
 		return CareerDev::isVanderbilt();
 	}
+	
+	public static function isUAMS() {
+		return preg_match("/uams.edu/", SERVER_NAME);
+	}
+	
 
 	public static function getProjectTitle($pid = null) {
 		if (!$pid) {

@@ -976,6 +976,10 @@ class DataDictionaryManagement
 			$formsAndLabels["eric"] = "[eric_id]";
 		}
 
+		if (Application::isUAMS()) {
+			$formsAndLabels['muse_grants'] = "[muse_number]";
+		}
+
 		if (Application::isVanderbilt()) {
 			$formsAndLabels["ldap"] = "[ldap_vanderbiltpersonjobname]";
 			$formsAndLabels["ldapds"] = "[ldapds_cn]";
@@ -1821,7 +1825,9 @@ class DataDictionaryManagement
 			&& self::isInitialSetupForResources($choices[$mentoringResourceField])
 		) {
 			if (in_array($defaultResourceField, $metadataFields)) {
-				if (!self::isInitialSetupForResources($choices[$defaultResourceField])) {
+				if (Application::isVanderbilt()) {
+					$resourceStr = self::makeChoiceStr(self::getMenteeAgreementVanderbiltResources());
+				} elseif (!self::isInitialSetupForResources($choices[$defaultResourceField])) {
 					$resourceStr = self::makeChoiceStr($choices[$defaultResourceField]);
 				} else {
 					$resourceStr = self::getSavedResourceChoiceStr($blankSetup, $pid);
@@ -2168,8 +2174,9 @@ class DataDictionaryManagement
 			"honor" => "old_honors_and_awards_complete",
 			"activityhonor" => "honors_awards_and_activities",
 			"surveyactivityhonor" => "honors_awards_and_activities_survey_complete",
+            "identifier" => "identifiers_complete"
 		];
-		return $hash[$prefix] ?? "";
+		return $hash[$prefix] ?? $prefix."_complete";
 	}
 
 	public static function indexMetadata($metadata) {

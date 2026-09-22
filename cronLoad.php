@@ -26,7 +26,12 @@ function loadMainCronsHelper(&$manager, $token, $server) {
 			$allRecords = Download::recordIdsByPid($pid);
 		}
 		$records = $switches->downloadRecordIdsToBeProcessed($allRecords);
+		
+		
+		
 		$securityTestMode = Application::getSetting("security_test_mode", $pid);
+		
+		
 
         if (in_array('nih_reporter', $forms)) {
             $manager->addCron("drivers/2s_updateRePORTER.php", "updateNIHRePORTER", "Monday", $records, 100);

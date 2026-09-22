@@ -240,7 +240,7 @@ class REDCapManagement
 	}
 
 	public static function formatMangledText($str) {
-		return mb_convert_encoding($str, 'ISO-8859-1', 'UTF-8');
+        return mb_convert_encoding($str, 'ISO-8859-1', 'UTF-8');
 	}
 
 	public static function getNormativeRow($rows) {
@@ -365,6 +365,7 @@ class REDCapManagement
 			"position_change" => "promotion",
 			"exclude_lists" => "exclude",
 			"patent" => "patent",
+			"muse_grant" => "muse",
 		];
 		return $ary[$instrument] ?? "";
 	}
@@ -520,9 +521,10 @@ class REDCapManagement
 	public static function getMinimalGrantFields($metadata) {
 		$allFields = [
 			"record_id",
+			"muse_number","muse_project_start","muse_project_end","muse_role","flighttracker_role","muse_direct_costs","muse_costs_total","muse_title","muse_first_name","muse_last_name","muse_last_updated",
 			"nih_project_num", "nih_project_start_date", "nih_project_end_date", "nih_award_notice_date", "nih_award_amount", "nih_direct_cost_amt", "nih_agency_ic_fundings", "nih_principal_investigators",
 			"reporter_totalcostamount", "reporter_budgetstartdate", "reporter_budgetenddate", "reporter_projectstartdate", "reporter_projectenddate", "reporter_projectnumber", "reporter_otherpis", "reporter_contactpi",
-			"coeus2_role", "coeus2_award_status", "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", "coeus2_current_period_total_funding", "coeus2_current_period_direct_funding",
+			"coeus2_role", "coeus2_award_status", "coeus2_agency_grant_number", "coeus2_current_period_start", "coeus2_current_period_end", "coeus2_current_period_total_funding", "coeus2_current_period_direct_funding", "coeus_project_direct", "coeus_project_total",
 			"coeus_pi_flag", "coeus_sponsor_award_number", "coeus_total_cost_budget_period", "coeus_direct_cost_budget_period", "coeus_budget_start_date", "coeus_budget_end_date", "coeus_project_start_date", "coeus_project_end_date", "coeus_direct_sponsor_name", "coeus_prime_sponsor_name",
 			"exporter_total_cost", "exporter_total_cost_sub_project", "exporter_pi_names", "exporter_full_project_num", "exporter_budget_start", "exporter_budget_end", "exporter_project_start", "exporter_project_end", "exporter_direct_cost_amt",
 			"nsf_id", "nsf_title", "nsf_estimatedtotalamt", "nsf_startdate", "nsf_expdate",
@@ -1155,7 +1157,7 @@ class REDCapManagement
 				$values = [];
 				$instancesToDelete = [];
 				foreach ($redcapData as $row) {
-					if (($row['redcap_repeat_instrument'] ?? "") == $instrument) {
+                    if (($row['redcap_repeat_instrument'] ?? "") == $instrument) {
 						$fieldValues = [];
 						$notBlank = false;
 						foreach ($fields as $field) {
@@ -1359,9 +1361,9 @@ class REDCapManagement
 		return DataDictionaryManagement::copyMetadataSettingsForField($row, $metadata, $upload, $token, $server);
 	}
 
-	public static function isOrclDate($d) {
-		return DateManagement::isOrclDate($d);
-	}
+    public static function isOrclDate($d) {
+        return DateManagement::isOrclDate($d);
+    }
 
 	# includes _complete's
 	public static function getFieldsWithData($rows, $recordId) {

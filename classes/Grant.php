@@ -206,10 +206,8 @@ class Grant
 			$secsInEndYear = $endTs - $endYearStartTs;
 			$startYearBudget = round($secsInStartYear * $budget / $totalTimespan);
 			$endYearBudget = round($secsInEndYear * $budget / $totalTimespan);
-			if (!isset($dollarsByYear[$startYear])) {
-				$dollarsByYear[$startYear] = 0;
-			}
-			$dollarsByYear[$startYear] += $startYearBudget;
+
+			$dollarsByYear[$startYear] = $startYearBudget;
 			if (!isset($dollarsByYear[$endYear])) {
 				$dollarsByYear[$endYear] = 0;
 			}
@@ -500,6 +498,9 @@ class Grant
 	public function isIndustry() {
 		$baseAwardNo = $this->getBaseAwardNumber();
 		$fundingSource = $this->getFundingSource();
+		if (preg_match("/Non-Profit/", $fundingSource) || $this->isFederal()) {
+			return false;
+		}
 		return preg_match("/Industry/", $fundingSource) || preg_match(CoeusGrantFactory::SUBPROJECT_OR_CONTRACT_REGEX, $baseAwardNo);
 	}
 
@@ -632,9 +633,7 @@ class Grant
 	}
 
 	public function toHTML() {
-		$html = "";
-
-		$html .= "<div class='grant'>\n";
+		$html = "<div class='grant'>\n";
 		$html .= "<div class='grantHeader'>\n";
 		$html .= $this->getVariable("original_award_number");
 		$html .= "</div>\n";
@@ -669,8 +668,6 @@ class Grant
 					} else {
 						$fraction = ($grantEnd - $start) / ($grantEnd - $grantStart);
 					}
-				} else {
-					$fraction = 0;
 				}
 			} else {
 				if ($end > $grantStart) {
@@ -679,8 +676,6 @@ class Grant
 					} else {
 						$fraction = 1;
 					}
-				} else {
-					$fraction = 0;
 				}
 			}
 			return ceil($fraction * $dollars);
@@ -843,10 +838,6 @@ class Grant
 	}
 
 	private static function getActivityType($activityCode) {
-		if ($activityCode == "") {
-			return "";
-		}
-
 		# https://grants.nih.gov/grants/funding/ac_search_results.htm
 		switch ($activityCode) {
 			case "C06":
@@ -947,6 +938,7 @@ class Grant
 				return "The Career Enhancement Award";
 			case "K21":
 				return "Scientist Development Award";
+			case "K99":
 			case "K22":
 				return "Career Transition Award";
 			case "K23":
@@ -965,8 +957,6 @@ class Grant
 				return "International Research Career Development Award";
 			case "K76":
 				return "Emerging Leaders Career Development Award";
-			case "K99":
-				return "Career Transition Award";
 			case "KD1":
 				return "Mental Health and/or Substance Abuse KD&A Grants";
 			case "KL1":
@@ -1035,12 +1025,11 @@ class Grant
 				return "Research Demonstration and Dissemination Projects";
 			case "R21":
 				return "Exploratory/Developmental Grants";
+			case "R28":
 			case "R24":
 				return "Resource-Related Research Projects";
 			case "R25":
 				return "Education Projects";
-			case "R28":
-				return "Resource-Related Research Projects";
 			case "R30":
 				return "Preventive Health Service - Venereal Disease Research, Demonstration, and Public Information and Education Grants";
 			case "R33":
@@ -1131,6 +1120,7 @@ class Grant
 				return "Continuing Education Training Grants";
 			case "T32":
 				return "Institutional National Research Service Award";
+			case "TL4":
 			case "T34":
 				return "Undergraduate NRSA Institutional Research Training Grants";
 			case "T35":
@@ -1143,8 +1133,6 @@ class Grant
 				return "Interdisciplinary Research Training Award";
 			case "TL1":
 				return "Linked Training Award";
-			case "TL4":
-				return "Undergraduate NRSA Institutional Research Training Grants";
 			case "TU2":
 				return "Institutional National Research Service Award with Involvement of NIH Intramural Faculty";
 			case "U01":
@@ -1163,14 +1151,13 @@ class Grant
 				return "Research Demonstration--Cooperative Agreements";
 			case "U19":
 				return "Research Program--Cooperative Agreements";
+			case "U1V":
 			case "U1A":
 				return "Capacity Building for Core Components of Tobacco Prevention and Control Programs Cooperative Agreements";
 			case "U1B":
 				return "Cooperative Agreement for Research and Surveillance Activities to Reduce the Incidence of HIV/AIDS";
 			case "U1Q":
 				return "Emergency Disaster Relief Relating to CDC Programs Cooperative Agreement";
-			case "U1V":
-				return "Capacity Building for Core Components of Tobacco Prevention and Control Programs Cooperative Agreements";
 			case "U21":
 				return "Immunization Service for Racial and Ethnic Minorities, Cooperative Agreements";
 			case "U22":
@@ -1321,8 +1308,6 @@ class Grant
 				return "Small Business Technology Transfer (STTR) – Cooperative Agreements - Phase I";
 			case "UT2":
 				return "Small Business Technology Transfer (STTR) – Cooperative Agreements - Phase II";
-			case "VF1":
-				return "Rape Prevention and Education Grants";
 			case "VF1":
 				return "Rape Prevention and Education Grants";
 			case "X01":
@@ -2808,6 +2793,8 @@ class Grant
 			} else {
 				switch ($primeSponsorType) {
 					case "Non-Profit - Foundations/ Associations":
+					case "Non-Profit - Other":
+					case "Non-Profit - Hospital":
 						return "Foundation/Non-Profit";
 					case "State - Tennessee":
 						return "State";
@@ -2900,7 +2887,6 @@ class Grant
 
 	public static function calculateAwardType($specs, $awardNo) {
 		$coeusSources = self::getCoeusSources();
-		$r01EquivThreshold = 1250000;
 
 		if ($specs['source'] == 'nsf') {
 			if (preg_match("/REU Site/", $specs['title'])) {
@@ -2981,10 +2967,16 @@ class Grant
 						#assume grant is at least for full year when calculating if r01 Equivalent
 						$yearspan = 1;
 					}
-					$isR01EquivEligible = ($specs[$budgetField] * $yearspan >= $r01EquivThreshold) && ($specs[$budgetField] >= $r01EquivThreshold);
+					# Check total project funding to be R01 equivalent if it exists. If not, attempt to determine total funding from yearly budget and total years of project funding.
+					if ($specs["project_direct"] ?? false) {
+						$isR01EquivEligible = ($specs["project_direct"] >= self::$r01EquivThreshold);
+					} else {
+						$isR01EquivEligible = ($specs[$budgetField] * $yearspan >= self::$r01EquivThreshold);
+					}
 					if (self::getShowDebug()) {
 						Application::log("$awardNo with $budgetField \${$specs[$budgetField]} and {$specs['num_grants_combined']} / $yearspan years");
 					}
+
 					if ($isR01EquivEligible) {
 						if (!preg_match("/^\d?[Kk]\d\d/", $awardNo)) {
 							if (self::getShowDebug()) {
@@ -3048,19 +3040,17 @@ class Grant
 		} elseif (
 			isset($specs['sponsor'])
 			&& $specs['sponsor'] == "Veterans Administration, Tennessee"
-			&& !preg_match("/^VUMC", $awardNo)
+			&& !preg_match("/^VUMC/", $awardNo)
 		) {
 			return "K Equivalent";
 		} elseif (
 			isset($specs['sponsor_type'])
 			&& ($specs['sponsor_type'] == "Non-Profit - Foundations/ Associations")
-			&& !preg_match("/^VUMC", $awardNo)
+			&& !preg_match("/^VUMC/", $awardNo)
 			&& ($specs['percent_effort'] >= 50)
 			&& ($specs['direct_budget'] >= 50000)
 		) {
-			if (($specs['percent_effort'] >= 50) && ($specs['direct_budget'] >= 50000)) {
-				return "K Equivalent";
-			}
+			return "K Equivalent";
 		}
 
 		if (self::getShowDebug()) {
@@ -3107,7 +3097,7 @@ class Grant
 			} elseif ($redcapVar == "sourcetype") {
 				$ary[$fullREDCapVar] = $this->getSourceType();
 			} else {
-				$ary[$fullREDCapVar] = (isset($this->specs[$specsVar]) ? $this->specs[$specsVar] : "");
+				$ary[$fullREDCapVar] = ($this->specs[$specsVar] ?? "");
 			}
 		}
 		return $ary;
@@ -3140,10 +3130,7 @@ class Grant
 	}
 
 	public static function getIndustries() {
-		$industries = [
-					"N/A" => 99,
-					];
-		return $industries;
+		return [ "N/A" => 99 ];
 	}
 
 	public static function getFundingSources($type = "All") {
@@ -3187,7 +3174,6 @@ class Grant
 			# All
 			return array_merge($federalFundingSources, $industryFundingSources, $na);
 		}
-		return $fundingSources;
 	}
 
 	public static function convertGrantTypesToStrings($ary) {
@@ -3200,21 +3186,20 @@ class Grant
 	}
 
 	public static function getAwardTypes() {
-		$awardTypes =  [
-				"Internal K" => 1,
-				"K12/KL2" => 2,
-				"Individual K" => 3,
-				"K Equivalent" => 4,
-				"R01" => 5,
-				"R01 Equivalent" => 6,
-				"Training Appointment" => 10,
-				"Research Fellowship" => 7,
-				"Mentoring/Training Grant Admin" => 8,
-				"Training Grant Admin" => 8,
-				"Bridge Award" => 9,
-				"N/A" => 99,
+		return [
+			"Internal K" => 1,
+			"K12/KL2" => 2,
+			"Individual K" => 3,
+			"K Equivalent" => 4,
+			"R01" => 5,
+			"R01 Equivalent" => 6,
+			"Training Appointment" => 10,
+			"Research Fellowship" => 7,
+			"Mentoring/Training Grant Admin" => 8,
+			"Training Grant Admin" => 8,
+			"Bridge Award" => 9,
+			"N/A" => 99,
 		];
-		return $awardTypes;
 	}
 
 	public static function setShowDebug($b) {
@@ -3225,9 +3210,10 @@ class Grant
 		return self::$showDebug;
 	}
 
-	private $specs = [];
+	private array $specs = [];
 	private $translator;
-	private static $showDebug = false;
-	public static $fdnOrOther = "Fdn-or-Other";
-	public static $noNameAssigned = "No Title Assigned";
+	private static bool $showDebug = false;
+	public static string $fdnOrOther = "Fdn-or-Other";
+	public static string $noNameAssigned = "No Title Assigned";
+	public static int $r01EquivThreshold = 1250000;
 }

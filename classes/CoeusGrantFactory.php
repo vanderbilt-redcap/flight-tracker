@@ -72,6 +72,8 @@ class CoeusGrantFactory extends GrantFactory
 			$grant->setVariable('budget', $row['coeus_total_cost_budget_period']);
 			$grant->setVariable('total_budget', $row['coeus_total_cost_budget_period']);
 			$grant->setVariable('direct_budget', $row['coeus_direct_cost_budget_period']);
+			$grant->setVariable('project_total', $row['coeus_project_total']);
+			$grant->setVariable('project_direct', $row['coeus_project_direct']);
 		}
 		$grant->setVariable('title', $row['coeus_title']);
 		$grant->setVariable('sponsor', $row['coeus_direct_sponsor_name']);

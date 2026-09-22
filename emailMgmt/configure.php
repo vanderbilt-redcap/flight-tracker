@@ -18,6 +18,7 @@ $allowFollowups = FALSE;
 $realPost = getRealInput('POST');
 $metadata = Download::metadata($token, $server);  // must load on save and reload after save
 $hasErrors = FALSE;
+
 if (count($_POST) > 0) {
 	# saveSetting evokes a separate $mgr instance; must do first so that save will take effect
     $mgr = new EmailManager($token, $server, $pid, CareerDev::getModule(), $metadata);
@@ -104,9 +105,9 @@ if (isset($_POST['recipient'])) {
             if ($_POST['trainee_class'] == "alumni") {
                 $traineeClassAlumni = "checked"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "$isDisabled";
             } else if ($_POST['trainee_class'] == "current") {
-                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "current"; $traineeClassAll = "$isDisabled";
+                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "checked"; $traineeClassAll = "$isDisabled";
             } else {
-                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "current";
+                $traineeClassAlumni = "$isDisabled"; $traineeClassCurrent = "$isDisabled"; $traineeClassAll = "checked";
             }
             if ($_POST['max_emails']) {
                 $maxEmails = REDCapManagement::sanitize($_POST['max_emails']);
@@ -160,10 +161,30 @@ if (isset($currSetting["who"]["individuals"])) {
 		$maxEmails = $currSetting["who"]["max_emails"];
 		$maxSpecified = "checked";
 	}
+    if ($currSetting["who"]['converted'] == "yes") {
+        $r01No = "$isDisabled"; $r01Yes = "checked"; $r01Agnostic = "$isDisabled";
+    } else if ($currSetting["who"]['converted'] == "no") {
+        $r01No = "checked"; $r01Yes = "$isDisabled"; $r01Agnostic = "$isDisabled";
+    }
 	if (isset($currSetting["who"]["new_records_since"]) && $currSetting["who"]["new_records_since"]) {
 		$newRecordsSince = $currSetting["who"]["new_records_since"];
 		$newRecordsSinceSpecified = "checked";
 	}
+    if ($currSetting["who"]['trainee_class'] != "") {
+        if ($currSetting["who"]['trainee_class'] == "alumni") {
+            $traineeClassAlumni = "checked";
+            $traineeClassCurrent = "$isDisabled";
+            $traineeClassAll = "$isDisabled";
+        } else if ($currSetting["who"]['trainee_class'] == "current") {
+            $traineeClassAlumni = "$isDisabled";
+            $traineeClassCurrent = "checked";
+            $traineeClassAll = "$isDisabled";
+        } else {
+            $traineeClassAlumni = "$isDisabled";
+            $traineeClassCurrent = "$isDisabled";
+            $traineeClassAll = "checked";
+        }
+    }
 }
 
 $thisUrl = Application::link("this");
