@@ -1907,12 +1907,14 @@ Examples:
 			if ($surveyType != "default") {
 				$html = "<h3>Custom Surveys for This Project</h3>";
 				$surveyProject = new \Project($this->pid);
-				$surveys = ExternalModules::escape($surveyProject->surveys);
+				$surveys = $surveyProject->surveys;
 				$language = \Language::getLanguage();
 				foreach ($surveys as $survey_id => $survey_info) {
+					$survey_info['form_name'] = ExternalModules::escape($survey_info['form_name']);
+					$survey_info['title'] = ExternalModules::escape(strip_tags($survey_info['title']));
 					if (!in_array($survey_info['form_name'], self::STANDARD_SURVEYS)) {
 						$completionTime = \Survey::getSurveyCompletionTime($this->pid, $this->recordId, $survey_info['form_name'], $surveyProject->firstEventId);
-						$portalDescription = (!str_starts_with($survey_info['instructions'], "<p><strong>".$language['survey_154']) ? ExternalModules::escape(strip_tags($survey_info['instructions'])) : "");
+						$portalDescription = (!str_starts_with($survey_info['instructions'], "<p><strong>".$language['survey_154']) ? nl2br(ExternalModules::escape(strip_tags(preg_replace('/<br\s*\/?>|<\/p>/i', "\n", $survey_info['instructions'])))) : "");
 
 						if ($completionTime == "") {
 							$latestDate = "Never";
